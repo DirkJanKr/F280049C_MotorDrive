@@ -1,0 +1,32 @@
+[
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00/driverlib/f28004x/driverlib/\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device/device.c"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00/driverlib/f28004x/driverlib/\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device/f28004x_codestartbranch.asm"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00/driverlib/f28004x/driverlib/\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device/adc.c"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00/driverlib/f28004x/driverlib/\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/main.c"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00/driverlib/f28004x/driverlib/\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg/board.c"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/device\" -I\"C:/ti/c2000/C2000Ware_5_04_00_00/driverlib/f28004x/driverlib/\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Phase_Voltages/CPU1_RAM/syscfg/c2000ware_libraries.c"
+   }
+]

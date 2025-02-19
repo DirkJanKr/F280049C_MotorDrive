@@ -1,0 +1,27 @@
+[
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/device\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware/driverlib/f28004x/driverlib\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -DRAM -D_LAUNCHXL_F280049C -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM/syscfg/board.c"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/device\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware/driverlib/f28004x/driverlib\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -DRAM -D_LAUNCHXL_F280049C -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM/syscfg/c2000ware_libraries.c"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/device\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware/driverlib/f28004x/driverlib\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -DRAM -D_LAUNCHXL_F280049C -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/device/device.c"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/device\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware/driverlib/f28004x/driverlib\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -DRAM -D_LAUNCHXL_F280049C -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/device/f28004x_codestartbranch.asm"
+   },
+   {
+      "directory" : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM",
+      "command"   : "clang++ -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware\" -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/device\" -I\"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware/driverlib/f28004x/driverlib\" -I\"C:/ti/ccs2000/ccs/tools/compiler/ti-cgt-c2000_22.6.1A23259/include\" -DDEBUG -DRAM -D_LAUNCHXL_F280049C -I\"C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/CPU1_RAM/syscfg\" -DF28004x=1",
+      "file"      : "C:/Users/dirkj/OneDrive/Documenten/Workspace_CCS_MotorDrive/Vf_CurrentSense/vfmain_currentsense.c"
+   }
+]

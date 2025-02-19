@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?ccsproject version="1.0"?>
+<projectOptions>
+	<ccsVariant value="50:Theia-based"/>
+	<ccsVersion value="70.0.0"/>
+	<deviceFamily value="C2000"/>
+	<executableActions value=""/>
+	<createSlaveProjects value=""/>
+	<templateProperties value="id=is05_motor_id_eabi.projectspec.is05_motor_id_eabi"/>
+	<sourceLookupPath value="${C2000WARE_DLIB_ROOT}"/>
+	<origin value="C:\ti\C2000Ware_MotorControl_SDK_5_03_00_00\solutions\boostxl_drv8320rs\f28004x\ccs\sensorless_foc\is05_motor_id_eabi.projectspec"/>
+	<filesToOpen value=""/>
+	<activeTargetConfiguration value="../../../../../../ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware/device_support/f28004x/common/targetConfigs/TMS320F280049C_LaunchPad.ccxml"/>
+</projectOptions>

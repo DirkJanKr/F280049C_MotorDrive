@@ -1,0 +1,8 @@
+"./syscfg/board.obj"
+"./syscfg/c2000ware_libraries.obj"
+"./vfmain_currentsense.obj"
+"./device/device.obj"
+"./device/f28004x_codestartbranch.obj"
+"../28004x_generic_ram_lnk.cmd"
+"C:/ti/C2000Ware_MotorControl_SDK_5_03_00_00/c2000ware/driverlib/f28004x/driverlib/ccs/Debug/driverlib.lib"
+-llibc.a

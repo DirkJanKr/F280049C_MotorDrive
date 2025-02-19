@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Phase_Voltages",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "Phase_Voltages",
+                "resourceId": "/Phase_Voltages"
+            },
+            "debuggerSettings": {
+                "targetConfigs/TMS320F280049C.ccxml": {
+                    "Texas Instruments XDS110 USB Debug Probe_0/C28xx_CPU1": {
+                        "data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<PropertyValues/>\n"
+                    }
+                }
+            }
+        },
+        {
+            "name": "MotorDrive",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "MotorDrive",
+                "resourceId": "/MotorDrive"
+            },
+            "debuggerSettings": {
+                "targetConfigs/TMS320F280049C.ccxml": {
+                    "Texas Instruments XDS100v2 USB Debug Probe_0/C28xx_CPU1": {
+                        "data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<PropertyValues/>\n"
+                    }
+                }
+            }
+        }
+    ]
+}
