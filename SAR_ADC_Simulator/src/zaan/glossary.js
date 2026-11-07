@@ -1,0 +1,30 @@
+// One-line explanations of converter and IC terms, shown the first time a
+// term appears and in the Terms panel.
+
+export const GLOSSARY = {
+  LSB: 'Least significant bit: the input step of one code, full scale / 2^N.',
+  ENOB: 'Effective number of bits: the resolution an ideal ADC would need to give the same SNDR.',
+  SNDR: 'Signal to noise and distortion ratio: signal power over all noise and harmonic power, in dB.',
+  SQNR: 'Signal to quantisation noise ratio: SNDR of an ideal ADC, 6.02 N + 1.76 dB for a full-scale sine.',
+  SFDR: 'Spurious-free dynamic range: signal power over the largest single spur, in dB.',
+  RSS: 'Root sum of squares: how uncorrelated rms noise sources add, sqrt(a^2 + b^2 + ...).',
+  'kT/C noise': 'Thermal noise frozen on a capacitor when its switch opens, rms voltage sqrt(k T / C).',
+  Jitter: 'Random timing error of the sampling instant; on a sine it becomes voltage noise.',
+  'Charge sharing': 'Connecting capacitors with different voltages so their charge spreads; total charge is kept.',
+  CDAC: 'Capacitive DAC: the capacitor array that generates the comparison levels.',
+  'Sub-radix-2': 'Weights that shrink by less than 2 per step, so ranges overlap and one wrong early decision can be corrected later.',
+  Redundancy: 'The overlap created by sub-radix-2 weights; it costs extra decisions.',
+  'Raw decisions': 'The comparator outputs before the combiner turns them into a binary code.',
+  Combiner: 'Digital block that multiplies the raw decisions by their weights (from a LUT) and adds them into the output code.',
+  LUT: 'Look-up table: on-chip memory holding the calibrated weights.',
+  DNL: 'Differential nonlinearity: deviation of each code width from 1 LSB.',
+  INL: 'Integral nonlinearity: deviation of each code transition from a straight line, in LSB.',
+  Metastability: 'A comparator with a very small input needs a long time to reach a valid logic level.',
+  'Self-timed SAR': 'Asynchronous SAR: each decision starts when the comparator signals the previous one is done.',
+  MIM: 'Metal-insulator-metal capacitor: a dedicated capacitor layer with good matching and linearity.',
+  'Monte Carlo': 'Many simulations with randomly drawn device mismatch, to get the spread of a result.',
+  'Coherent sampling': 'An integer number of input periods fits exactly in the FFT record, so no window is needed.',
+  'Source level': 'Where a block\'s numbers come from: ideal, hand calculation, schematic simulation or post-layout extraction.',
+  'Back-annotation': 'Feeding numbers from transistor-level simulation back into this system model.',
+  'Post-layout extraction': 'Simulation that includes the parasitic capacitance and resistance of the drawn layout.',
+};

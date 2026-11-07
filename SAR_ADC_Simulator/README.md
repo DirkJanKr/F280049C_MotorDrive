@@ -76,3 +76,14 @@ reference error, sampling noise (kT/C plus extra input noise) and aperture jitte
   unchanged.
 * **Engine consistency:** the fast and recording paths give identical codes with every
   non-ideality on.
+
+## Zaan converter workbench (`zaan.html`)
+
+A separate page for the Zaan charge-sharing SAR ADC with merged beamformer. It is built in
+phases; see the module strip in the page for what exists. Code lives in `src/zaan/`
+(model: one function per job) and `src/zaan/ui/` (views). Tests: `test/zaan-*.test.mjs`.
+
+* Phase 1: parameter registry with status codes (S, S*, U, D, A, ?), conflicts panel,
+  noise and timing budget allocator with margins against ENOB 9.5 and 9, spec sheet per block,
+  source level per block, LaTeX (IEEEtran) and MATLAB struct export.
+* Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never commit it.

@@ -1,0 +1,3 @@
+node_modules/
+# Imported Cadence / PDK data (NDA). Never commit.
+local-data/

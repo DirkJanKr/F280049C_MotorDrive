@@ -1,0 +1,94 @@
+/* Layout: one column; module strip and tabs scroll sideways on phones; wide tables scroll in their own box. */
+:root {
+  --bg: #f3f5f7;
+  --panel: #ffffff;
+  --ink: #17212b;
+  --muted: #5b6876;
+  --line: #d8dee5;
+  --accent: #0e6a86;
+  --accent-soft: #e2f0f4;
+  --good: #1d7a46;
+  --bad: #b3261e;
+  --warn: #9a6200;
+  --st-s: #1d7a46;
+  --st-sstar: #6b7a12;
+  --st-u: #1f5fbf;
+  --st-d: #6a3fb5;
+  --st-a: #9a6200;
+  --st-q: #b3261e;
+  --bar: #0e6a86;
+  --bar-2: #9fc7d4;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --panel: #182029; --ink: #e5ebf1; --muted: #93a1b0; --line: #2b3643;
+    --accent: #5cc1de; --accent-soft: #17323d; --good: #4fc07f; --bad: #ff7b72; --warn: #e3a64a;
+    --st-s: #4fc07f; --st-sstar: #b5c34a; --st-u: #6ea8ff; --st-d: #b495f0; --st-a: #e3a64a; --st-q: #ff7b72;
+    --bar: #5cc1de; --bar-2: #2c5866; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --panel: #182029; --ink: #e5ebf1; --muted: #93a1b0; --line: #2b3643;
+  --accent: #5cc1de; --accent-soft: #17323d; --good: #4fc07f; --bad: #ff7b72; --warn: #e3a64a;
+  --st-s: #4fc07f; --st-sstar: #b5c34a; --st-u: #6ea8ff; --st-d: #b495f0; --st-a: #e3a64a; --st-q: #ff7b72;
+  --bar: #5cc1de; --bar-2: #2c5866; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font); overflow-x: hidden; }
+#zaan-root { max-width: 1180px; margin: 0 auto; padding-block: 12px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.z-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.z-title { font-size: 20px; font-weight: 700; letter-spacing: 0.01em; }
+.z-sub { color: var(--muted); font-size: 13px; }
+.z-link { color: var(--accent); font-size: 13px; white-space: nowrap; }
+.z-modules, .z-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 6px; scrollbar-width: thin; }
+.z-modules button, .z-tabs button { flex: 0 0 auto; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 18px; padding: 6px 12px; font: 13px var(--font); cursor: pointer; }
+.z-modules button.on, .z-tabs button.on { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.z-modules button.later { color: var(--muted); }
+.z-modules button:focus-visible, .z-tabs button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.z-tabs { border-top: 1px solid var(--line); margin-top: 4px; }
+.z-view { display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.card h2 { font-size: 15px; margin: 0 0 8px; text-wrap: balance; }
+.card h3 { font-size: 12px; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.card p { margin: 6px 0; max-width: 72ch; }
+.differs { font-size: 12.5px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 8px; margin: 4px 0 0; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); padding: 6px 8px; white-space: nowrap; }
+td { border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+td.num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.num { text-align: right; white-space: nowrap; }
+.note { color: var(--muted); font-size: 12px; }
+.pill { display: inline-block; min-width: 26px; text-align: center; font: 600 11px var(--mono); padding: 1px 6px; border-radius: 10px; border: 1px solid currentColor; white-space: nowrap; }
+.st-S { color: var(--st-s); } .st-Sstar { color: var(--st-sstar); } .st-U { color: var(--st-u); }
+.st-D { color: var(--st-d); } .st-A { color: var(--st-a); } .st-q { color: var(--st-q); }
+input[type=number], select { font: 13px var(--mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; width: 100%; min-width: 70px; max-width: 130px; }
+input.edited { border-color: var(--accent); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tile { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.tile .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.tile .v { font: 600 17px var(--mono); }
+.tile .s { font-size: 11.5px; color: var(--muted); }
+.good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+details { margin: 4px 0; }
+summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+.formula { font: 12.5px/1.6 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px; margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+textarea { width: 100%; min-height: 220px; font: 12px var(--mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.btn { font: 13px var(--font); border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 5px; padding: 4px 10px; cursor: pointer; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.conflict { border-left: 4px solid var(--warn); }
+.conflict.derived { border-left-color: var(--st-d); }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--ink); font: 11px var(--font); }
+.chart .muted { fill: var(--muted); }
+ul.plain { margin: 6px 0; padding-left: 18px; }
+@media (max-width: 640px) {
+  .z-title { font-size: 18px; }
+  td, th { padding: 5px 6px; }
+}
+.chart { max-width: 760px; }
+table.narrow { width: auto; min-width: 260px; }
+@media (max-width: 640px) { .hide-phone { display: none; } }
