@@ -37,7 +37,15 @@ let analysisKey = '';
 let playTimer = null;
 
 // ---------- persistence (URL hash: shareable configuration) ----------
+const embedded = (() => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+})();
 function loadFromHash() {
+  if (embedded) return;
   try {
     if (!location.hash || location.hash.length < 3) return;
     const obj = JSON.parse(decodeURIComponent(location.hash.slice(1)));
@@ -48,6 +56,7 @@ function loadFromHash() {
   }
 }
 function saveToHash() {
+  if (embedded) return;
   try {
     history.replaceState(null, '', '#' + encodeURIComponent(JSON.stringify({ c: state.config, u: state.ui })));
   } catch {
