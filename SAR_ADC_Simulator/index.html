@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SAR ADC Charge Simulator</title>
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-title">SAR ADC Charge Simulator</div>
+      <div class="brand-sub">Behavioral charge-domain CDAC model · not a transistor-level simulation</div>
+    </div>
+    <div class="topbar-readout" id="readout"></div>
+    <div class="topbar-actions">
+      <label class="toggle" title="Disable every non-ideality at once">
+        <input type="checkbox" id="idealToggle" />
+        <span>Ideal model</span>
+      </label>
+      <button class="btn ghost" id="themeBtn" title="Toggle light/dark">Theme</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="params" aria-label="Circuit parameters"></aside>
+
+    <main class="main">
+      <section class="card" id="schematicCard">
+        <div class="card-head">
+          <h2>Capacitor array &amp; SAR loop</h2>
+          <div class="input-strip">
+            <label for="vinSlider" id="vinSliderLabel">Vin</label>
+            <input type="range" id="vinSlider" min="0" max="1" step="0.0001" />
+            <output id="vinSliderOut"></output>
+          </div>
+        </div>
+        <div class="stepbar" role="toolbar" aria-label="Conversion step controls">
+          <button class="btn" data-step="first" title="First step (Home)">⏮</button>
+          <button class="btn" data-step="prev" title="Previous step (←)">◀</button>
+          <button class="btn primary" data-step="play" id="playBtn" title="Play / pause (space)">▶ Play</button>
+          <button class="btn" data-step="next" title="Next step (→)">▶</button>
+          <button class="btn" data-step="last" title="Last step (End)">⏭</button>
+          <input type="range" id="stepSlider" min="0" max="0" step="1" aria-label="Step" />
+          <span class="step-label" id="stepLabel"></span>
+          <button class="btn ghost" id="reseedBtn" title="Draw a new noise realization for this conversion">New noise sample</button>
+        </div>
+        <div class="step-detail" id="stepDetail"></div>
+        <div class="schematic-wrap" id="schematic"></div>
+        <div class="legend" id="schematicLegend"></div>
+      </section>
+
+      <div class="grid-2">
+        <section class="card" id="chargeCard">
+          <div class="card-head"><h2>Charge redistribution</h2><span class="hint" id="chargeHint"></span></div>
+          <div id="charge"></div>
+        </section>
+        <section class="card" id="logCard">
+          <div class="card-head"><h2>Conversion sequence</h2><span class="hint">click a row to jump</span></div>
+          <div id="sequence" class="table-scroll"></div>
+        </section>
+      </div>
+
+      <section class="card" id="waveCard">
+        <div class="card-head"><h2>Time-domain waveforms</h2><span class="hint">ideal instantaneous settling between switching events</span></div>
+        <div id="waveforms"></div>
+      </section>
+
+      <section class="card" id="resultsCard">
+        <div class="card-head">
+          <h2>Results</h2>
+          <span class="hint" id="analysisStatus"></span>
+        </div>
+        <div id="results"></div>
+      </section>
+
+      <section class="card" id="assumptionsCard">
+        <div class="card-head"><h2>Model scope: ideal assumptions vs. modeled physical effects</h2></div>
+        <div id="assumptions"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="src/ui/app.js"></script>
+</body>
+</html>

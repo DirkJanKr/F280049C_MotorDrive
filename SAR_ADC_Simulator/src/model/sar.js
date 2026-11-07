@@ -202,8 +202,14 @@ export function convert(adc, input, opts = {}) {
     decisions[k] = cmp.decision;
     if (record) {
       takeSnapshot('compare', {
-        title: `Bit cycle ${k + 1}/${N}: decide b${N - 1 - k}`,
-        detail: scheme.narrate(k, cmp.decision, N),
+        title: `Bit cycle ${k + 1}/${N}: b${N - 1 - k} = ${cmp.decision}`,
+        detail:
+          (k === 0
+            ? presetApplied.length
+              ? 'DAC preset applied. '
+              : 'No switching needed: the sampled input is compared directly. '
+            : `Switching from previous decision: ${scheme.narrate(k - 1, decisions[k - 1], N)}. `) +
+          `Comparator ${cmp.decision ? 'V+ > V−' : 'V+ < V−'} → b${N - 1 - k} = ${cmp.decision}.`,
         tStart: tSample + k * tBit,
         tEnd: tSample + (k + 1) * tBit,
         tCompare: tSample + (k + 0.8) * tBit,
@@ -222,7 +228,7 @@ export function convert(adc, input, opts = {}) {
   if (record) {
     takeSnapshot('done', {
       title: 'Conversion complete',
-      detail: `Output code ${code}. Remaining top-plate voltage is the residue of the conversion.`,
+      detail: `${scheme.narrate(N - 1, decisions[N - 1], N)}. Output code ${code}; the remaining top-plate voltage is the conversion residue.`,
       tStart: tSample + N * tBit,
       tEnd: tSample + (N + 0.6) * tBit,
       decisions: decisions.slice(),
