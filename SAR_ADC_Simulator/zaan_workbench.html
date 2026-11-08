@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Zaan Workbench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=STIX+Two+Text:ital@0;1&display=swap" />
+  <link rel="stylesheet" href="css/workbench.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand"><span class="mark">Z</span><span><b>Zaan</b> workbench</span></div>
+      <div class="vbar" id="vbar" aria-label="Fixed values"></div>
+      <div class="tops"><button class="mini" id="ioBtn">Versions and export</button><button class="mini" id="themeBtn" title="Light or dark theme">theme</button></div>
+    </header>
+    <aside class="left">
+      <div class="ltabs"><button id="ltab-p" class="on">Design parameters</button><button id="ltab-q">Open questions <span class="qn" id="qn"></span></button></div>
+      <div class="lbody" id="params"></div>
+    </aside>
+    <main class="centre">
+      <div class="schem-host" id="schem-host"></div>
+      <div class="atool" role="toolbar" aria-label="Conversion animation">
+        <button class="mini" id="arestart" title="Back to sampling">⏮</button>
+        <button class="mini" id="aback" title="Step back one decision">◀</button>
+        <button class="mini primary" id="aplay">▶ play</button>
+        <button class="mini" id="astep" title="Step one decision">▶|</button>
+        <select id="aspeed" aria-label="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+        <label class="ain">input <input type="range" id="ain" step="0.001"/> <output id="ain-v"></output></label>
+        <span class="astate" id="astate"></span>
+      </div>
+      <div class="ltool" id="lvl"><button class="mini" data-lvl="1">System</button><button class="mini" data-lvl="2">Block</button><button class="mini" data-lvl="3">Detail</button><button class="mini" id="fitBtn">fit</button></div>
+      <div class="legend"><span><i class="k-an"></i>analog signal</span><span><i class="k-ref"></i>reference</span><span><i class="k-clk"></i>clock and control</span><span><i class="k-dig"></i>digital bus</span><span><i class="k-cal"></i>calibration</span><span><i class="k-q"></i>? not cited</span></div>
+    </main>
+    <aside class="right" id="insp" aria-label="Inspector"></aside>
+    <section class="dock" id="dock" aria-label="Graphs"></section>
+  </div>
+  <div class="io" id="io" role="dialog" aria-label="Design versions and export"></div>
+  <script type="module" src="src/workbench/app.js"></script>
+</body>
+</html>

@@ -102,3 +102,22 @@ Assumption (A) used throughout: one unit step delivers 2 · VREF · Cu of differ
 2 · Cu to the node, which reproduces review slides 11, 15 and 36.
 
 Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never commit it.
+
+## Zaan integrated workbench (`zaan_workbench.html`)
+
+One screen for the whole project, in the style of an EDA tool: values bar on top, design
+parameters on the left (every value with a status code S, S*, U, D, A or ? and a source field),
+the complete schematic in the centre (pan and zoom; System, Block and Detail levels), an inspector
+on the right (plain description, values, formulas with your numbers), and a graph dock below with
+a tab per block, pinnable graphs and overlays of saved design versions.
+
+* Animations driven by the model: one conversion on the schematic (switches, charge dots, node
+  voltage, comparator, register, synced scope, timing diagram and decision table), the beamformer
+  (wavefront, cells written on CLK and CLK 180°, delayed cells read and summed), calibration
+  (weights converging, DNL improving) and reference variants (charge pulses).
+* Unknown values stay "?" and appear in the Open questions panel with the open decisions and the
+  conflicts found in the notes; graphs that need an unknown value say which one.
+* Design versions are stored in the browser and exported or imported as a JSON file; the LaTeX
+  table and MATLAB struct include status and source.
+* Code: `src/workbench/` (values, derive, state, schematic, panels, dock, graphs, animations). It
+  reuses the model in `src/zaan/model/`. Tests: `test/workbench.test.mjs`.
