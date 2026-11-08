@@ -1,83 +1,75 @@
-// Project specifications for the Zaan converter.
-// Each entry: value in the shown unit, factor `si` to SI units, SI unit, a note,
-// and `estimate: true` for values that are not decided yet.
+// Project values for the Zaan converter, from the architecture review (Nov 2026).
+// Each entry: value in the shown unit, factor `si` to SI, SI unit, slider range,
+// a note, and `estimate: true` when the value is not decided yet.
 
-function p(id, group, label, value, unit, si, siUnit, note = '', estimate = false) {
-  return { id, group, label, value, unit, si, siUnit, note, estimate };
+function p(id, group, label, value, unit, si, siUnit, range, note = '', estimate = false) {
+  const [min, max, step] = range;
+  return { id, group, label, value, unit, si, siUnit, min, max, step, note, estimate };
 }
 
 export const GROUPS = {
-  system: 'Converter and imaging targets',
-  array: 'Transducer tile',
-  device: 'Capacitors and CDAC',
-  chain: 'Signal chain (13 Oct, noise over 6 MHz)',
-  assumed: 'Not decided yet',
+  specs: 'Converter targets',
+  beam: 'Tile and beamforming',
+  cdac: 'CDAC and reference',
+  comparator: 'Comparator and timing',
+  noise: 'Noise sources',
+  sim: 'Simulation settings',
 };
 
 export const DEFAULT_PARAMS = [
-  p('f0', 'system', 'Centre frequency', 10, 'MHz', 1000000, 'Hz', 'range 8 to 10 MHz'),
-  p('fbw', 'system', 'Fractional bandwidth', 60, '%', 0.01, '1', ''),
-  p('fs', 'system', 'Sample rate', 40, 'MS/s', 1000000, 'S/s', ''),
-  p('bits', 'system', 'Resolution', 10, 'bit', 1, 'bit', ''),
-  p('enobAim', 'system', 'ENOB aim', 9.5, 'bit', 1, 'bit', ''),
-  p('rawDecisions', 'system', 'Raw decisions', 12, '', 1, '1', ''),
-  p('fullScale', 'system', 'Full scale (differential, peak to peak)', 1, 'V', 1, 'V', 'conservative, not fixed'),
-  p('vref', 'system', 'V REF', 200, 'mV', 0.001, 'V', 'take a value for now'),
-  p('channels', 'system', 'Channels per converter', 16, '', 1, '1', ''),
-  p('memCaps', 'system', 'Memory capacitors per channel', 22, '', 1, '1', ''),
-  p('delayStep', 'system', 'Analog delay step', 12.5, 'ns', 1e-9, 's', 'baseline; compare 25 ns and 1 to 2 finer steps'),
-  p('steer', 'system', 'Receive steering (plus/minus)', 15, 'deg', Math.PI / 180, 'rad', ''),
-  p('depth', 'system', 'Working depth', 20, 'mm', 0.001, 'm', ''),
-  p('depthKey', 'system', 'Most important depth', 15, 'mm', 0.001, 'm', ''),
-  p('frameRate', 'system', 'Frame rate (minimum)', 30, 'fps', 1, '1/s', ''),
-  p('c', 'system', 'Speed of sound', 1540, 'm/s', 1, 'm/s', 'soft tissue value', true),
-  p('imageDR', 'system', 'Image dynamic range', 60, 'dB', 1, 'dB', 'initial reference only, not a specification'),
-  p('elements', 'array', 'Elements per tile', 16, '', 1, '1', '1 x 16 line'),
-  p('pitch', 'array', 'Element pitch', 200, 'um', 0.000001, 'm', ''),
-  p('kerf', 'array', 'Kerf', 20, 'um', 0.000001, 'm', ''),
-  p('elementLength', 'array', 'Element length', 5, 'mm', 0.001, 'm', ''),
-  p('chipWidth', 'array', 'Chip width', 3.2, 'mm', 0.001, 'm', ''),
-  p('chipLength', 'array', 'Chip length', 5, 'mm', 0.001, 'm', ''),
-  p('tiles', 'array', 'Tiles in a row', 16, '', 1, '1', '256 channels, fired one after another'),
-  p('capDensity', 'device', 'Capacitor density', 2, 'fF/µm²', 0.001, 'F/m2', 'use in all calculations'),
-  p('mimSide', 'device', 'Minimum MIM side', 4, 'um', 0.000001, 'm', 'square device, 4 µm × 4 µm; from the PDK; page not checked yet'),
-  p('mimMin', 'device', 'Minimum MIM capacitance', 35, 'fF', 1e-15, 'F', 'from the PDK; page not checked yet'),
-  p('mimMatch', 'device', 'MIM matching coefficient', 0.0499, 'um', 0.000001, 'm', 'pair σ(ΔC/C) = coefficient / √(W·L); from the PDK; page not checked yet'),
-  p('radix', 'device', 'CDAC radix, upper steps', 1.9, '', 1, '1', 'sub-radix-2; charge-halving LSBs (Malki); radix may differ per step'),
-  p('dnlLimit', 'device', 'Mismatch criterion: 3σ DNL below', 0.5, 'LSB', 1, 'LSB', ''),
-  p('pmutNoise', 'chain', 'PMUT noise at the PMUT', 1.017, 'µV rms', 0.000001, 'V', ''),
-  p('lnaNoise', 'chain', 'LNA noise, input referred', 1.537, 'µV rms', 0.000001, 'V', ''),
-  p('sMax', 'chain', 'Smax at the PMUT', 25, 'mV rms', 0.001, 'V', ''),
-  p('sMin', 'chain', 'Smin at the PMUT', 1.41, 'mV rms', 0.001, 'V', ''),
-  p('afeGain', 'chain', 'AFE gain', 30, 'dB', 1, 'dB', ''),
-  p('idr', 'chain', 'Instantaneous dynamic range', 24, 'dB', 1, 'dB', ''),
-  p('tgcStep', 'chain', 'TGC step', 2.5, 'dB', 1, 'dB', 'TGC is Zehou\'s block; numbers only'),
-  p('idrTotal', 'chain', 'IDR plus TGC, total', 26.5, 'dB', 1, 'dB', ''),
-  p('pmutNoiseAfe', 'chain', 'PMUT noise after AFE', 32.2, 'µV rms', 0.000001, 'V', ''),
-  p('lnaNoiseAfe', 'chain', 'LNA noise after AFE', 58.3, 'µV rms', 0.000001, 'V', ''),
-  p('sMaxAfe', 'chain', 'Smax after AFE', 790, 'mV rms', 0.001, 'V', ''),
-  p('sMinAfe', 'chain', 'Smin after AFE', 44.6, 'mV rms', 0.001, 'V', ''),
-  p('noiseAfterBf', 'chain', 'Noise after beamformer', 14.6, 'µV rms', 0.000001, 'V', 'one fourth of the AFE output noise'),
-  p('adcQuantNoise', 'chain', 'ADC quantisation noise', 280, 'µV rms', 0.000001, 'V', 'chain was built on ENOB 9; see conflict 1'),
-  p('temperature', 'assumed', 'Temperature for kT/C', 300, 'K', 1, 'K', 'a wrist chip may run near 310 K', true),
-  p('cmExample', 'assumed', 'Memory capacitor, example value', 35, 'fF', 1e-15, 'F', 'example used in the decisions page until the CDAC block exists', true),
-  p('tSample', 'assumed', 'Sampling time Ts', 5, 'ns', 1e-9, 's', 'not known yet; drag it in the budget to see the effect', true),
-  p('tLogic', 'assumed', 'SAR logic delay per decision', 0, 'ns', 1e-9, 's', 'left at 0 until known; the budget is optimistic', true),
+  p('fs', 'specs', 'Sample rate', 40, 'MS/s', 1e6, 'S/s', [10, 80, 1]),
+  p('bits', 'specs', 'Resolution', 10, 'bit', 1, 'bit', [8, 12, 1]),
+  p('fullScale', 'specs', 'Full scale, differential peak to peak', 1, 'V', 1, 'V', [0.4, 2, 0.05], 'conservative, not fixed'),
+  p('enobAim', 'specs', 'ENOB aim', 9.5, 'bit', 1, 'bit', [8, 11, 0.1]),
+  p('f0', 'specs', 'Echo centre frequency', 10, 'MHz', 1e6, 'Hz', [5, 15, 0.5], 'band about 7 to 13 MHz'),
+  p('fbw', 'specs', 'Fractional bandwidth', 60, '%', 0.01, '1', [20, 100, 5]),
+
+  p('channels', 'beam', 'Channels per converter', 16, '', 1, '1', [4, 32, 1], 'one tile'),
+  p('pitch', 'beam', 'Element pitch', 200, 'µm', 1e-6, 'm', [100, 400, 10]),
+  p('steer', 'beam', 'Receive steering, plus or minus', 15, '°', Math.PI / 180, 'rad', [0, 30, 0.5], 'approved by Yahua'),
+  p('focus', 'beam', 'Receive focus depth', 15, 'mm', 1e-3, 'm', [5, 40, 0.5], 'one fixed focus per acquisition'),
+  p('delayStep', 'beam', 'Delay step', 12.5, 'ns', 1e-9, 's', [3.125, 25, 3.125], 'chosen in the review; falling-edge writes'),
+  p('c', 'beam', 'Speed of sound', 1540, 'm/s', 1, 'm/s', [1450, 1600, 5], 'soft tissue', true),
+
+  p('vref', 'cdac', 'V REF', 200, 'mV', 1e-3, 'V', [50, 500, 5], 'working figure; how to choose it is open', true),
+  p('cu', 'cdac', 'Unit capacitor Cu', 35, 'fF', 1e-15, 'F', [35, 500, 1], 'mim5_2 minimum is 35 fF'),
+  p('aC', 'cdac', 'Matching, one capacitor', 4.99, '%·√fF', 1, '%√fF', [1, 10, 0.01], 'mim5_2 PDK: pair slope 0.0499 µm'),
+  p('lsbPerUnit', 'cdac', 'LSB per unit capacitor', 8, 'LSB', 1, 'LSB', [2, 16, 1], 'smaller steps by charge halving (Malki)'),
+  p('topUnits', 'cdac', 'First step', 32, 'units', 1, '1', [16, 48, 1]),
+  p('radix', 'cdac', 'Radix of the upper steps', 1.9, '', 1, '1', [1.6, 2, 0.01], '2.00 is plain binary'),
+  p('halvings', 'cdac', 'Charge-halving steps', 3, '', 1, '1', [0, 4, 1]),
+  p('outBits', 'cdac', 'Combiner output resolution', 10, 'bit', 1, 'bit', [10, 14, 1], 'the review sends 10 bits to the IQ demodulator'),
+  p('routing', 'cdac', 'Area factor for routing and switches', 1.5, '×', 1, '1', [1, 3, 0.1], '', true),
+  p('density', 'cdac', 'Capacitor density', 2, 'fF/µm²', 1e-3, 'F/m2', [1, 5, 0.1]),
+
+  p('vos', 'comparator', 'Comparator offset (before calibration)', 1, 'mV', 1e-3, 'V', [0, 10, 0.1], 'example value; spread comes from the comparator block', true),
+  p('vosCal', 'comparator', 'Offset left after calibration', 0.1, 'mV', 1e-3, 'V', [0, 2, 0.01], '', true),
+  p('compNoise', 'comparator', 'Comparator noise at its input', 0.05, 'mV rms', 1e-3, 'V', [0, 0.5, 0.005], 'one LSB at the last decision is only about 0.25 mV', true),
+  p('ibias', 'comparator', 'Comparator bias current', 50, 'µA', 1e-6, 'A', [5, 500, 5], '', true),
+  p('gmId', 'comparator', 'gm / ID', 15, '1/V', 1, '1/V', [5, 25, 0.5], 'moderate inversion', true),
+  p('cload', 'comparator', 'Comparator load capacitance', 30, 'fF', 1e-15, 'F', [5, 200, 1], '', true),
+  p('vfinal', 'comparator', 'Comparator output swing for a valid decision', 0.9, 'V', 1, 'V', [0.3, 1.8, 0.05], '', true),
+  p('tSample', 'comparator', 'Sampling (read and share) time', 5, 'ns', 1e-9, 's', [0.5, 15, 0.1], 'not known yet', true),
+  p('tauDac', 'comparator', 'DAC settling time constant', 0.1, 'ns', 1e-9, 's', [0.01, 1, 0.01], '', true),
+  p('tLogic', 'comparator', 'Logic delay per decision', 0.2, 'ns', 1e-9, 's', [0, 1, 0.01], '', true),
+
+  p('temperature', 'noise', 'Temperature', 300, 'K', 1, 'K', [250, 360, 1], '', true),
+  p('jitter', 'noise', 'Sampling clock jitter', 1, 'ps rms', 1e-12, 's', [0, 20, 0.1], '', true),
+
+  p('chips', 'sim', 'Monte Carlo chips', 100, '', 1, '1', [10, 400, 10]),
+  p('seed', 'sim', 'Random seed', 1, '', 1, '1', [1, 999, 1]),
 ];
 
 export const OPEN_ITEMS = [
-  'Capacitor device for CDAC and memory capacitors (MIM, MOM, MOS, finger)',
-  'Front end output type (voltage or current)',
-  'Instantaneous dynamic range at the wrist',
-  'The 4 focal depths (proposal 10, 15, 20, 30 mm)',
-  'Reference generation (external pin or on-chip buffer)',
-  'Power share',
-  'How to get a 12.5 ns delay step without extra memory capacitors',
-  'LUT per bit or per code',
-  'How far the IQ demodulator goes',
+  'Capacitor device: MIM now; MOS is a question to the team',
+  'How to choose V REF (200 mV is a working figure)',
+  'Charge balance with redundancy: total CDAC or half-range charge',
+  'Reference: ping-pong (two CDACs) or reservoir with servo (Guo 2024)',
+  'Test signal entry point, pad count, capture interface',
+  'LUT per bit or per code; required weight accuracy',
+  'Sample rate 40 MS/s is exactly 4 × 10 MHz',
 ];
 
-/** Fresh, editable copy of the specifications. */
 export function createRegistry() {
   return DEFAULT_PARAMS.map((x) => ({ ...x }));
 }
@@ -88,8 +80,13 @@ export function findParam(reg, id) {
   return x;
 }
 
-/** Value of a parameter in SI units. */
+/** Value in SI units. */
 export function si(reg, id) {
   const x = findParam(reg, id);
   return x.value * x.si;
+}
+
+/** All values in SI units as a plain object, for the model functions. */
+export function siAll(reg) {
+  return Object.fromEntries(reg.map((x) => [x.id, x.value * x.si]));
 }

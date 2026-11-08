@@ -12,12 +12,12 @@ export function specsPage(state) {
         const ed = isEdited(p);
         return `<div class="spec">
           <label for="sp-${p.id}">${esc(p.label)} ${estimateTag(p.estimate)}${p.note ? `<small>${esc(p.note)}</small>` : ''}</label>
-          <div class="specv"><input id="sp-${p.id}" type="number" step="any" data-param="${p.id}" value="${p.value}" class="${ed ? 'edited' : ''}"/><span class="unit">${esc(p.unit)}</span>${ed ? `<button class="linkbtn" data-reset="${p.id}">reset</button>` : ''}</div>
+          <div class="specv"><input id="sp-${p.id}" type="number" step="any" min="${p.min}" max="${p.max}" data-param="${p.id}" value="${p.value}" class="${ed ? 'edited' : ''}"/><span class="unit">${esc(p.unit)}</span>${ed ? `<button class="linkbtn" data-reset="${p.id}">reset</button>` : ''}</div>
         </div>`;
       })
       .join('');
     return `<div class="card"><h2>${esc(title)}</h2><div class="specs">${rows}</div></div>`;
   });
-  return `<section class="intro"><h1>Specifications</h1><p class="lede">Your numbers. Edits are kept in this browser; reset brings back your original value.</p></section>${groups.join('')}
-    <div class="card"><h2>Not decided yet</h2><ul class="plain">${OPEN_ITEMS.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
+  return `<header class="ch-head"><h1>All values</h1><p class="lede">Every knob of every chapter in one list. Edits are kept in this browser. <button class="linkbtn" data-resetall="1">Reset everything</button></p></header>${groups.join('')}
+    <div class="card"><h2>Still open</h2><ul class="plain">${OPEN_ITEMS.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
 }

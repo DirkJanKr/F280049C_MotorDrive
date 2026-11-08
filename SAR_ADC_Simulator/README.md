@@ -79,14 +79,26 @@ reference error, sampling noise (kT/C plus extra input noise) and aperture jitte
 
 ## Zaan converter workbench (`zaan.html`)
 
-A design and learning tool for the Zaan charge-sharing SAR ADC with merged beamformer, organised
-around the receive chain. Code lives in `src/zaan/` (model: one function per job, no UI) and
-`src/zaan/ui/` (pages). Tests: `test/zaan-*.test.mjs`.
+A design and learning tool for the Zaan charge-sharing SAR ADC with merged beamformer. It follows the
+architecture review as eight chapters; each is a question, a column of knobs and live figures.
 
-* Overview: the chain as a clickable diagram, live design health, thesis schedule.
-* Block pages: what each block does, with the project numbers.
-* Budget: noise shares and timing with sliders; spec sheet per block.
-* Decisions: open questions and contradictions with the cost of each option.
-* Specs, Terms, Export (LaTeX IEEEtran tables and a MATLAB struct).
-* Formulas are typeset with real symbols (HTML and Unicode, no library).
-* Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never commit it.
+1. Specs: what one conversion must deliver.
+2. Beamforming: delays, memory cells, phase error, beam pattern for exact and rounded delays.
+3. Charge sharing: one conversion decision by decision (level walk with reach, node capacitance,
+   node voltage, offset against tolerance).
+4. CDAC sizing: charge balance, what sets the unit capacitor, area to scale, the V REF trade-off.
+5. Redundancy: weights, tolerance, one chip before and after calibration, Monte Carlo over many chips.
+6. Reference and offset: reference charge per bit (charge redistribution against charge sharing),
+   offset calibration, ping-pong against reservoir.
+7. Budget: every noise source and every decision against 1 / fs.
+8. Full chain: reflectors through beamformer, ADC, combiner and IQ demodulator to an image line.
+
+Code: `src/zaan/model/` (physics and analysis, one function per job, no UI), `src/zaan/ui/` (pages),
+`src/zaan/ui/chapters/` (one file per chapter). Tests: `test/zaan-model.test.mjs` checks the model
+against the review (example array, 22 cells, 45° and 22.5°, 1.0 LSB per mV, 64 µV) and against ideal
+behaviour (exact reconstruction, SQNR 61.96 dB, zero DNL, charge conservation, weight calibration).
+
+Assumption (A) used throughout: one unit step delivers 2 · VREF · Cu of differential charge and adds
+2 · Cu to the node, which reproduces review slides 11, 15 and 36.
+
+Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never commit it.
