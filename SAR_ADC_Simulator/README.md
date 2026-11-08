@@ -103,21 +103,22 @@ Assumption (A) used throughout: one unit step delivers 2 · VREF · Cu of differ
 
 Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never commit it.
 
-## Zaan integrated workbench (`zaan_workbench.html`)
+## Zaan workbench (`zaan_workbench.html`)
 
-One screen for the whole project, in the style of an EDA tool: values bar on top, design
-parameters on the left (every value with a status code S, S*, U, D, A or ? and a source field),
-the complete schematic in the centre (pan and zoom; System, Block and Detail levels), an inspector
-on the right (plain description, values, formulas with your numbers), and a graph dock below with
-a tab per block, pinnable graphs and overlays of saved design versions.
+Pages, each filling the screen, from the beamformer onward (nothing before the beamformer):
 
-* Animations driven by the model: one conversion on the schematic (switches, charge dots, node
-  voltage, comparator, register, synced scope, timing diagram and decision table), the beamformer
-  (wavefront, cells written on CLK and CLK 180°, delayed cells read and summed), calibration
-  (weights converging, DNL improving) and reference variants (charge pulses).
-* Unknown values stay "?" and appear in the Open questions panel with the open decisions and the
-  conflicts found in the notes; graphs that need an unknown value say which one.
-* Design versions are stored in the browser and exported or imported as a JSON file; the LaTeX
-  table and MATLAB struct include status and source.
-* Code: `src/workbench/` (values, derive, state, schematic, panels, dock, graphs, animations). It
-  reuses the model in `src/zaan/model/`. Tests: `test/workbench.test.mjs`.
+* System: the chain from beamformer to IQ demodulator, large and clickable; each block opens its page.
+* Beamformer: animated memory cells for any steering angle (or an automatic sweep), CLK and
+  CLK 180° writes, delayed reads summing on the node; delays, cells needed, beam pattern, timing.
+* SAR ADC: weight designer (radix generator or typed list; steps below one unit by charge halving
+  or by small capacitors), a differential conversion stepped decision by decision with the charge on
+  both nodes, the search with its reach, tolerance per decision, and a side-by-side comparison.
+* Mismatch and area: Monte Carlo before and after calibration, yield against Cu, one chip in detail,
+  calibration converging, and the capacitor area drawn to scale on the chip.
+* Timing: for understanding; synchronous against self-timed, metastability, settling with
+  redundancy, the write clocks. All values illustrative.
+* SAR logic: the self-timed loop animated, with logic-analyzer waveforms.
+* Values: every value editable, design versions (browser and JSON file), LaTeX and MATLAB export.
+
+The summary bar and the side panel can be shown or hidden. Code: `src/workbench/` (values, store,
+design, weights, kit, pages, animations); the physics is in `src/zaan/model/`.

@@ -5,7 +5,7 @@ import { convert, combine } from '../../zaan/model/chargeSar.js';
 import { leastSquaresWeights } from '../../zaan/model/calibrate.js';
 import { rampLinearity } from '../../zaan/model/analysis.js';
 import { createRng } from '../../model/rng.js';
-import { lp, COL } from '../graphs/common.js';
+import { plot as lp, COL } from '../kit.js';
 import { num } from '../../zaan/ui/fmt.js';
 
 let timer = 0;

@@ -1,156 +1,191 @@
-// Zaan workbench: one screen. Values bar on top, parameters left, schematic centre,
-// inspector right, graph dock below. Everything reads the same store.
+// Zaan workbench: pages for the system, beamformer, SAR ADC, mismatch and area,
+// timing, SAR logic and values. Summary bar and side panel can be shown or hidden.
 
-import { store, load, subscribe, setValue, setSource, setUi, setOverride, changed } from './state.js';
-import { buildSchematic, BOXES, PARENT } from './schematic.js';
-import { mountSchematic, zoomLevel, highlight, zoomTo, fitAll } from './schemView.js';
-import { valuesBar, paramsPanel, inspector, openQuestions } from './panels.js';
-import { renderDock, bindDock } from './dock.js';
-import { ELEMENTS } from './elements.js';
-import { anim, buildPlan, drawAt, play, pause, decisionStart } from './convAnim.js';
-import { drawConversionPanels } from './graphs/comp.js';
-import { ioPanel, bindIo } from './io.js';
-import { num } from '../zaan/ui/fmt.js';
+import { store, load, subscribe, setValue, setUi, changed, resetValues, saveVersion, deleteVersion, loadVersion, exportJson, importJson } from './store.js';
+import { PRESETS } from './weights.js';
+import { eng, num, esc } from './kit.js';
+import { page as system } from './pages/system.js';
+import { page as beamformer } from './pages/beamformer.js';
+import { page as sar } from './pages/sar.js';
+import { page as mismatch } from './pages/mismatch.js';
+import { page as timing } from './pages/timing.js';
+import { page as logic } from './pages/logic.js';
+import { page as valuesPage } from './pages/values.js';
 
+const PAGES = [system, beamformer, sar, mismatch, timing, logic, valuesPage];
 const $ = (id) => document.getElementById(id);
+let current = null;
 
-function select(id) {
-  const el = ELEMENTS[id];
-  const patch = { sel: id };
-  if (el && el.dock && !id.startsWith('val:') && !id.startsWith('der:')) patch.dock = el.dock;
-  setUi(patch, 'select');
+function pageOf(id) {
+  return PAGES.find((p) => p.id === id) || system;
 }
 
-function renderAll(reason) {
-  const ctx = store.ctx;
-  if (reason === 'values' || reason === 'init' || reason === 'versions') {
-    mountSchematic($('schem-host'), buildSchematic(ctx, store.values), select);
-    rebuildPlan();
-  }
-  $('vbar').innerHTML = valuesBar(ctx);
-  if (reason !== 'select' || !$('params').innerHTML) {
-    withFocus($('params'), () => ($('params').innerHTML = store.ui.leftTab === 'oq' ? openQuestions(ctx) : paramsPanel(ctx)));
-  }
-  $('ltab-p').classList.toggle('on', store.ui.leftTab !== 'oq');
-  $('ltab-q').classList.toggle('on', store.ui.leftTab === 'oq');
-  $('qn').textContent = String(store.values.filter((v) => v.value === null || v.status === '?').length + ctx.conflicts.length);
-  withFocus($('insp'), () => ($('insp').innerHTML = inspector(ctx)));
-  const sel = store.ui.sel || 'sys';
-  const elId = sel.includes(':') ? null : sel;
-  if (elId) highlight(elId);
+function summary() {
+  const c = store.ctx;
+  const { P, d } = c;
+  const items = [
+    ['sample rate', `${num(P.fs / 1e6, 0)} MS/s`, 'system'],
+    ['delay step', eng(P.delayStep, 's'), 'beamformer'],
+    ['cells per channel', `${P.memCells}`, 'beamformer', c.need.m > P.memCells],
+    ['decisions', `${d.decisions}`, 'sar', d.decisions !== P.rawDecisions],
+    ['Cu', eng(P.cu, 'F'), 'mismatch'],
+    ['CDAC', eng(d.cdac, 'F'), 'sar'],
+    ['memory cell', eng(d.cm, 'F'), 'sar'],
+    ['VREF', eng(P.vref, 'V'), 'sar'],
+    ['capacitor area', `${num(c.areaTotal * 1e6, 3)} mm²`, 'mismatch'],
+    ['ENOB, converter', `${num(c.enob.enob, 2)} / ${num(P.enobAim, 1)}`, 'system', c.enob.enob < P.enobAim],
+    ['conversion', `${eng(c.timing.median, 's')} / ${eng(c.tw, 's')}`, 'timing', c.timing.median > c.tw],
+  ];
+  $('summary').innerHTML = items.map(([k, v, go, bad]) => `<a class="sm ${bad ? 'bad' : ''}" href="#${go}"><span>${esc(k)}</span><b>${esc(v)}</b></a>`).join('');
+}
+
+function layout() {
+  document.body.classList.toggle('no-top', !store.ui.showTop);
+  document.body.classList.toggle('no-side', !store.ui.showSide || current?.id === 'values');
+  $('togTop').classList.toggle('on', store.ui.showTop);
+  $('togSide').classList.toggle('on', store.ui.showSide);
   document.documentElement.dataset.theme = store.ui.theme;
-  if (reason !== 'select' || store.ui.dock) renderDock($('dock'), ctx, store.values, reason === 'values' || reason === 'init' || reason === 'versions');
-  if (reason === 'versions' && $('io').classList.contains('open')) $('io').innerHTML = ioPanel();
 }
 
-/** Re-render a panel and put the focus back on the same field (by its data attribute). */
-function withFocus(panel, render) {
-  const a = document.activeElement;
-  const inside = a && panel.contains(a);
-  const key = inside ? ['val', 'src', 'ovr'].map((k) => (a.dataset[k] ? `[data-${k}="${a.dataset[k]}"]` : '')).join('') : '';
-  const scroll = panel.scrollTop;
-  render();
-  panel.scrollTop = scroll;
-  if (key) panel.querySelector(key)?.focus();
+function renderPage() {
+  current = pageOf(store.ui.page);
+  $('pages').innerHTML = PAGES.map((p) => `<a href="#${p.id}" class="${p.id === current.id ? 'on' : ''}" ${p.id === current.id ? 'aria-current="page"' : ''}>${esc(p.title)}</a>`).join('');
+  layout();
+  $('side').innerHTML = current.side(store, store.ctx);
+  $('main').innerHTML = current.main(store, store.ctx);
+  if (current.mount) current.mount(store, store.ctx);
+  current.update(store, store.ctx);
+  summary();
 }
 
-function rebuildPlan() {
-  const keepT = anim.plan ? anim.t / anim.plan.tEnd : 0;
-  anim.plan = buildPlan(store.ctx, store.ui.anim.input);
-  anim.t = Math.min(keepT * anim.plan.tEnd, anim.plan.tEnd);
-  drawAt(anim.plan, store.ctx, anim.t);
-  $('ain-v').textContent = `${num(store.ui.anim.input, 3)} V`;
+function rebuildSide() {
+  const scroll = $('side').scrollTop;
+  $('side').innerHTML = current.side(store, store.ctx);
+  $('side').scrollTop = scroll;
 }
 
-function frame() {
-  drawConversionPanels(store.ctx);
-  $('aplay').textContent = anim.playing ? '❚❚ pause' : '▶ play';
-  const k = anim.plan.phases.filter((p) => p.kind === 'decide' && p.t1 <= anim.t).length;
-  $('astate').textContent = `decision ${Math.min(k + 1, store.ctx.d.decisions)} of ${store.ctx.d.decisions}`;
-}
-
-function bind() {
-  // values typed on the left or in the inspector
-  const onInput = (e) => {
-    const t = e.target;
-    if (t.dataset.val) setValue(t.dataset.val, t.value);
-    else if (t.dataset.src) setSource(t.dataset.src, t.value);
-    else if (t.dataset.ovr) setOverride(t.dataset.ovr, t.value === '' ? null : Number(t.value) * (t.dataset.unit === 'F' ? 1e-15 : 1));
-  };
-  for (const id of ['params', 'insp']) {
-    $(id).addEventListener('change', onInput);
-    $(id).addEventListener('toggle', (e) => {
-      const g = e.target.dataset?.group;
-      if (!g) return;
-      const open = new Set(store.ui.openGroups || ['system', 'cdac']);
-      if (e.target.open) open.add(g);
-      else open.delete(g);
-      store.ui.openGroups = [...open];
-    }, true);
+subscribe((reason) => {
+  if (reason === 'values') {
+    current.update(store, store.ctx);
+    summary();
+  } else if (reason === 'layout') {
+    layout();
+    setTimeout(() => current.update(store, store.ctx), 50);
+  } else if (reason === 'page') renderPage();
+  else if (reason === 'side') {
+    rebuildSide();
+    current.update(store, store.ctx);
+    summary();
   }
-  document.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-sel],[data-unlock],[data-lvl],#ltab-p,#ltab-q,#themeBtn,#ioBtn,#aplay,#astep,#aback,#arestart,#fitBtn');
-    if (!b) return;
-    if (b.dataset.unlock) {
-      const key = b.dataset.unlock;
-      setOverride(key, store.overrides[key] === undefined ? Number(b.dataset.cur) : null);
-    } else if (b.dataset.sel) {
-      select(b.dataset.sel);
-      const id = b.dataset.sel;
-      if (BOXES[id] && id !== 'sys' && b.closest('#params,#vbar,#insp')) zoomTo(BOXES[PARENT[id] || id], 0.8);
-      if (b.dataset.focus) setTimeout(() => $(`row-${b.dataset.focus}`)?.scrollIntoView({ block: 'center' }), 50);
-    } else if (b.dataset.lvl) zoomLevel(Number(b.dataset.lvl), store.ui.sel);
-    else if (b.id === 'fitBtn') fitAll();
-    else if (b.id === 'ltab-p') setUi({ leftTab: 'p' }, 'tab');
-    else if (b.id === 'ltab-q') setUi({ leftTab: 'oq' }, 'tab');
-    else if (b.id === 'themeBtn') setUi({ theme: store.ui.theme === 'dark' ? 'light' : 'dark' }, 'theme');
-    else if (b.id === 'ioBtn') {
-      $('io').classList.add('open');
-      $('io').innerHTML = ioPanel();
-    } else if (b.id === 'aplay') {
-      if (anim.playing) pause();
-      else {
-        if (anim.t >= anim.plan.tEnd) anim.t = 0;
-        if (store.ui.dock !== 'conversion' && !store.ui.pinned.includes('scope')) setUi({ dock: 'conversion' });
-        play(store.ctx);
-      }
-      frame();
-    } else if (b.id === 'astep' || b.id === 'aback') {
-      pause();
-      const k = anim.plan.phases.filter((p) => p.kind === 'decide' && p.t1 <= anim.t).length;
-      const next = b.id === 'astep' ? Math.min(k, store.ctx.d.decisions - 1) : Math.max(k - 2, -1);
-      anim.t = next < 0 ? 0 : decisionStart(anim.plan, next);
-      drawAt(anim.plan, store.ctx, anim.t);
-      frame();
-    } else if (b.id === 'arestart') {
-      pause();
-      anim.t = 0;
-      drawAt(anim.plan, store.ctx, 0);
-      frame();
+});
+
+window.addEventListener('hashchange', () => {
+  store.ui.page = location.hash.replace('#', '') || 'system';
+  renderPage();
+  window.scrollTo(0, 0);
+});
+
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset.range) {
+    const v = store.values.find((x) => x.id === t.dataset.range);
+    const n = document.querySelector(`[data-num="${t.dataset.range}"]`);
+    if (n) n.value = t.value;
+    t.classList.remove('dim');
+    t.closest('.knob')?.classList.remove('unset');
+    setValue(v.id, t.value);
+  } else if (t.dataset.num) {
+    if (t.value === '' || Number.isFinite(Number(t.value))) {
+      const r = document.querySelector(`[data-range="${t.dataset.num}"]`);
+      if (r && t.value !== '') r.value = t.value;
+      setValue(t.dataset.num, t.value);
     }
-  });
-  $('aspeed').addEventListener('change', (e) => (anim.speed = Number(e.target.value)));
-  $('ain').addEventListener('input', (e) => {
-    store.ui.anim.input = Number(e.target.value);
-    rebuildPlan();
-    frame();
-  });
-  bindDock($('dock'), () => store.ctx);
-  bindIo($('io'), () => $('io').classList.remove('open'));
-  anim.onFrame = frame;
-  let rz = 0;
-  window.addEventListener('resize', () => {
-    clearTimeout(rz);
-    rz = setTimeout(() => renderDock($('dock'), store.ctx, store.values, false), 200);
-  });
+  }
+});
+
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.id === 'preset' && PRESETS[t.value]) {
+    const p = PRESETS[t.value];
+    for (const k of ['radix', 'topUnits', 'halvings', 'halvingOn']) store.values.find((v) => v.id === k).value = p[k];
+    store.ui.weightMode = p.mode;
+    changed('values');
+    setTimeout(() => changed('side'), 0);
+  } else if (t.id === 'wlist') {
+    store.ui.customWeights = t.value;
+    changed('values');
+  } else if (['useOff', 'useNoise', 'useChip'].includes(t.id)) {
+    store.ui[t.id] = t.checked;
+    changed('values');
+  } else if (t.dataset.choicesel) setValue(t.dataset.choicesel, t.value);
+  else if (t.dataset.srcv) {
+    store.values.find((v) => v.id === t.dataset.srcv).source = t.value;
+    changed('meta');
+  } else if (t.id === 'jsonFile' && t.files[0]) {
+    t.files[0].text().then((txt) => doImport(txt));
+  }
+});
+
+function doImport(txt) {
+  try {
+    importJson(txt);
+    setTimeout(() => changed('page'), 0);
+  } catch (err) {
+    const m = $('ioMsg');
+    if (m) m.textContent = `Could not import: ${err.message}`;
+  }
 }
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button, a, [data-go]');
+  if (!b) return;
+  if (b.dataset.go !== undefined && b.closest('.sysview')) {
+    if (b.dataset.go) location.hash = b.dataset.go;
+    return;
+  }
+  if (b.dataset.choice) {
+    setValue(b.dataset.choice, b.dataset.opt);
+    setTimeout(() => changed('side'), 0);
+  } else if (b.dataset.mode) {
+    store.ui.weightMode = b.dataset.mode;
+    changed('values');
+    setTimeout(() => changed('side'), 0);
+  } else if (b.id === 'togTop') setUi({ showTop: !store.ui.showTop }, 'layout');
+  else if (b.id === 'togSide') setUi({ showSide: !store.ui.showSide }, 'layout');
+  else if (b.id === 'togTheme') setUi({ theme: store.ui.theme === 'dark' ? 'light' : 'dark' }, 'layout');
+  else if (b.dataset.resetg) {
+    resetValues(b.dataset.resetg);
+    setTimeout(() => changed('page'), 0);
+  } else if (b.id === 'saveVer') {
+    const name = $('verName').value.trim();
+    if (name) {
+      saveVersion(name);
+      setTimeout(() => changed('page'), 0);
+    }
+  } else if (b.dataset.loadv) {
+    loadVersion(b.dataset.loadv);
+    setTimeout(() => changed('page'), 0);
+  } else if (b.dataset.delv) {
+    deleteVersion(b.dataset.delv);
+    setTimeout(() => changed('page'), 0);
+  } else if (b.dataset.copy) {
+    const ta = $(b.dataset.copy);
+    if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(() => (b.textContent = 'copied'), () => ta.select());
+    else ta.select();
+  } else if (b.id === 'jsonDl') {
+    b.href = URL.createObjectURL(new Blob([exportJson()], { type: 'application/json' }));
+  } else if (b.id === 'doImport') doImport($('jsonIn').value);
+});
+
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset?.go) location.hash = e.target.dataset.go;
+});
+
+let rz = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => current && current.update(store, store.ctx), 150);
+});
 
 load();
-const fs = store.ctx.P.fullScale;
-$('ain').min = String(-fs / 2);
-$('ain').max = String(fs / 2);
-$('ain').value = String(store.ui.anim.input);
-bind();
-subscribe((reason) => renderAll(reason));
-renderAll('init');
-frame();
+renderPage();

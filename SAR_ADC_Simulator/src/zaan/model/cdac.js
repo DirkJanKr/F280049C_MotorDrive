@@ -5,8 +5,8 @@
 
 import { buildSteps, areaUnits, tolerances, coverage } from './steps.js';
 
-export function designCdac(P, cells = 22) {
-  const steps = buildSteps(P);
+export function designCdac(P, cells = 22, givenSteps = null) {
+  const steps = givenSteps || buildSteps(P);
   const weights = steps.map((s) => s.units * P.lsbPerUnit);
   const codes = 2 ** P.bits;
   const units = areaUnits(steps, P.halvings);
@@ -19,7 +19,7 @@ export function designCdac(P, cells = 22) {
   // As on slide 25/26: charge balance with the total CDAC (redundancy and halving caps included).
   const cmSlide = (4 * P.vref * cdac) / (P.channels * P.fullScale);
   // Node capacitance before each decision: memory cells, then 2 x C of every shared step.
-  const cAdd = steps.map((s) => 2 * (s.kind === 'cap' ? s.units : 1) * P.cu);
+  const cAdd = steps.map((s) => 2 * (s.kind === 'cap' || s.kind === 'small' ? s.units : 1) * P.cu);
   const cNode = [P.channels * cm];
   for (const c of cAdd) cNode.push(cNode[cNode.length - 1] + c);
   const memCaps = cells * P.channels * 2;

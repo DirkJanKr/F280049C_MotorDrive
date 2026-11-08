@@ -19,7 +19,7 @@ export function drawChip(d, P, rng) {
   let a0 = 0;
   let qa = 0;
   for (const st of d.steps) {
-    if (st.kind === 'cap') {
+    if (st.kind === 'cap' || st.kind === 'small') {
       const c = st.units * P.cu * (1 + (s1 / Math.sqrt(st.units)) * rng.gaussian());
       q.push(2 * P.vref * c);
       cAdd.push(2 * c);

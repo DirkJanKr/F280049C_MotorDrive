@@ -1,41 +1,45 @@
-// Integrated workbench: values carry status and source; unknowns stay unknown;
-// derived values follow the model and the review numbers.
+// Zaan workbench: values, weight designer and the design computation.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createValues, STATUS, OPEN_DECISIONS } from '../src/workbench/values.js';
-import { derive } from '../src/workbench/derive.js';
+import { createValues } from '../src/workbench/values.js';
+import { design } from '../src/workbench/design.js';
+import { stepsFromList } from '../src/workbench/weights.js';
 
-test('every value has a status code and a source; "?" values carry no number', () => {
-  for (const v of createValues()) {
-    assert.ok(v.status in STATUS, v.id);
-    assert.ok(typeof v.source === 'string' && v.source.length > 0, v.id);
-    if (v.status === '?' && v.kind === 'num') assert.equal(v.value, null, `${v.id} must not be guessed`);
-  }
+const ui = { weightMode: 'generator', customWeights: '' };
+
+test('values start from the beamformer: nothing from the front end', () => {
+  const ids = createValues().map((v) => v.id);
+  for (const id of ['sMax', 'lnaNoise', 'afeGain', 'depth', 'focalDepths', 'feType']) assert.ok(!ids.includes(id), id);
 });
 
-test('open decisions point at existing values', () => {
-  const ids = new Set(createValues().map((v) => v.id));
-  for (const o of OPEN_DECISIONS) assert.ok(ids.has(o.value), o.value);
+test('default design: 22 cells, 12 decisions, CDAC 2.56 pF, 12.5 ns step from two clocks', () => {
+  const c = design(createValues(), ui);
+  assert.equal(c.need.m, 22);
+  assert.equal(c.d.decisions, 12);
+  assert.ok(Math.abs(c.d.cdac - 2.555e-12) < 1e-18);
+  assert.ok(c.halfSteps.some((h) => h) && c.halfSteps.some((h) => !h));
 });
 
-test('derived values: 22 cells, 12 decisions, CDAC 2.56 pF, 12.5 ns step from two clocks', () => {
-  const ctx = derive(createValues());
-  assert.equal(ctx.D.cellsNeeded.value, 22);
-  assert.equal(ctx.D.decisions.value, 12);
-  assert.ok(Math.abs(ctx.D.cdac.value - 2.555e-12) < 1e-18);
-  assert.ok(ctx.halfSteps.some((h) => h) && ctx.halfSteps.some((h) => !h), 'both CLK and CLK 180° are used');
-  for (let n = 0; n < ctx.qd.length; n++) assert.ok(Math.abs(ctx.qd[n] / 12.5e-9 - Math.round(ctx.qd[n] / 12.5e-9)) < 1e-9);
-});
-
-test('conflicts include fs = 4 f0, the charge balance and the grating lobe', () => {
-  const ids = derive(createValues()).conflicts.map((c) => c.id);
-  for (const id of ['fs4f0', 'cmBalance', 'offsetSlides', 'smaxFs', 'grating']) assert.ok(ids.includes(id), id);
-});
-
-test('changing Cu changes the derived CDAC and memory cell', () => {
+test('charge halving against small capacitors: same weights, different capacitors', () => {
   const v = createValues();
-  const a = derive(v);
-  v.find((x) => x.id === 'cu').value = 50;
-  const b = derive(v);
-  assert.ok(b.D.cdac.value > a.D.cdac.value && b.D.cm.value > a.D.cm.value);
+  const a = design(v, ui);
+  v.find((x) => x.id === 'halvingOn').value = 'small capacitors';
+  const b = design(v, ui);
+  assert.deepEqual(a.d.weights, b.d.weights);
+  assert.ok(Math.abs(a.smallest - 35e-15) < 1e-21, 'halving keeps 35 fF');
+  assert.ok(b.smallest < 5e-15, 'small capacitors go below the PDK minimum');
+  assert.equal(a.d.units, 73);
+  assert.ok(b.d.units < a.d.units);
+});
+
+test('typed weights: valid binary list, and a clear error for an impossible halving step', () => {
+  assert.equal(stepsFromList('256,128,64,32,16,8,4,2,1', 8, 'charge halving').error, null);
+  assert.match(stepsFromList('256,136,72,3', 8, 'charge halving').error, /does not fit/);
+  assert.equal(stepsFromList('256,136,72,3', 8, 'small capacitors').error, null);
+});
+
+test('typed weights drive the design', () => {
+  const c = design(createValues(), { weightMode: 'custom', customWeights: '256, 128, 64, 32, 16, 8, 4, 2, 1' });
+  assert.equal(c.d.decisions, 10);
+  assert.deepEqual(c.d.tol.slice(0, -1).every((t) => t === 0), true, 'binary has no tolerance');
 });

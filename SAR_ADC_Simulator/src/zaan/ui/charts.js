@@ -35,7 +35,7 @@ export function bars({ labels, series, y = {}, hline = null, width: w0 = 640, he
   const m = { l: 52, r: 12, t: 26, b: 34 };
   const pw = width - m.l - m.r;
   const ph = height - m.t - m.b;
-  const all = series.flatMap((s) => s.values).concat(hline ? [hline.y] : []);
+  const all = series.flatMap((s) => s.values).concat(hline ? [hline.y] : []).filter(Number.isFinite);
   const ymin = Math.min(0, y.min ?? Math.min(...all));
   const ymax = y.max ?? Math.max(...all, 1e-12) * 1.1;
   const sy = (v) => m.t + ph - ((v - ymin) / (ymax - ymin || 1)) * ph;
