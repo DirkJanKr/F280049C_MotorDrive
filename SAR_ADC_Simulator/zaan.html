@@ -4,23 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Zaan Converter Workbench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=STIX+Two+Text:ital@0;1&display=swap" />
   <link rel="stylesheet" href="css/zaan.css" />
 </head>
 <body>
-  <div id="zaan-root">
-    <header class="z-head">
-      <div>
-        <div class="z-title">Zaan converter workbench</div>
-        <div class="z-sub">Charge-sharing SAR ADC with merged receive beamformer. Behavioural model, not transistor level.</div>
-      </div>
-      <a class="z-link" href="index.html" id="genericLink">Generic SAR simulator</a>
-    </header>
-    <nav class="z-modules" id="modules" aria-label="Modules"></nav>
-    <main class="z-main">
-      <div class="z-tabs" id="tabs" role="tablist"></div>
-      <section id="view" class="z-view"></section>
-    </main>
-  </div>
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="#overview"><span class="brand-mark">Z</span><span><b>Zaan</b> workbench<small>charge-sharing SAR ADC with merged beamformer</small></span></a>
+      <nav class="nav" id="nav" aria-label="Pages"></nav>
+    </div>
+    <div class="health" id="health" aria-live="polite"></div>
+  </header>
+  <main class="page" id="page"></main>
+  <footer class="foot"><span>Behavioural model built from charge conservation. Not a transistor-level simulation.</span> <a href="index.html" id="genericLink">Generic SAR simulator</a></footer>
   <script type="module" src="src/zaan/ui/app.js"></script>
 </body>
 </html>

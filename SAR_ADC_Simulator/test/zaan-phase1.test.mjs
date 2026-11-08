@@ -1,21 +1,21 @@
 // Phase 1: registry, conflicts, budget allocator, exports.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRegistry, STATUS, si } from '../src/zaan/params.js';
+import { createRegistry, si } from '../src/zaan/params.js';
+import { computeBudget } from '../src/zaan/budget.js';
 import { signalRms, lsbVolts, quantNoise, rss, sndrDb, enobFromSndr, allocateNoise, evaluateNoise, DEFAULT_SHARES, noiseForEnob } from '../src/zaan/noiseBudget.js';
 import { timingLines, decisionTime } from '../src/zaan/timingBudget.js';
-import { buildConflicts } from '../src/zaan/conflicts.js';
+import { buildDecisions } from '../src/zaan/decisions.js';
 import { latexParamTable, matlabStruct, latexEscape } from '../src/zaan/exportFormats.js';
 import { buildSpecSheets, capForKtc } from '../src/zaan/specSheets.js';
 import { defaultLevels, blockIncluded } from '../src/zaan/sourceLevels.js';
 
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg}: expected ${b}, got ${a}`);
 
-test('every parameter has a valid status, a source and a unit factor', () => {
+test('every parameter has a value, a unit factor and a label', () => {
   for (const p of createRegistry()) {
-    assert.ok(p.status in STATUS, p.id);
-    assert.ok(p.source && p.source.length > 0, p.id);
-    assert.ok(Number.isFinite(p.value) && p.si > 0, p.id);
+    assert.ok(Number.isFinite(p.value) && p.si > 0 && p.label, p.id);
+    assert.equal(typeof p.estimate, 'boolean', p.id);
   }
 });
 
@@ -28,19 +28,19 @@ test('ideal 10-bit quantisation alone gives SQNR 61.96 dB and ENOB 10.0', () => 
   near(enobFromSndr(sndr), 10.0, 0.002, 'ENOB');
 });
 
-test('conflict 1 numbers: 282, 399 and 564 uV rms', () => {
-  const c = buildConflicts(createRegistry()).find((x) => x.id === '1');
-  const text = c.lines.join(' ');
+test('ENOB decision numbers: 282, 399 and 564 uV rms', () => {
+  const c = buildDecisions(createRegistry()).find((x) => x.id === 'enobBasis');
+  const text = c.math.join(' ').replace(/<[^>]+>/g, '');
   for (const v of ['281.9', '398.7', '563.8']) assert.ok(text.includes(v), v);
   near(noiseForEnob(signalRms(1), 9.5) * 1e6, 398.7, 0.3, 'noise for ENOB 9.5');
 });
 
-test('conflicts 2 to 4 reproduce the hand numbers in the notes', () => {
-  const t = buildConflicts(createRegistry()).map((c) => c.lines.join(' ')).join(' ');
+test('decisions reproduce the hand numbers in the notes', () => {
+  const t = buildDecisions(createRegistry()).map((c) => c.math.join(' ')).join(' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ');
   assert.ok(t.includes('= 32 fF'), 'MIM 32 fF');
-  assert.ok(t.includes('= 10.8, so 11 decisions'), 'radix 1.9 needs 11');
+  assert.ok(t.includes('= 10.8 → 11 decisions'), 'radix 1.9 needs 11');
   assert.ok(t.includes('= 504.2 ns'), 'steering delay');
-  assert.ok(t.includes('= 20.2 periods'), '20.2 periods');
+  assert.ok(t.includes('= 20.2 steps'), '20.2 steps');
 });
 
 test('allocation with shares summing to 100 % lands exactly on the target ENOB', () => {
@@ -62,6 +62,15 @@ test('setting every block to ideal leaves only quantisation (ENOB 10.0)', () => 
   near(e.enob, 10.0, 0.002, 'ENOB');
 });
 
+test('choosing "range loss" for comparator offset removes it from the noise total', () => {
+  const reg = createRegistry();
+  const levels = defaultLevels();
+  const a = computeBudget({ reg, shares: DEFAULT_SHARES, levels, decisions: { offsetAsNoise: 'noise' } });
+  const b = computeBudget({ reg, shares: DEFAULT_SHARES, levels, decisions: { offsetAsNoise: 'range' } });
+  near(b.result.total ** 2, a.result.total ** 2 - a.alloc.lines.compOffset ** 2, 1e-18, 'power');
+  assert.ok(b.result.enob > a.result.enob);
+});
+
 test('timing lines add up to the conversion period when the split is equal', () => {
   const tConv = 25e-9;
   const t = timingLines({ tConv, tSample: 5e-9, tLogic: 0.1e-9, n: 12 });
@@ -75,13 +84,14 @@ test('kT/C helper: C = 2 k T / sigma^2', () => {
   near(capForKtc(100e-6, 300) * 1e15, 828.6, 0.1, 'C');
 });
 
-test('spec sheets cover all five blocks with status codes', () => {
+test('spec sheets cover all five blocks and mark budget shares as estimates', () => {
   const reg = createRegistry();
   const vSig = signalRms(si(reg, 'fullScale'));
   const alloc = allocateNoise({ vSig, quant: quantNoise(lsbVolts(1, 10)), targetEnob: 9.5, shares: DEFAULT_SHARES });
   const s = buildSpecSheets({ reg, alloc, vSig, timing: { tDec: 1.6e-9 } });
   assert.deepEqual(Object.keys(s), ['CDAC', 'Reference', 'Comparator', 'Sampling switch', 'SAR logic']);
-  for (const rows of Object.values(s)) for (const r of rows) assert.ok(r.status in STATUS);
+  assert.ok(s.Comparator.find((r) => r.name.startsWith('Noise at ADC input')).estimate);
+  assert.ok(!s.CDAC.find((r) => r.name === 'Resolution').estimate);
 });
 
 test('exports: LaTeX table is balanced and escaped, MATLAB struct has every field', () => {
@@ -91,8 +101,8 @@ test('exports: LaTeX table is balanced and escaped, MATLAB struct has every fiel
   assert.ok(tex.includes('60 & \\%'), 'percent escaped');
   assert.equal(latexEscape('a_b & 5%'), 'a\\_b \\& 5\\%');
   const m = matlabStruct(reg);
-  for (const p of reg) assert.ok(m.includes(`zaan.${p.id} = struct(`), p.id);
-  assert.ok(m.includes("zaan.f0 = struct('value', 10000000, 'unit', 'Hz'"), 'SI value');
+  for (const p of reg) assert.ok(m.includes(`zaan.${p.id} = `), p.id);
+  assert.ok(m.includes('zaan.f0 = 10000000; % Hz'), 'SI value');
 });
 
 test('no em or en dashes in Zaan source text', async () => {

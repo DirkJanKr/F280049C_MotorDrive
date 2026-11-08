@@ -79,11 +79,14 @@ reference error, sampling noise (kT/C plus extra input noise) and aperture jitte
 
 ## Zaan converter workbench (`zaan.html`)
 
-A separate page for the Zaan charge-sharing SAR ADC with merged beamformer. It is built in
-phases; see the module strip in the page for what exists. Code lives in `src/zaan/`
-(model: one function per job) and `src/zaan/ui/` (views). Tests: `test/zaan-*.test.mjs`.
+A design and learning tool for the Zaan charge-sharing SAR ADC with merged beamformer, organised
+around the receive chain. Code lives in `src/zaan/` (model: one function per job, no UI) and
+`src/zaan/ui/` (pages). Tests: `test/zaan-*.test.mjs`.
 
-* Phase 1: parameter registry with status codes (S, S*, U, D, A, ?), conflicts panel,
-  noise and timing budget allocator with margins against ENOB 9.5 and 9, spec sheet per block,
-  source level per block, LaTeX (IEEEtran) and MATLAB struct export.
+* Overview: the chain as a clickable diagram, live design health, thesis schedule.
+* Block pages: what each block does, with the project numbers.
+* Budget: noise shares and timing with sliders; spec sheet per block.
+* Decisions: open questions and contradictions with the cost of each option.
+* Specs, Terms, Export (LaTeX IEEEtran tables and a MATLAB struct).
+* Formulas are typeset with real symbols (HTML and Unicode, no library).
 * Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never commit it.

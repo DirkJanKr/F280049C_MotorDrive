@@ -2,13 +2,13 @@
 // term appears and in the Terms panel.
 
 export const GLOSSARY = {
-  LSB: 'Least significant bit: the input step of one code, full scale / 2^N.',
+  LSB: 'Least significant bit: the input step of one code, full scale / 2ᴺ.',
   ENOB: 'Effective number of bits: the resolution an ideal ADC would need to give the same SNDR.',
   SNDR: 'Signal to noise and distortion ratio: signal power over all noise and harmonic power, in dB.',
-  SQNR: 'Signal to quantisation noise ratio: SNDR of an ideal ADC, 6.02 N + 1.76 dB for a full-scale sine.',
+  SQNR: 'Signal to quantisation noise ratio: SNDR of an ideal ADC, 6.02·N + 1.76 dB for a full-scale sine.',
   SFDR: 'Spurious-free dynamic range: signal power over the largest single spur, in dB.',
-  RSS: 'Root sum of squares: how uncorrelated rms noise sources add, sqrt(a^2 + b^2 + ...).',
-  'kT/C noise': 'Thermal noise frozen on a capacitor when its switch opens, rms voltage sqrt(k T / C).',
+  RSS: 'Root sum of squares: how uncorrelated rms noise sources add, √(a² + b² + …).',
+  'kT/C noise': 'Thermal noise frozen on a capacitor when its switch opens, rms voltage √(kT/C).',
   Jitter: 'Random timing error of the sampling instant; on a sine it becomes voltage noise.',
   'Charge sharing': 'Connecting capacitors with different voltages so their charge spreads; total charge is kept.',
   CDAC: 'Capacitive DAC: the capacitor array that generates the comparison levels.',

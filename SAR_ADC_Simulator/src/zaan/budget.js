@@ -6,7 +6,7 @@ import { conversionPeriod, timingLines, sweepSampleTime } from './timingBudget.j
 import { blockIncluded } from './sourceLevels.js';
 import { buildSpecSheets } from './specSheets.js';
 
-export function computeBudget({ reg, shares, levels }) {
+export function computeBudget({ reg, shares, levels, decisions = {} }) {
   const fullScale = si(reg, 'fullScale');
   const bits = si(reg, 'bits');
   const targetEnob = si(reg, 'enobAim');
@@ -14,7 +14,8 @@ export function computeBudget({ reg, shares, levels }) {
   const lsb = lsbVolts(fullScale, bits);
   const quant = quantNoise(lsb);
   const alloc = allocateNoise({ vSig, quant, targetEnob, shares });
-  const result = evaluateNoise({ vSig, lines: alloc.lines, included: (b) => blockIncluded(levels, b) });
+  const included = (block, id) => blockIncluded(levels, block) && !(id === 'compOffset' && decisions.offsetAsNoise === 'range');
+  const result = evaluateNoise({ vSig, lines: alloc.lines, included });
   const margin = (enob) => ({
     bits: result.enob - enob,
     db: result.sndr - sndrDb(vSig, noiseForEnob(vSig, enob)),

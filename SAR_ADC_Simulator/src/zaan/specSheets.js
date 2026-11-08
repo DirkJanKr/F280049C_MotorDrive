@@ -1,13 +1,14 @@
 // One spec sheet per block, built from the registry and the budget.
-// Each row: name, value (SI), unit, status, budget line it comes from.
+// Each row: name, value (SI), unit, budget line it comes from, and whether it is an estimate.
 
 import { si } from './params.js';
 import { lsbVolts } from './noiseBudget.js';
 
 export const BOLTZMANN = 1.381e-23; // J/K
 
-function row(name, value, unit, status, line) {
-  return { name, value, unit, status, line };
+function row(name, value, unit, kind, line) {
+  // kind: 'target' (your value), 'share' (budget share, an estimate), 'calc' (calculated), 'unknown'
+  return { name, value, unit, line, estimate: kind === 'share' || kind === 'unknown', kind };
 }
 
 /** Comparator node attenuation at the end of conversion, flag F5: Cs / (Cs + sum Cdac) = 1 / (1 + ratio). */
@@ -36,34 +37,34 @@ export function buildSpecSheets({ reg, alloc, vSig, timing }) {
   const n = si(reg, 'rawDecisions');
   return {
     CDAC: [
-      row('Resolution', si(reg, 'bits'), 'bit', 'U', 'target'),
-      row('Raw decisions', n, '', 'U', 'target'),
-      row('Mismatch after calibration, sigma', L.mismatch, 'V rms', 'A', 'CDAC mismatch'),
-      row('Same, in LSB', L.mismatch / lsb, 'LSB rms', 'D', 'CDAC mismatch'),
-      row('Sum Cdac / Cs needed (flag F5)', ratio, '', 'D', 'full scale and V REF'),
+      row('Resolution', si(reg, 'bits'), 'bit', 'target', 'target'),
+      row('Raw decisions', n, '', 'target', 'target'),
+      row('Mismatch after calibration (σ)', L.mismatch, 'V rms', 'share', 'CDAC mismatch'),
+      row('Same, in LSB', L.mismatch / lsb, 'LSB rms', 'calc', 'CDAC mismatch'),
+      row('Sum Cdac / Cs needed', ratio, '', 'calc', 'full scale and V REF'),
     ],
     Reference: [
-      row('V REF', si(reg, 'vref'), 'V', 'U', 'target'),
-      row('Reference charge error, sigma', L.refCharge, 'V rms', 'A', 'Reference charge error'),
-      row('Same, in LSB', L.refCharge / lsb, 'LSB rms', 'D', 'Reference charge error'),
+      row('V REF', si(reg, 'vref'), 'V', 'target', 'target'),
+      row('Reference charge error (σ)', L.refCharge, 'V rms', 'share', 'Reference charge error'),
+      row('Same, in LSB', L.refCharge / lsb, 'LSB rms', 'calc', 'Reference charge error'),
     ],
     Comparator: [
-      row('Noise at ADC input, sigma', L.compNoise, 'V rms', 'A', 'Comparator noise'),
-      row('Noise at comparator node (x 1/(1+ratio), F5)', L.compNoise * att, 'V rms', 'D', 'Comparator noise'),
-      row('Offset after calibration, sigma', L.compOffset, 'V rms', 'A', 'Comparator offset after calibration'),
-      row('Average decide and settle time', timing.tDec, 's', 'D', 'Timing'),
+      row('Noise at ADC input (σ)', L.compNoise, 'V rms', 'share', 'Comparator noise'),
+      row('Noise at comparator node, scaled by 1 / (1 + ratio)', L.compNoise * att, 'V rms', 'calc', 'Comparator noise'),
+      row('Offset after calibration (σ)', L.compOffset, 'V rms', 'share', 'Comparator offset after calibration'),
+      row('Average decide and settle time', timing.tDec, 's', 'calc', 'Timing'),
     ],
     'Sampling switch': [
-      row('kT/C noise, sigma', L.ktc, 'V rms', 'A', 'kT/C sampling noise'),
-      row('Sampling capacitance per side, minimum', capForKtc(L.ktc, T), 'F', 'D', 'kT/C sampling noise'),
-      row('Jitter noise, sigma', L.jitter, 'V rms', 'A', 'Clock jitter'),
-      row('Clock jitter at fin = centre frequency', jitterForNoise(L.jitter, f0, vSig), 's rms', 'D', 'Clock jitter'),
-      row('Clock jitter at fin = upper band edge', jitterForNoise(L.jitter, fEdge, vSig), 's rms', 'D', 'Clock jitter'),
-      row('Sampling time Ts', si(reg, 'tSample'), 's', '?', 'Timing'),
+      row('kT/C noise (σ)', L.ktc, 'V rms', 'share', 'kT/C sampling noise'),
+      row('Sampling capacitance per side, minimum', capForKtc(L.ktc, T), 'F', 'calc', 'kT/C sampling noise'),
+      row('Jitter noise (σ)', L.jitter, 'V rms', 'share', 'Clock jitter'),
+      row('Clock jitter at fin = centre frequency', jitterForNoise(L.jitter, f0, vSig), 's rms', 'calc', 'Clock jitter'),
+      row('Clock jitter at fin = upper band edge', jitterForNoise(L.jitter, fEdge, vSig), 's rms', 'calc', 'Clock jitter'),
+      row('Sampling time Ts', si(reg, 'tSample'), 's', 'unknown', 'Timing'),
     ],
     'SAR logic': [
-      row('Logic delay per decision', si(reg, 'tLogic'), 's', '?', 'Timing'),
-      row('Logic delay, total', n * si(reg, 'tLogic'), 's', 'D', 'Timing'),
+      row('Logic delay per decision', si(reg, 'tLogic'), 's', 'unknown', 'Timing'),
+      row('Logic delay, total', n * si(reg, 'tLogic'), 's', 'calc', 'Timing'),
     ],
   };
 }

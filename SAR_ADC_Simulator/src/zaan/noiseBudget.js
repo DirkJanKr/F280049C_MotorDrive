@@ -69,10 +69,10 @@ export function allocateNoise({ vSig, quant, targetEnob, shares }) {
   return { target, left, lines, shareSum, feasible: leftPower > 0 };
 }
 
-/** Total noise and ENOB with the lines of blocks at source level "ideal" left out. */
+/** Total noise and ENOB. included(block, lineId) says whether a line counts. */
 export function evaluateNoise({ vSig, lines, included }) {
   const rows = NOISE_LINES.map((line) => {
-    const on = line.fixed || included(line.block);
+    const on = line.fixed || included(line.block, line.id);
     return { ...line, sigma: lines[line.id] ?? 0, included: on };
   });
   const total = rss(rows.filter((r) => r.included).map((r) => r.sigma));
