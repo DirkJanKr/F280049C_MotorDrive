@@ -103,7 +103,7 @@ function draw(ctx) {
   const ph = phaseAt(L.t);
   const n = ctx.d.decisions;
   const decided = L.plan.ph.filter((p) => p.kind === 'decide' && p.t1 <= L.t).length;
-  block(ctx, ph, decided, widthOf('lgBlock', 1000));
+  block(ctx, ph, decided, Math.max(900, widthOf('lgBlock', 1000)));
   wave(ctx, widthOf('lgWave', 1000));
   const say = {
     sample: 'SAMPLE: the selected memory cells are connected to the node.',

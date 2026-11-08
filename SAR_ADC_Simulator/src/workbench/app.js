@@ -5,6 +5,8 @@ import { store, load, subscribe, setValue, setUi, changed, resetValues, saveVers
 import { PRESETS } from './weights.js';
 import { eng, num, esc } from './kit.js';
 import { page as system } from './pages/system.js';
+import { page as budgetPage } from './pages/budget.js';
+import { formulaHtml } from './formulas.js';
 import { page as beamformer } from './pages/beamformer.js';
 import { page as sar } from './pages/sar.js';
 import { page as mismatch } from './pages/mismatch.js';
@@ -12,7 +14,7 @@ import { page as timing } from './pages/timing.js';
 import { page as logic } from './pages/logic.js';
 import { page as valuesPage } from './pages/values.js';
 
-const PAGES = [system, beamformer, sar, mismatch, timing, logic, valuesPage];
+const PAGES = [system, budgetPage, beamformer, sar, mismatch, timing, logic, valuesPage];
 const $ = (id) => document.getElementById(id);
 let current = null;
 
@@ -23,20 +25,22 @@ function pageOf(id) {
 function summary() {
   const c = store.ctx;
   const { P, d } = c;
+  const fails = c.checks.filter((k) => k.state === 'bad');
+  const warns = c.checks.filter((k) => k.state === 'warn');
   const items = [
-    ['sample rate', `${num(P.fs / 1e6, 0)} MS/s`, 'system'],
+    ['ENOB, converter', `${num(c.budget.enob, 2)} / ${num(P.enobAim, 1)}`, 'budget', c.budget.ok ? '' : 'bad'],
+    ['checks', fails.length ? `${fails.length} fail` : warns.length ? `${warns.length} to look at` : 'all pass', 'budget', fails.length ? 'bad' : warns.length ? 'warn' : 'ok'],
+    ['noise as charge', `${eng(c.budget.total, 'C')} rms`, 'budget', c.budget.ok ? '' : 'bad'],
+    ['1 LSB', eng(d.qLsb, 'C'), 'budget'],
     ['delay step', eng(P.delayStep, 's'), 'beamformer'],
-    ['cells per channel', `${P.memCells}`, 'beamformer', c.need.m > P.memCells],
-    ['decisions', `${d.decisions}`, 'sar', d.decisions !== P.rawDecisions],
-    ['Cu', eng(P.cu, 'F'), 'mismatch'],
+    ['cells per channel', `${P.memCells}`, 'beamformer', c.need.m > P.memCells ? 'bad' : ''],
+    ['decisions', `${d.decisions}`, 'sar', d.decisions !== P.rawDecisions ? 'warn' : ''],
     ['CDAC', eng(d.cdac, 'F'), 'sar'],
     ['memory cell', eng(d.cm, 'F'), 'sar'],
-    ['VREF', eng(P.vref, 'V'), 'sar'],
     ['capacitor area', `${num(c.areaTotal * 1e6, 3)} mm²`, 'mismatch'],
-    ['ENOB, converter', `${num(c.enob.enob, 2)} / ${num(P.enobAim, 1)}`, 'system', c.enob.enob < P.enobAim],
-    ['conversion', `${eng(c.timing.median, 's')} / ${eng(c.tw, 's')}`, 'timing', c.timing.median > c.tw],
+    ['conversion', `${eng(c.timing.median, 's')} / ${eng(c.tw, 's')}`, 'timing', c.timing.median > c.tw ? 'warn' : ''],
   ];
-  $('summary').innerHTML = items.map(([k, v, go, bad]) => `<a class="sm ${bad ? 'bad' : ''}" href="#${go}"><span>${esc(k)}</span><b>${esc(v)}</b></a>`).join('');
+  $('summary').innerHTML = items.map(([k, v, go, cls]) => `<a class="sm ${cls || ''}" href="#${go}" title="${esc(cls === 'bad' || cls === 'warn' ? (c.checks.find((x) => x.go === go && x.state !== 'ok')?.why || '').replace(/<[^>]+>/g, '') : '')}"><span>${esc(k)}</span><b>${esc(v)}</b></a>`).join('');
 }
 
 function layout() {
@@ -105,6 +109,14 @@ document.addEventListener('input', (e) => {
 
 document.addEventListener('change', (e) => {
   const t = e.target;
+  if (t.dataset.alloc) {
+    const x = Number(t.value);
+    if (t.value !== '' && Number.isFinite(x)) {
+      store.ui.alloc = { ...(store.ui.alloc || {}), [t.dataset.alloc]: Math.max(0, x) };
+      changed('values');
+    }
+    return;
+  }
   if (t.id === 'preset' && PRESETS[t.value]) {
     const p = PRESETS[t.value];
     for (const k of ['radix', 'topUnits', 'halvings', 'halvingOn']) store.values.find((v) => v.id === k).value = p[k];
@@ -136,9 +148,65 @@ function doImport(txt) {
   }
 }
 
+function closePop() {
+  const p = $('pop');
+  if (p) p.remove();
+}
+
+function openPop(el) {
+  closePop();
+  const html = formulaHtml(el.dataset.f, store.ctx);
+  if (!html) return;
+  const p = document.createElement('div');
+  p.id = 'pop';
+  p.className = 'pop';
+  p.setAttribute('role', 'dialog');
+  p.innerHTML = html;
+  document.body.appendChild(p);
+  const r = el.getBoundingClientRect();
+  const narrow = window.innerWidth < 640;
+  if (narrow) p.classList.add('sheet');
+  else {
+    const w = p.offsetWidth;
+    const h = p.offsetHeight;
+    let x = Math.min(window.innerWidth - w - 12, Math.max(12, r.left));
+    let y = r.bottom + 8;
+    if (y + h > window.innerHeight - 12) y = Math.max(12, r.top - h - 8);
+    p.style.left = `${x}px`;
+    p.style.top = `${y}px`;
+  }
+  p.querySelector('.pop-x').focus();
+}
+
 document.addEventListener('click', (e) => {
+  const fEl = e.target.closest('[data-f]');
+  if (fEl) {
+    e.preventDefault();
+    e.stopPropagation();
+    openPop(fEl);
+    return;
+  }
+  if (e.target.closest('.pop-x') || !e.target.closest('#pop')) closePop();
   const b = e.target.closest('button, a, [data-go]');
   if (!b) return;
+  if (b.dataset.gain) {
+    store.ui.arrayGain = store.ui.arrayGain === false;
+    changed('values');
+    changed('page');
+    return;
+  }
+  if (b.dataset.sarmode) {
+    store.ui.sarMode = b.dataset.sarmode;
+    document.querySelectorAll('[data-sarmode]').forEach((x) => x.classList.toggle('on', x.dataset.sarmode === store.ui.sarMode));
+    changed('values');
+    return;
+  }
+  if (b.dataset.bfdelays) {
+    store.ui.bfDelays = store.ui.bfDelays === false;
+    b.classList.toggle('on', store.ui.bfDelays);
+    b.textContent = store.ui.bfDelays ? 'delays on' : 'delays off';
+    return;
+  }
   if (b.dataset.go !== undefined && b.closest('.sysview')) {
     if (b.dataset.go) location.hash = b.dataset.go;
     return;
@@ -178,6 +246,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closePop();
   if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset?.go) location.hash = e.target.dataset.go;
 });
 

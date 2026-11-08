@@ -64,8 +64,14 @@ export function widthOf(id, fallback = 600) {
   return el && el.clientWidth ? el.clientWidth - 2 : fallback;
 }
 
+/** A value that opens its formula when clicked. */
+export function fv(id, text) {
+  return `<button class="fv" data-f="${id}" title="show the formula">${text}</button>`;
+}
+
+/** Readout tiles: [label, value html, sub text, class, formula id]. */
 export function readouts(items) {
-  return `<div class="ros">${items.map(([k, v, s, cls]) => `<div class="ro ${cls || ''}"><span class="rk">${esc(k)}</span><span class="rv">${v}</span>${s ? `<span class="rs">${s}</span>` : ''}</div>`).join('')}</div>`;
+  return `<div class="ros">${items.map(([k, v, s, cls, f]) => `<div class="ro ${cls || ''}"><span class="rk">${esc(k)}</span><span class="rv">${f ? fv(f, v) : v}</span>${s ? `<span class="rs">${s}</span>` : ''}</div>`).join('')}</div>`;
 }
 
 export function explain(title, paragraphs) {

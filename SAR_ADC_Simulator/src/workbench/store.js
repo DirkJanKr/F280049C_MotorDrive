@@ -3,12 +3,12 @@
 import { createValues, SEED } from './values.js';
 import { design } from './design.js';
 
-const KEY = 'zaan-workbench-v2';
+const KEY = 'zaan-workbench-v3';
 const VKEY = 'zaan-workbench-versions-v2';
 
 export const store = {
   values: createValues(),
-  ui: { page: 'system', showTop: true, showSide: true, weightMode: 'generator', customWeights: '256, 136, 72, 40, 24, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'dark', vin: 0.217 },
+  ui: { page: 'system', showTop: true, showSide: true, weightMode: 'generator', customWeights: '256, 136, 72, 40, 24, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'dark', vin: 0.217, arrayGain: true, alloc: {}, sarMode: 'diff', optGoal: 'enob', optRes: true, sweep: 'compNoise', bfDelays: true },
   versions: [],
   ctx: null,
   listeners: [],
@@ -19,12 +19,18 @@ export function subscribe(fn) {
 }
 
 let raf = 0;
+let pending = new Set();
+/** Queue a redraw. Reasons collected in one frame are merged; a new design is computed once. */
 export function changed(reason = 'values') {
+  pending.add(reason);
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(() => {
-    if (reason === 'values') store.ctx = design(store.values, store.ui);
+    const rs = pending;
+    pending = new Set();
+    if (rs.has('values')) store.ctx = design(store.values, store.ui);
     save();
-    for (const fn of store.listeners) fn(reason);
+    const order = rs.has('page') ? ['page'] : ['values', 'side', 'layout', 'ui', 'meta'].filter((r) => rs.has(r));
+    for (const r of order) for (const fn of store.listeners) fn(r);
   });
 }
 
@@ -81,7 +87,7 @@ export function load() {
 }
 
 function snapshot(name) {
-  return { name, date: new Date().toISOString(), values: store.values.map(({ id, value, source }) => ({ id, value, source })), ui: { weightMode: store.ui.weightMode, customWeights: store.ui.customWeights } };
+  return { name, date: new Date().toISOString(), values: store.values.map(({ id, value, source }) => ({ id, value, source })), ui: { weightMode: store.ui.weightMode, customWeights: store.ui.customWeights, arrayGain: store.ui.arrayGain, alloc: store.ui.alloc } };
 }
 function saveVersions() {
   try {

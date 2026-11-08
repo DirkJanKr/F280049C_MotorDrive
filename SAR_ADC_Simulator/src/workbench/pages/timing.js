@@ -1,6 +1,7 @@
 // Timing page: for understanding. Nothing here is decided; the sliders are illustrative.
 
 import { group, knobs, card, fill, widthOf, plot, explain, eng, num, COL } from '../kit.js';
+import { failBox } from '../checks.js';
 
 const T = { raf: 0, t: 0 };
 
@@ -12,7 +13,7 @@ export const page = {
     return `<p class="ks pad">No timing value is decided yet. Move these to see what each one does.</p>` + group('Illustrative values', knobs(store.values, ['fs', 'tSample', 'tauDac', 'ibias', 'gmId', 'cload', 'vfinal', 'tLogic'], used));
   },
   main() {
-    return `${explain('One conversion has to fit in one sample period', [
+    return `<div id="tmFails"></div>${explain('One conversion has to fit in one sample period', [
       'At 40 MS/s a new sample comes every 25 ns. In that time the converter must take the sample (connect the selected memory cells), and then for every decision let the DAC settle, let the comparator decide, and let the logic set the next switch.',
     ])}
       <section class="card wide"><header><h3>One conversion: synchronous against self-timed</h3><span class="ctl"><button class="mini" id="tmPlay">play</button></span></header><div id="tmBars"></div><p class="cap" id="tmBars-cap"></p></section>
@@ -38,6 +39,7 @@ export const page = {
     };
   },
   update(store, ctx) {
+    fill('tmFails', failBox(ctx, ['time']));
     T.t = ctx.tw * 2;
     drawBars(ctx);
     const { P, d, tauC } = ctx;

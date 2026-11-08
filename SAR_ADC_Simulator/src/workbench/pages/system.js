@@ -2,6 +2,7 @@
 // clickable. Horizontal on wide screens, vertical on narrow ones.
 
 import { eng, num, esc, readouts } from '../kit.js';
+import { Q_E } from '../budget.js';
 
 export const page = {
   id: 'system',
@@ -23,19 +24,24 @@ export const page = {
 };
 
 function summaryPanel(ctx) {
-  const { d, P, noise, total, enob } = ctx;
-  const tot2 = total ** 2;
+  const { d, P, budget: b } = ctx;
+  const bad = ctx.checks.filter((c) => c.state !== 'ok');
+  const fails = bad.length
+    ? `<div class="fails side">${bad.map((c) => `<a class="fail ${c.state}" href="#${c.go}"><b>${esc(c.label)}: ${esc(c.value)}</b><span>${c.why}</span></a>`).join('')}</div>`
+    : '<p class="okline">Every check passes.</p>';
   return `<div id="sysside"><h3 class="sh">At a glance</h3>${readouts([
-    ['ENOB, converter only', `${num(enob.enob, 2)}`, `aim ${num(P.enobAim, 1)}`, enob.enob >= P.enobAim ? 'ok' : 'bad'],
-    ['Decisions', `${d.decisions}`, `planned ${P.rawDecisions}`],
-    ['CDAC', eng(d.cdac, 'F'), `${d.units} × ${eng(P.cu, 'F')}`],
-    ['Memory cell', eng(d.cm, 'F'), `${d.memCaps} in the array`],
-    ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / (3.2e-3 * 5e-3)) * 100, 2)} % of the chip`],
-    ['Conversion time', eng(ctx.timing.median, 's'), `of ${eng(ctx.tw, 's')} (illustrative)`],
+    ['ENOB, converter only', `${num(b.enob, 2)}`, `aim ${num(P.enobAim, 1)}`, b.ok ? 'ok' : 'bad', 'enob'],
+    ['Noise as charge', eng(b.total, 'C'), `allowed ${eng(b.allowed, 'C')}`, b.ok ? 'ok' : 'bad', 'allowed'],
+    ['One LSB', eng(d.qLsb, 'C'), `${num(d.qLsb / Q_E, 0)} electrons`, '', 'qlsb'],
+    ['Decisions', `${d.decisions}`, `planned ${P.rawDecisions}`, '', 'decisions'],
+    ['CDAC', eng(d.cdac, 'F'), `${num(d.units, 0)} × ${eng(P.cu, 'F')}`, '', 'cdac'],
+    ['Memory cell', eng(d.cm, 'F'), `${d.memCaps} in the array`, '', 'cm'],
+    ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / (3.2e-3 * 5e-3)) * 100, 2)} % of the chip`, '', 'area'],
   ])}
-  <h3 class="sh">Noise of the converter</h3><div class="nb">${noise
-    .map((n) => `<div class="nbr"><span>${esc(n.label)}</span><span class="nbt"><span style="width:${((n.sigma ** 2 / tot2) * 100).toFixed(1)}%"></span></span><b>${eng(n.sigma, 'V')}</b></div>`)
-    .join('')}</div><p class="cap">Root sum of squares: ${eng(total, 'V')} rms. Everything before the beamformer is left out.</p></div>`;
+  <h3 class="sh">What does not pass</h3>${fails}
+  <h3 class="sh">Noise power, share of the allowance</h3><div class="nb">${b.lines
+    .map((n) => `<div class="nbr"><span>${esc(n.label)}</span><span class="nbt"><span class="${n.ok ? '' : 'over'}" style="width:${Math.min(100, n.share).toFixed(1)}%"></span></span><b>${num(n.share, 0)} %</b></div>`)
+    .join('')}</div><p class="cap">Total ${num(b.used, 0)} % of what ENOB ${num(P.enobAim, 1)} allows. Details on the <a href="#budget">Budget page</a>. Everything before the beamformer is left out.</p></div>`;
 }
 
 const T = (x, y, s, cls, a = 'start') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${a}">${s}</text>`;
@@ -102,7 +108,7 @@ function horizontal(ctx) {
   p.push(blockBox('bf', 'beamformer', 160, 90, 420, 560, 'Beamformer', [`${P.channels} × ${P.memCells} memory cells`, `step ${eng(P.delayStep, 's')} (CLK, CLK 180°)`, `longest delay ${eng(ctx.tauMax, 's')}`], `<g>${cellGrid(ctx, 182, 250, 376, 310)}</g>${T(182, 592, 'violet: CLK 180° · green: read now', 'sxs')}`));
   p.push(wire('M580 360 H630', 'an thick') );
   // node + cdac
-  p.push(blockBox('cdac', 'sar', 630, 90, 430, 380, 'Charge sharing + CDAC', [`${d.decisions} decisions`, `CDAC ${eng(d.cdac, 'F')}, ${d.units} units`, `memory cell ${eng(d.cm, 'F')}`], `<g>${capRow(ctx, 652, 280, 386)}</g>`));
+  p.push(blockBox('cdac', 'sar', 630, 90, 430, 380, 'Charge sharing + CDAC', [`${d.decisions} decisions, 1 LSB = ${eng(d.qLsb, 'C')}`, `CDAC ${eng(d.cdac, 'F')}, ${d.units} units`, `memory cell ${eng(d.cm, 'F')}`], `<g>${capRow(ctx, 652, 280, 386)}</g>`));
   p.push(blockBox('ref', 'sar', 630, 490, 430, 160, 'Reference', [`VREF ${eng(P.vref, 'V')}`, 'precharge per conversion']));
   p.push(wire('M845 490 V470', 'ref thick'));
   // comparator and logic
@@ -113,7 +119,7 @@ function horizontal(ctx) {
   p.push(wire('M1110 520 H1090 V470', 'clk thick dashed'));
   // digital out
   p.push(blockBox('reg', 'logic', 1420, 90, 320, 200, 'Output register', [`${d.decisions} raw decisions`], `<g>${bits(Math.min(d.decisions, 14), 1442, 210, 276)}</g>`));
-  p.push(blockBox('comb', 'mismatch', 1420, 320, 320, 170, 'Combiner + LUT', [`Σ dᵢ wᵢ → ${P.bits} bit`, 'calibrated weights']));
+  p.push(blockBox('comb', 'mismatch', 1420, 320, 320, 170, 'Combiner + LUT', [`Σ dᵢ wᵢ → ${P.bits} bit`, `ENOB ${num(ctx.budget.enob, 2)} (aim ${num(P.enobAim, 1)})`]));
   p.push(blockBox('iq', '', 1420, 520, 320, 130, 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}`]));
   p.push(wire('M1370 470 H1395 V190 H1420', 'dig thick'));
   p.push(wire('M1580 290 V320', 'dig thick'));

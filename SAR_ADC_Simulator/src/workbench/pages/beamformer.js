@@ -3,7 +3,7 @@
 import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, COL } from '../kit.js';
 import { startBeamAnim, beamControls, setBeamAngle } from '../anim/beamAnim.js';
 import { receiveDelays, quantise, cellsNeeded, beamPattern, worstPhaseError } from '../../zaan/model/beamformer.js';
-import { K_B } from '../../zaan/model/noise.js';
+import { failBox } from '../checks.js';
 
 export const page = {
   id: 'beamformer',
@@ -12,10 +12,11 @@ export const page = {
     const used = new Set();
     return group('Beam', knobs(store.values, ['steer', 'delayStep', 'rxFocus'], used)) + group('Tile and cells', knobs(store.values, ['channels', 'pitch', 'memCells', 'c'], used)) + group('Signal', knobs(store.values, ['f0', 'fbw', 'fs'], used), false);
   },
-  main() {
-    return `<section class="card wide"><header><h3>The memory cells at work</h3><span class="ctl"><button class="mini" id="bfPlay">pause</button><button class="mini" id="bfSweep">sweep −15° … +15°</button><label class="mini-l">speed <select id="bfSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></span></header>
-        <canvas id="bfcv" class="cv" height="560"></canvas>
-        <p class="cap">Each channel writes one cell per slot (white frame). A channel with an extra half step writes on CLK 180°, half a slot later (violet). At every read, the read select takes from each channel the cell written its delay ago (green frame); because the delays match the arrival times, those 16 cells hold the same part of the echo and their charges add up. Change the angle and the green pattern moves.</p></section>
+  main(store) {
+    const dOn = store.ui.bfDelays !== false;
+    return `<div id="bfFails"></div><section class="card wide"><header><h3>Sampled charge per channel, and the combining</h3><span class="ctl"><button class="mini" id="bfPlay">pause</button><button class="mini ${dOn ? 'on' : ''}" data-bfdelays="1">delays ${dOn ? 'on' : 'off'}</button><button class="mini" id="bfSweep">sweep −15° … +15°</button><label class="mini-l">speed <select id="bfSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></span></header>
+        <canvas id="bfcv" class="cv"></canvas>
+        <p class="cap">Left: the echo from the steering direction reaches the elements one after another. Middle: every channel samples its echo into a memory cell once per slot; each bar is the charge CM · V in one cell, newest at the right. The read select takes from each channel the cell written its delay ago (green frames): with the delays on, the frames follow the echo, so all 16 hold the same part of it. Right: those 16 charges are connected to one node and add up. Bottom: the node charge with the delays (green) reaches about 16 times one channel; without them (grey) the parts do not line up. Switch the delays off or change the angle to see the pattern move. Cells are drawn by age; on the chip they stay in place and a pointer goes round.</p></section>
       <div id="bfro"></div>
       <div class="grid2">${card('bfDelay', 'Delay per element, exact and rounded to the step')}${card('bfCells', 'Memory cells needed against steering angle')}</div>
       <div class="grid2">${card('bfBeam', 'Beam pattern: exact, 12.5 ns and 25 ns steps')}${card('bfClk', 'Write and read timing with CLK and CLK 180°')}</div>
@@ -41,17 +42,21 @@ export const page = {
   },
   update(store, ctx) {
     const { P, need, tauMax, delays, qd, halfSteps, tw } = ctx;
-    if (lastShape !== `${P.channels}-${P.memCells}-${P.fs}`) restart(store);
+    const cv = document.getElementById('bfcv');
+    if (lastShape !== `${P.channels}-${P.memCells}-${P.fs}-${cv ? cv.clientWidth : 0}`) restart(store);
     setBeamAngle(P);
     const cmVal = ctx.d.cm;
-    const kt = Math.sqrt((2 * K_B * P.temperature) / (P.channels * cmVal));
+    const samp = ctx.budget.lines.find((l) => l.id === 'samp');
+    fill('bfFails', failBox(ctx, ['cells']));
     fill('bfro', readouts([
-      ['Longest delay', eng(tauMax, 's'), `at ±${num(Math.abs(P.steer) * (180 / Math.PI), 1)}°`],
-      ['Cells needed per channel', `${need.m}`, `you set ${P.memCells}`, need.m > P.memCells ? 'bad' : 'ok'],
+      ['Longest delay', eng(tauMax, 's'), `at ±${num(Math.abs(P.steer) * (180 / Math.PI), 1)}°`, '', 'taumax'],
+      ['Cells needed per channel', `${need.m}`, `you set ${P.memCells}`, need.m > P.memCells ? 'bad' : 'ok', 'cells'],
       ['Memory capacitors', `${P.memCells * P.channels * 2}`, `${P.memCells} × ${P.channels} × 2 sides`],
       ['Channels on CLK 180°', `${halfSteps.filter((h) => h).length} of ${P.channels}`, 'at this angle'],
-      ['Worst phase error', `${num(worstPhaseError(P.f0, P.delayStep), 1)}°`, `at ${eng(P.delayStep, 's')} steps`],
-      ['Memory cell CM', eng(cmVal, 'F'), `kT/C of 16 read together ${eng(kt, 'V')} rms`],
+      ['Worst phase error', `${num(worstPhaseError(P.f0, P.delayStep), 1)}°`, `at ${eng(P.delayStep, 's')} steps`, '', 'phase'],
+      ['Memory cell CM', eng(cmVal, 'F'), 'from the charge balance', '', 'cm'],
+      ['kT/C of the cells as charge', eng(samp.sigma, 'C'), ctx.budget.arrayGain ? `with the ${num(ctx.budget.arrayGainDb, 1)} dB beamformer gain` : 'beamformer gain off', '', 'b-samp'],
+      ['Beamformer gain', `${num(ctx.budget.arrayGainDb, 1)} dB`, ctx.budget.arrayGain ? 'counted, Budget page' : 'not counted, Budget page', '', 'gain'],
     ]));
     const w = widthOf('bfDelay');
     const ns = (x) => x * 1e9;
@@ -77,9 +82,8 @@ function restart(store) {
   const cv = document.getElementById('bfcv');
   if (!cv) return;
   const P = store.ctx.P;
-  lastShape = `${P.channels}-${P.memCells}-${P.fs}`;
-  cv.width = cv.clientWidth;
-  startBeamAnim(cv, () => store.ctx.P);
+  lastShape = `${P.channels}-${P.memCells}-${P.fs}-${cv.clientWidth}`;
+  startBeamAnim(cv, () => store.ctx.P, () => store.ui);
 }
 
 function clocks(ctx, w) {

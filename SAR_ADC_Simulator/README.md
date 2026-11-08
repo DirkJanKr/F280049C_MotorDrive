@@ -108,11 +108,23 @@ Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never com
 Pages, each filling the screen, from the beamformer onward (nothing before the beamformer):
 
 * System: the chain from beamformer to IQ demodulator, large and clickable; each block opens its page.
-* Beamformer: animated memory cells for any steering angle (or an automatic sweep), CLK and
-  CLK 180° writes, delayed reads summing on the node; delays, cells needed, beam pattern, timing.
+  The side panel lists every check that does not pass.
+* Budget: the noise of the converter as charge on the summing node (aC rms, electrons, LSB), as is
+  usual for a charge-sharing SAR. Q in = N CM V in and one LSB = 2 VREF Cu / (LSB per unit). Lines:
+  quantisation, simulated calibration residual, comparator noise C node,last · vn, memory-cell kT/C
+  √(N · 2kT CM), CDAC precharge √(2kT CDAC), jitter. Shares of the allowed noise power for the ENOB
+  aim, an editable allocation per line, a stacked power bar, ENOB against one value, and every check
+  (ENOB, tolerance, coverage, cells, smallest capacitor, decisions, conversion time) with why it
+  fails and what fixes it. A button switches the 10 log10 N = 12 dB beamformer gain on the
+  channel-independent cell noise on or off.
+* Beamformer: per channel the echo and the charge sampled into each memory cell, the cells the read
+  select takes (they follow the echo), the 16 charges added on the node, and the node charge over
+  time with and without delays; delays, cells needed, beam pattern, write timing.
 * SAR ADC: weight designer (radix generator or typed list; steps below one unit by charge halving
-  or by small capacitors), a differential conversion stepped decision by decision with the charge on
-  both nodes, the search with its reach, tolerance per decision, and a side-by-side comparison.
+  or by small capacitors); a conversion as buckets of charge (width = capacitance, level = voltage,
+  area = charge), differential or single-ended; per decision what the tolerance must cover (DAC
+  mismatch 3σ, comparator offset after calibration, comparator noise) against what it has; a weight
+  and decision-count optimizer; the search with its reach; a side-by-side comparison.
 * Mismatch and area: Monte Carlo before and after calibration, yield against Cu, one chip in detail,
   calibration converging, and the capacitor area drawn to scale on the chip.
 * Timing: for understanding; synchronous against self-timed, metastability, settling with
@@ -120,5 +132,14 @@ Pages, each filling the screen, from the beamformer onward (nothing before the b
 * SAR logic: the self-timed loop animated, with logic-analyzer waveforms.
 * Values: every value editable, design versions (browser and JSON file), LaTeX and MATLAB export.
 
+Every value with a dotted underline opens its formula: symbols, the same formula with the current
+numbers, and the result.
+
+Assumptions to check: the offset check counts only the part of the offset that differs from the
+last decision (the common part shifts every code equally); a decision passes when mismatch (3σ)
+plus offset stays within its tolerance plus ½ LSB; comparator noise is counted in the noise budget
+at the last decision, not in the tolerance check; jitter is counted as if all channels jitter
+together; the optimizer keeps the calibration residual of the current chip for every candidate.
+
 The summary bar and the side panel can be shown or hidden. Code: `src/workbench/` (values, store,
-design, weights, kit, pages, animations); the physics is in `src/zaan/model/`.
+design, budget, checks, formulas, optimizer, weights, kit, pages, animations); the physics is in `src/zaan/model/`.

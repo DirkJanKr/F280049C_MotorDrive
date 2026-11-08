@@ -3,7 +3,9 @@
 
 import { designCdac, binaryMatchingCu } from '../zaan/model/cdac.js';
 import { receiveDelays, cellsNeeded, worstPhaseError, quantise } from '../zaan/model/beamformer.js';
-import { samplingNoise, prechargeNoise, comparatorNoiseAt, jitterNoise, quantNoise, enobOf } from '../zaan/model/noise.js';
+import { quantNoise } from '../zaan/model/noise.js';
+import { chargeBudget, toleranceNeeds } from './budget.js';
+import { runChecks } from './checks.js';
 import { comparatorTau, conversionTimes, settlingTimes } from '../zaan/model/timing.js';
 import { drawChip, convert } from '../zaan/model/chargeSar.js';
 import { testChip } from '../zaan/model/testbench.js';
@@ -65,18 +67,14 @@ export function design(values, ui) {
     return { chip, cal: r.cal, sRaw: r.sRaw, sCal: r.sCal, linRaw: r.linRaw, linCal: r.linCal, sCal0: r0.sCal };
   });
   const vrms = P.fullScale / 2 / Math.SQRT2;
+  // simulated residual of mismatch, offset and rounding after calibration, as charge on the node
   const q = quantNoise(P);
   const conv = (vrms * 10 ** (-0.5 / 20)) / 10 ** (sim.sCal0.sndr / 20);
-  const noise = [
-    { id: 'q', label: 'Quantisation', sigma: q, how: 'LSB / √12' },
-    { id: 'cal', label: 'Mismatch, offset and rounding after calibration', sigma: Math.sqrt(Math.max(conv ** 2 - q ** 2, 0)), how: `simulated chip, seed ${P.seed}` },
-    { id: 'comp', label: 'Comparator noise', sigma: comparatorNoiseAt(P, d, d.decisions - 1), how: 'referred at the last decision' },
-    { id: 'samp', label: 'kT/C of the 16 memory cells', sigma: samplingNoise(P, d), how: '√(2kT / (16 CM))' },
-    { id: 'pre', label: 'CDAC precharge kT/C', sigma: prechargeNoise(P, d).volts, how: '√(2kT CDAC) / QLSB' },
-    { id: 'jit', label: 'Sampling clock jitter', sigma: jitterNoise(P).volts, how: 'at the band edge' },
-  ];
-  const total = Math.sqrt(noise.reduce((a, n) => a + n.sigma ** 2, 0));
-  const enob = enobOf(P, total);
+  const residualV = Math.sqrt(Math.max(conv ** 2 - q ** 2, 0));
+  const budget = chargeBudget(P, d, { arrayGain: ui.arrayGain !== false, residualQ: residualV * d.cNode[0], allocation: ui.alloc || {} });
+  const enob = { enob: budget.enob, sndr: budget.sndr };
+  const sigmaU = P.aC / 100 / Math.sqrt(P.cu / 1e-15);
+  const tolNeed = toleranceNeeds(P, d, sigmaU);
   const timing = memo(key + JSON.stringify([P.tSample, P.tauDac, P.tLogic, P.ibias, P.gmId, P.cload, P.vfinal, P.fs]), () => {
     const rng = createRng(P.seed + 1);
     const traces = [];
@@ -90,10 +88,12 @@ export function design(values, ui) {
   const memArea = (d.memCaps * d.cm * P.routing) / P.density;
   const cdacArea = (d.cdac * P.routing) / P.density;
   const smallest = Math.min(...steps.map((st) => (st.kind === 'cap' || st.kind === 'small' ? st.units * P.cu : P.cu)));
-  return {
-    P, steps, stepsError: s.error, d, tw, tauMax, need, delays, qd, halfSteps, sim, noise, total, enob, timing, vrms,
+  const ctx = {
+    P, steps, stepsError: s.error, d, tw, tauMax, need, delays, qd, halfSteps, sim, budget, enob, timing, vrms, tolNeed,
     tauC: comparatorTau(P), settle: settlingTimes(d, P.tauDac), phaseErr: worstPhaseError(P.f0, P.delayStep),
     memArea, cdacArea, areaTotal: memArea + cdacArea, smallest, binCu: binaryMatchingCu(P).cu,
-    sigmaU: P.aC / 100 / Math.sqrt(P.cu / 1e-15), lambda: P.c / P.f0,
+    sigmaU, lambda: P.c / P.f0, ui,
   };
+  ctx.checks = runChecks(ctx);
+  return ctx;
 }

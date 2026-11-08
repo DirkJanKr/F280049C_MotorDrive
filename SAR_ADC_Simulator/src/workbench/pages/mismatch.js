@@ -1,6 +1,6 @@
 // Mismatch page: Monte Carlo over many chips, one chip in detail, and the area on the chip.
 
-import { group, knobs, card, fill, widthOf, plot, bars, readouts, explain, eng, num, esc, COL } from '../kit.js';
+import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, esc, COL } from '../kit.js';
 import { designCdac } from '../../zaan/model/cdac.js';
 import { drawChip } from '../../zaan/model/chargeSar.js';
 import { testChip } from '../../zaan/model/testbench.js';
@@ -39,11 +39,11 @@ export const page = {
   update(store, ctx) {
     const { d, P, sim } = ctx;
     fill('mmro', readouts([
-      ['σ of one unit capacitor', `${num(ctx.sigmaU * 100, 3)} %`, `at Cu = ${eng(P.cu, 'F')}`],
+      ['σ of one unit capacitor', `${num(ctx.sigmaU * 100, 3)} %`, `at Cu = ${eng(P.cu, 'F')}`, '', 'sigmau'],
       ['Binary matching would need', eng(ctx.binCu, 'F'), 'unit capacitor for 3σ DNL < 0.5 LSB'],
       ['ENOB, this chip', `${num(sim.sRaw.enob, 2)} → ${num(sim.sCal.enob, 2)}`, 'design → calibrated', sim.sCal.enob >= P.enobAim ? 'ok' : 'bad'],
       ['Peak DNL, this chip', `${num(sim.linRaw.peakDnl, 2)} → ${num(sim.linCal.peakDnl, 2)}`, 'LSB'],
-      ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / (CHIP.w * CHIP.h)) * 100, 2)} % of the chip`],
+      ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / (CHIP.w * CHIP.h)) * 100, 2)} % of the chip`, '', 'area'],
     ]));
     const key = JSON.stringify([d.weights, ctx.steps.map((s) => s.kind), P.cu, P.aC, P.chips, P.seed, P.bits]);
     if (key !== mc.key) {
@@ -55,7 +55,15 @@ export const page = {
     const w = widthOf('mmErr');
     const err = d.weights.map((wd, i) => sim.chip.wTrue[i] - wd);
     const sig = d.steps.map((st, i) => (st.kind === 'cap' || st.kind === 'small' ? (d.weights[i] * ctx.sigmaU) / Math.sqrt(st.units) : (d.weights[i] * ctx.sigmaU) / Math.SQRT2));
-    fill('mmErr', bars({ labels: d.weights.map((_, i) => `${i + 1}`), series: [{ label: 'true − design [LSB]', values: err, color: 'var(--cal)' }, { label: 'expected σ [LSB]', values: sig, color: 'var(--muted)' }], height: 230 }, w), `Seed ${P.seed}. Expected σ = w σu / √units for whole and small capacitors; about w σu / √2 for a halving step (approximation).`);
+    const n = d.weights.length;
+    const elim = Math.max(...sig.map((x) => 3 * x), ...err.map(Math.abs)) * 1.15;
+    fill('mmErr', plot({
+      height: 250, x: { min: 0.5, max: n + 0.5, label: 'step', ticks: Array.from({ length: n }, (_, i) => i + 1) }, y: { min: -elim, max: elim, label: 'weight error [LSB]' },
+      series: [{ points: err.map((e, i) => [i + 1, e]), color: COL.cal, mode: 'dots', r: 5, label: 'this chip' }],
+      hlines: [{ y: 0, color: COL.muted, dash: '' }],
+      overlay: (sx, sy) => sig.map((sg, i) => `<rect x="${sx(i + 1) - 9}" y="${sy(3 * sg)}" width="18" height="${Math.max(1, sy(-3 * sg) - sy(3 * sg))}" rx="3" fill="var(--an)" opacity="0.16"/><line x1="${sx(i + 1) - 9}" x2="${sx(i + 1) + 9}" y1="${sy(sg)}" y2="${sy(sg)}" stroke="var(--an)" opacity="0.6"/><line x1="${sx(i + 1) - 9}" x2="${sx(i + 1) + 9}" y1="${sy(-sg)}" y2="${sy(-sg)}" stroke="var(--an)" opacity="0.6"/>`).join(''),
+      legend: true,
+    }, w), `Dots: true minus design weight of this chip (seed ${P.seed}). Shaded: ±3σ over many chips, lines at ±1σ; σ = w σu / √units for whole and small capacitors, about w σu / √2 for a halving step (approximation). What the tolerance must cover is on the SAR ADC page.`);
     const k = Array.from({ length: d.codes - 2 }, (_, i) => i + 1);
     const lim = Math.max(1, sim.linRaw.peakDnl, sim.linCal.peakDnl) * 1.1;
     fill('mmDnl', plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -lim, max: lim, label: 'DNL' }, series: [{ points: k.map((i) => [i, sim.linRaw.dnl[i]]), color: COL.muted, width: 0.9, label: 'design weights' }, { points: k.map((i) => [i, sim.linCal.dnl[i]]), color: COL.an, width: 1.1, label: 'calibrated' }], legend: true }, w) + plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -Math.max(1, sim.linRaw.peakInl) * 1.1, max: Math.max(1, sim.linRaw.peakInl) * 1.1, label: 'INL' }, series: [{ points: k.map((i) => [i, sim.linRaw.inl[i]]), color: COL.muted, width: 0.9 }, { points: k.map((i) => [i, sim.linCal.inl[i]]), color: COL.an, width: 1.1 }] }, w), 'Ramp histogram, 2 samples per code, with comparator noise; the curves are therefore a little noisy.');

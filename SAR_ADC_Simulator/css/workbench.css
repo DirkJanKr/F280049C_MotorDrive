@@ -1,4 +1,4 @@
-/* Zaan workbench. Pages: System, Beamformer, SAR ADC, Mismatch and area, Timing, SAR logic, Values.
+/* Zaan workbench. Pages: System, Budget, Beamformer, SAR ADC, Mismatch and area, Timing, SAR logic, Values.
    Header with page links and toggles; optional summary bar; optional side panel with the knobs of the page.
    Dark instrument look by default, light theme for printing. One colour per signal class:
    analog cyan, reference amber, clock and control violet, digital green, calibration pink. */
@@ -232,11 +232,93 @@ textarea { width: 100%; min-height: 140px; font: 12px var(--mono); background: v
 [data-tip] { position: relative; }
 [data-tip]:hover::after, [data-tip]:focus::after { content: attr(data-tip); position: absolute; left: 0; top: 100%; z-index: 50; width: max-content; max-width: 280px; background: var(--panel2); color: var(--ink); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font: 12.5px/1.4 var(--sans); text-transform: none; letter-spacing: 0; white-space: normal; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
 
+/* clickable values and the formula popover */
+.fv { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: help; border-bottom: 1px dotted color-mix(in srgb, var(--an) 70%, transparent); }
+.fv:hover, .fv:focus-visible { color: var(--an); }
+.pop { position: fixed; z-index: 50; max-width: min(520px, calc(100vw - 24px)); background: var(--panel); border: 1px solid var(--an); border-radius: 10px; padding: 10px 14px 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45); }
+.pop.sheet { left: 8px; right: 8px; bottom: 8px; max-width: none; max-height: 70vh; overflow-y: auto; }
+.pop-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 4px; }
+.pop-x { background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); cursor: pointer; width: 28px; height: 28px; font-size: 16px; }
+.pop .eqline, .eqline { font: 18px/1.5 var(--math); padding: 6px 0 0; overflow-x: auto; }
+.eqline i { font-style: italic; } .eqline sub, .eqline sup { font-size: 0.68em; font-style: normal; } .eqline .mt { font-style: normal; }
+.frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 0.2em; }
+.frac .fn { border-bottom: 1px solid currentColor; padding: 0 0.25em 0.05em; } .frac .fd { padding: 0.05em 0.25em 0; }
+.sqrt { display: inline-flex; align-items: stretch; } .sqrt .rs { padding-right: 0.05em; } .sqrt .rad { border-top: 1px solid currentColor; padding: 0.1em 0.15em 0; margin-top: 0.12em; }
+.eqnum { font: 16px/1.5 var(--math); color: var(--muted); padding-left: 1.2em; overflow-x: auto; }
+.eqres { font: 600 15px var(--mono); color: var(--an); padding: 6px 0 2px 1.2em; }
+.pop-n { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.45; }
+
+/* checks: what fails and why */
+.fails { display: flex; flex-direction: column; gap: 8px; }
+.fail { border: 1px solid var(--bad); border-left-width: 4px; border-radius: 8px; padding: 8px 12px; background: color-mix(in srgb, var(--bad) 7%, var(--panel)); color: var(--ink); text-decoration: none; display: block; }
+.fail.warn { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 7%, var(--panel)); }
+.fail b { color: var(--bad); } .fail.warn b { color: var(--warn); }
+.fail p { margin: 4px 0 0; font-size: 13.5px; } .fail .fix, .ck .fix, .verdict .fix { color: var(--dig); }
+.fails.side .fail span { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; }
+.okline { color: var(--ok); font-size: 13px; }
+.verdict { display: flex; gap: 18px; align-items: center; border: 1px solid var(--ok); border-radius: 12px; padding: 12px 18px; background: color-mix(in srgb, var(--ok) 6%, var(--panel)); }
+.verdict.bad { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 7%, var(--panel)); }
+.verdict p { margin: 4px 0 0; font-size: 13.5px; }
+.vbig { font: 700 34px var(--mono); color: var(--ok); white-space: nowrap; } .verdict.bad .vbig { color: var(--bad); }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.ck { border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; background: var(--panel2); }
+.ck p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.ckh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ckh .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); }
+.ck.bad .dot { background: var(--bad); } .ck.warn .dot { background: var(--warn); }
+.ck.bad { border-color: var(--bad); } .ck.warn { border-color: var(--warn); }
+.ckv { font: 600 13px var(--mono); margin-left: auto; } .ckl { font-size: 12px; color: var(--muted); }
+.ckh .mini { text-decoration: none; }
+.sm.warn { border-color: var(--warn); } .sm.warn b { color: var(--warn); } .sm.ok b { color: var(--ok); }
+
+/* budget table */
+.tbl.budget td { vertical-align: middle; }
+.tbl.budget tr.over td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+.tbl.budget tr.tot td { border-top: 2px solid var(--line); font-weight: 600; }
+.shc { min-width: 170px; white-space: nowrap; } .shc .num { margin-left: 6px; font: 12.5px var(--mono); }
+.shb { position: relative; display: inline-block; width: 110px; height: 10px; background: var(--bg); border-radius: 5px; vertical-align: middle; }
+.shf { position: absolute; left: 0; top: 0; bottom: 0; background: var(--an); border-radius: 5px; } .shf.over { background: var(--bad); }
+.sha { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+input.alloc { width: 58px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; font: 12.5px var(--mono); text-align: right; color: var(--an); }
+.tag { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; white-space: nowrap; }
+.okc { color: var(--ok); font-weight: 600; } .badc { color: var(--bad); font-weight: 600; }
+.nbt span.over { background: var(--bad); }
+.sel.inline { width: auto; margin: 0; padding: 3px 6px; }
+
+/* buckets */
+.dsvg .bk { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
+.dsvg .water { fill: color-mix(in srgb, var(--an) 10%, transparent); }
+.dsvg .qp { fill: color-mix(in srgb, var(--an) 55%, transparent); }
+.dsvg .qn { fill: color-mix(in srgb, var(--cal) 50%, transparent); }
+.dsvg .seg { stroke: var(--border); stroke-dasharray: 3 3; }
+.dsvg .sgl { font: 12px var(--sans); fill: var(--muted); }
+.dsvg .vcm { stroke: var(--muted); stroke-dasharray: 6 4; }
+.dsvg .sbar { stroke: var(--ink); stroke-width: 2; }
+.dsvg .dac { fill: color-mix(in srgb, var(--ref) 30%, transparent); stroke: var(--ref); stroke-width: 1.5; }
+.dsvg .dac.half, .dsvg .dac.rest { fill: color-mix(in srgb, var(--clk) 30%, transparent); stroke: var(--clk); }
+.dsvg .dac.small { stroke-dasharray: 3 2; }
+.dsvg .dac.mv { stroke-width: 3; }
+.dsvg .wire { fill: none; stroke: var(--an); stroke-width: 2; }
+.ctl .seg.sm2 { margin: 0; flex-wrap: nowrap; } .ctl .seg.sm2 button { flex: none; padding: 3px 9px; }
+
+/* tolerance chart */
+.tolc .tn-mis { fill: var(--cal); } .tolc .tn-off { fill: var(--ref); }
+.tolc .tn-noise { fill: color-mix(in srgb, var(--clk) 45%, transparent); }
+.tolc .tn-raw { stroke: var(--ink); stroke-width: 2; }
+.tolc .tn-have { stroke: var(--dig); stroke-width: 3.5; } .tolc .tn-have.bad { stroke: var(--bad); }
+.tolc .tick { stroke: var(--grid); }
+
+/* optimizer */
+.tbl.opt tr.best td { color: var(--dig); font-weight: 600; }
+.tbl.opt tr.wrow td { font: 11.5px var(--mono); color: var(--muted); padding-top: 0; border-top: 0; }
+
 @media (max-width: 900px) {
   .body { grid-template-columns: minmax(0, 1fr); }
   .side { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
   .sysview { height: auto; min-height: 0; }
   .top { position: static; }
+  .verdict { flex-direction: column; align-items: flex-start; }
+  .checks { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

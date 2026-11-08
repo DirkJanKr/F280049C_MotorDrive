@@ -43,3 +43,42 @@ test('typed weights drive the design', () => {
   assert.equal(c.d.decisions, 10);
   assert.deepEqual(c.d.tol.slice(0, -1).every((t) => t === 0), true, 'binary has no tolerance');
 });
+
+test('charge budget: ideal 10-bit quantisation alone gives ENOB 10.0, and the lines add in power', async () => {
+  const { chargeBudget, allowedCharge, enobFromCharge } = await import('../src/workbench/budget.js');
+  const c = design(createValues(), ui);
+  const q = c.d.qLsb / Math.sqrt(12);
+  assert.ok(Math.abs(enobFromCharge(c.d, q).enob - 10) < 0.01);
+  assert.ok(Math.abs(allowedCharge(c.d, 9.5) / c.d.qLsb - 0.4082) < 1e-3, 'σ allowed = 2^0.5 / √12 LSB');
+  const b = chargeBudget(c.P, c.d, { residualQ: 0 });
+  const rss = Math.sqrt(b.lines.reduce((a, l) => a + l.sigma ** 2, 0));
+  assert.ok(Math.abs(rss - b.total) < 1e-24);
+  assert.ok(Math.abs(b.lines.reduce((a, l) => a + l.share, 0) - b.used) < 1e-9);
+});
+
+test('beamformer gain: switching it off makes the cell kT/C charge √N larger', async () => {
+  const { chargeBudget } = await import('../src/workbench/budget.js');
+  const c = design(createValues(), ui);
+  const on = chargeBudget(c.P, c.d, { arrayGain: true }).lines.find((l) => l.id === 'samp').sigma;
+  const off = chargeBudget(c.P, c.d, { arrayGain: false }).lines.find((l) => l.id === 'samp').sigma;
+  assert.ok(Math.abs(off / on - 4) < 1e-9);
+});
+
+test('tolerance check: binary weights fail at decision 1, the default redundant weights pass', () => {
+  const bin = design(createValues(), { weightMode: 'custom', customWeights: '256, 128, 64, 32, 16, 8, 4, 2, 1' });
+  assert.equal(bin.tolNeed[0].ok, false);
+  assert.equal(bin.checks.find((k) => k.id === 'tol').state, 'bad');
+  const def = design(createValues(), ui);
+  assert.equal(def.checks.find((k) => k.id === 'tol').state, 'ok');
+  assert.ok(def.checks.every((k) => typeof k.why === 'string' && k.why.length > 10));
+});
+
+test('optimizer: the best candidate passes the tolerance and beats or equals the default ENOB', async () => {
+  const { search, best } = await import('../src/workbench/optimizer.js');
+  const c = design(createValues(), ui);
+  const all = search(c.P, c.P.memCells, { sigmaU: c.sigmaU, arrayGain: true, residualLsb: 0 });
+  const top = best(all, 'enob', c.P.enobAim)[0];
+  assert.ok(top.tolOk && top.cover);
+  const cur = all.find((x) => x.radix === 1.9 && x.topUnits === 32 && x.halvings === 3);
+  assert.ok(top.enob >= cur.enob - 1e-12);
+});
