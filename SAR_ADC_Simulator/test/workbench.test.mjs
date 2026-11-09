@@ -105,3 +105,39 @@ test('IQ demodulator: SNR gain after the low-pass matches 1 / (2 Σh²) for whit
   assert.ok(Math.abs(gain - r.gainTheory) < 0.6, `${gain} vs ${r.gainTheory}`);
   assert.ok(Math.abs(r.stages[3].snr - r.stages[2].snr) < 0.5, 'decimation keeps the SNR');
 });
+
+test('every formula renders for the default design, with no NaN', async () => {
+  const { FORMULAS, formulaHtml } = await import('../src/workbench/formulas.js');
+  const c = design(createValues(), ui);
+  for (const id of Object.keys(FORMULAS)) {
+    if (id === 'b-quant') continue; // only shown when the residual lines are joined
+    const h = formulaHtml(id, c);
+    assert.ok(h, id);
+    assert.ok(!/NaN|undefined/.test(h), id);
+  }
+  for (const l of c.budget.lines) assert.ok(formulaHtml({ sar: 'b-sar', round: 'b-round', lut: 'b-lut', comp: 'b-comp', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' }[l.id], c), l.id);
+});
+
+test('charge balance: total step charge makes CM larger and still covers the range; the slide formula does not reach full scale', () => {
+  const v = createValues();
+  const a = design(v, ui);
+  v.find((x) => x.id === 'balance').value = 'total step charge: 2 Σw';
+  const b = design(v, ui);
+  assert.ok(b.d.cm > a.d.cm);
+  assert.ok(Math.abs(b.d.cm / a.d.cm - 560 / 512) < 1e-9);
+  assert.ok(b.d.cover.ok);
+  v.find((x) => x.id === 'balance').value = 'slide: 4 VREF CDAC';
+  const s = design(v, ui);
+  assert.ok(Math.abs(s.d.cm - s.d.cmSlide) < 1e-21);
+  assert.equal(s.d.cover.ok, false);
+});
+
+test('residual split: more combiner output bits remove most of the rounding line; an exact LUT has no weight error', () => {
+  const v = createValues();
+  const a = design(v, ui);
+  assert.ok(a.res.lut < 1e-6);
+  v.find((x) => x.id === 'outBits').value = 12;
+  const b = design(v, ui);
+  assert.ok(b.res.round < a.res.round / 2);
+  assert.ok(b.budget.enob > a.budget.enob + 0.2);
+});

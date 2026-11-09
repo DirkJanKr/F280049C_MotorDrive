@@ -46,30 +46,42 @@ export function prechargeCharge(P, d) {
   return Math.sqrt(4 * kT * d.cdac + halves * 4 * kT * (P.cu / 2));
 }
 
-/** The noise lines in charge. residualQ: simulated mismatch, offset and rounding residual (C rms). */
-export function chargeLines(P, d, { arrayGain = true, residualQ = 0 } = {}) {
+/**
+ * The noise lines in charge. res: the parts left after calibration in LSB rms
+ * ({ sar, round, lut }, simulated or estimated). split = false joins them in one line.
+ */
+export function chargeLines(P, d, { arrayGain = true, res = null, split = true, method = '' } = {}) {
   const kT = K_B * P.temperature;
   const N = P.channels;
   const cellOne = Math.sqrt(2 * kT * d.cm);
   const fJ = P.f0 * (1 + P.fbw / 2);
   const vrms = P.fullScale / 2 / Math.SQRT2;
+  const r = res || { sar: Math.min(...d.weights) / Math.sqrt(12), round: 2 ** -Math.max(0, Math.round((P.outBits ?? P.bits) - P.bits)) / Math.sqrt(12), lut: 0 };
+  const ob = Math.round(P.outBits ?? P.bits);
+  const q = split
+    ? [
+        { id: 'sar', label: `SAR levels: quantisation by the smallest step (${Number(Math.min(...d.weights).toPrecision(3))} LSB)`, sigma: r.sar * d.qLsb, fixed: true, simulated: !!res },
+        { id: 'round', label: `Rounding to ${ob} output bits`, sigma: r.round * d.qLsb, simulated: !!res },
+        { id: 'lut', label: `LUT weight error${method ? `, ${method}` : ''}`, sigma: r.lut * d.qLsb, simulated: !!res },
+      ]
+    : [{ id: 'quant', label: `Quantisation, rounding to ${ob} bits and LUT error`, sigma: Math.sqrt(r.sar ** 2 + r.round ** 2 + r.lut ** 2) * d.qLsb, fixed: true, simulated: !!res }];
   return [
-    { id: 'q', label: 'Quantisation, output bits', sigma: d.qLsb / Math.sqrt(12), knob: 'bits', perChannel: false },
-    { id: 'cal', label: 'Mismatch, offset and rounding after calibration', sigma: residualQ, knob: 'cu', perChannel: false, simulated: true },
-    { id: 'comp', label: 'Comparator noise at the last decision', sigma: comparatorCharge(P, d, d.decisions - 1), knob: 'compNoise', perChannel: false },
-    { id: 'samp', label: 'kT/C of the memory cells', sigma: arrayGain ? Math.sqrt(N) * cellOne : N * cellOne, knob: 'temperature', perChannel: true },
-    { id: 'pre', label: 'CDAC precharge kT/C', sigma: prechargeCharge(P, d), knob: 'vref', perChannel: false },
-    { id: 'jit', label: 'Sampling clock jitter', sigma: N * d.cm * 2 * Math.PI * fJ * P.jitter * vrms, knob: 'jitter', perChannel: false },
+    ...q,
+    { id: 'comp', label: 'Comparator noise at the last decision', sigma: comparatorCharge(P, d, d.decisions - 1), perChannel: false },
+    { id: 'samp', label: 'kT/C of the memory cells', sigma: arrayGain ? Math.sqrt(N) * cellOne : N * cellOne, perChannel: true },
+    { id: 'pre', label: 'CDAC precharge kT/C', sigma: prechargeCharge(P, d), perChannel: false },
+    { id: 'jit', label: 'Sampling clock jitter', sigma: N * d.cm * 2 * Math.PI * fJ * P.jitter * vrms, perChannel: false },
   ];
 }
 
-/** Share of the allowed noise power that each line gets when nothing else is set: the rest split evenly. */
+/** Share of the allowed noise power that each line gets when nothing else is set: the fixed line as it is, the rest split evenly. */
 export function defaultAllocation(lines, allowed) {
-  const q = lines.find((l) => l.id === 'q');
-  const rest = Math.max(0, 1 - (q.sigma / allowed) ** 2);
-  const others = lines.filter((l) => l.id !== 'q');
-  const out = { q: (q.sigma / allowed) ** 2 * 100 };
-  for (const l of others) out[l.id] = (rest / others.length) * 100;
+  const fixed = lines.filter((l) => l.fixed);
+  const used = fixed.reduce((a, l) => a + (l.sigma / allowed) ** 2, 0);
+  const others = lines.filter((l) => !l.fixed);
+  const out = {};
+  for (const l of fixed) out[l.id] = (l.sigma / allowed) ** 2 * 100;
+  for (const l of others) out[l.id] = (Math.max(0, 1 - used) / others.length) * 100;
   return out;
 }
 

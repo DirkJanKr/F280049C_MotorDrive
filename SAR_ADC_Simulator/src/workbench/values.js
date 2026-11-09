@@ -25,7 +25,7 @@ export const SEED = [
   num('f0', 'system', 'Echo centre frequency', 10, 'MHz', 1e6, 'Hz', [5, 15, 0.5], 'Yannick'),
   num('fbw', 'system', 'Fractional bandwidth', 60, '%', 0.01, '1', [20, 100, 5], 'Yannick'),
   num('fullScale', 'system', 'Full scale, differential peak to peak', 1, 'V', 1, 'V', [0.4, 2, 0.05], 'Yannick, conservative'),
-  num('bits', 'system', 'Output bits', 10, 'bit', 1, 'bit', [8, 12, 1], '5 Nov'),
+  num('bits', 'system', 'Resolution N (2^N codes over the full scale)', 10, 'bit', 1, 'bit', [8, 12, 1], '5 Nov'),
   num('rawDecisions', 'system', 'Raw decisions planned', 12, '', 1, '1', [8, 16, 1], '5 Nov'),
   num('enobAim', 'system', 'ENOB aim', 9.5, 'bit', 1, 'bit', [8, 11, 0.1], '23 Oct'),
   num('temperature', 'system', 'Temperature', 300, 'K', 1, 'K', [250, 360, 1], 'assumed'),
@@ -47,10 +47,13 @@ export const SEED = [
   num('topUnits', 'cdac', 'First step', 32, 'units', 1, '1', [8, 64, 1], '29 Oct example array'),
   num('radix', 'cdac', 'Radix of the upper steps', 1.9, '', 1, '1', [1.5, 2, 0.01], 'Chang 2013'),
   num('halvings', 'cdac', 'Steps below one unit', 3, '', 1, '1', [0, 5, 1], '29 Oct example array'),
+  choice('balance', 'cdac', 'Charge balance sets CM from', 'half range: 2^N LSB', ['half range: 2^N LSB', 'total step charge: 2 Σw', 'slide: 4 VREF CDAC'], 'review, open item', 'With redundancy the steps add up to more than 2^N LSB; this choice sets which charge the memory cells must balance.'),
+  num('outBits', 'system', 'Combiner output bits', 10, 'bit', 1, 'bit', [10, 14, 1], 'review: 10 bits to the IQ demodulator'),
+  choice('calMethod', 'cdac', 'Weights in the LUT from', 'measured externally (ideal)', ['measured externally (ideal)', 'on-chip least squares, ramp', 'on-chip LMS'], 'not decided'),
   choice('halvingOn', 'cdac', 'Steps below one unit made by', 'charge halving', ['charge halving', 'small capacitors'], 'Malki 2014 / Chen 2018'),
 
   num('vos', 'comparator', 'Offset before calibration (example)', 1, 'mV', 1e-3, 'V', [0, 10, 0.1], 'example'),
-  num('vosCal', 'comparator', 'Offset left after calibration', 0.1, 'mV', 1e-3, 'V', [0, 2, 0.01], 'estimate'),
+  num('vosCal', 'comparator', 'Offset left after trimming the comparator', 0.1, 'mV', 1e-3, 'V', [0, 2, 0.01], 'estimate', 'offset calibration by trimming the input gates'),
   num('compNoise', 'comparator', 'Comparator input noise', 0.05, 'mV rms', 1e-3, 'V', [0, 0.5, 0.005], 'estimate'),
 
   num('tSample', 'timing', 'Sampling (read and share) time', 5, 'ns', 1e-9, 's', [0.5, 15, 0.1], 'illustrative'),

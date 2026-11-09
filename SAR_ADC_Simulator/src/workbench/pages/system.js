@@ -1,5 +1,7 @@
-// System page: the chain from the beamformer to the IQ demodulator, large and
-// clickable. Horizontal on wide screens, vertical on narrow ones.
+// System page: the chain from the beamformer to the IQ demodulator as large cards,
+// each with its key numbers, a small picture and whether its checks pass. A sample
+// moves along the chain. Below: what feeds the chain (reference, clocks, calibration).
+// Click a card to open its page.
 
 import { eng, num, esc, readouts, fq } from '../kit.js';
 
@@ -15,8 +17,7 @@ export const page = {
   update(store, ctx) {
     const el = document.getElementById('sysview');
     if (!el) return;
-    const wide = el.clientWidth > el.clientHeight * 1.15 && el.clientWidth > 700;
-    el.innerHTML = wide ? horizontal(ctx) : vertical(ctx);
+    el.innerHTML = chain(ctx);
     const side = document.getElementById('sysside');
     if (side) side.outerHTML = summaryPanel(ctx);
   },
@@ -43,112 +44,91 @@ function summaryPanel(ctx) {
     .join('')}</div><p class="cap">Total ${num(b.used, 0)} % of what ENOB ${num(P.enobAim, 1)} allows. Details on the <a href="#budget">Budget page</a>. Everything before the beamformer is left out.</p></div>`;
 }
 
-const T = (x, y, s, cls, a = 'start') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${a}">${s}</text>`;
 
-function blockBox(id, go, x, y, w, h, title, lines, extra = '') {
-  return `<g class="sb" data-go="${go}" tabindex="0" role="link" aria-label="${esc(title)}">
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" class="sbr"/>
-    ${T(x + 22, y + 46, esc(title), 'st')}
-    ${lines.map((l, i) => T(x + 22, y + 86 + i * 34, l, 'sl')).join('')}
-    ${extra}
-    ${go ? T(x + w - 20, y + h - 18, 'open ›', 'sgo', 'end') : ''}
-  </g>`;
+function stateOf(ctx, ids) {
+  const c = ctx.checks.filter((k) => ids.includes(k.id));
+  if (c.some((k) => k.state === 'bad')) return 'bad';
+  if (c.some((k) => k.state === 'warn')) return 'warn';
+  return 'ok';
 }
 
-function cellGrid(ctx, x, y, w, h) {
-  const { P, qd, tw } = ctx;
-  const N = P.channels;
-  const M = P.memCells;
-  const cw = w / M;
-  const ch = h / N;
+function card(go, title, lines, pic, state, sub = '') {
+  return `<div class="blk ${state}" data-go="${go}" tabindex="0" role="link" aria-label="${esc(title)}">
+    <div class="bh"><span class="dot"></span><b>${esc(title)}</b></div>
+    <div class="bp">${pic}</div>
+    <ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>${sub ? `<p class="bs">${sub}</p>` : ''}<span class="bgo">open ›</span></div>`;
+}
+
+const arrow = (label) => `<div class="arr"><span class="lane"><i></i></span><small>${label}</small></div>`;
+
+function cellsPic(ctx) {
+  const { P, qd, tw, halfSteps } = ctx;
+  const N = Math.min(P.channels, 16);
+  const M = Math.min(P.memCells, 24);
+  const cw = 120 / M;
+  const ch = 64 / N;
   let s = '';
   for (let n = 0; n < N; n++) {
     const back = Math.ceil(Math.round(qd[n] / (tw / 2)) / 2);
-    const c180 = ctx.halfSteps[n];
     for (let k = 0; k < M; k++) {
-      const read = k === (M - 1 - back + M) % M;
-      s += `<rect x="${x + k * cw}" y="${y + n * ch}" width="${cw - 1.5}" height="${ch - 1.5}" class="${read ? 'gr' : c180 ? 'g180' : 'g0'}"/>`;
+      const read = k === (M - 1 - back + M * 4) % M;
+      s += `<rect x="${k * cw}" y="${n * ch}" width="${cw - 0.8}" height="${ch - 0.8}" class="${read ? 'gr' : halfSteps[n] ? 'g180' : 'g0'}"/>`;
     }
   }
-  return s;
+  return `<svg viewBox="0 0 120 64" class="pic">${s}</svg>`;
 }
 
-function capRow(ctx, x, y, w) {
+function capsPic(ctx) {
   const { d } = ctx;
   const n = d.weights.length;
-  const cw = w / n;
   const mx = Math.max(...d.weights);
-  return d.weights
-    .map((wt, i) => {
-      const hh = 12 + 60 * Math.sqrt(wt / mx);
-      return `<rect x="${x + i * cw}" y="${y + 72 - hh}" width="${cw - 5}" height="${hh}" rx="3" class="${d.steps[i].kind === 'cap' ? 'cw' : 'ch'}"/>${T(x + i * cw + (cw - 5) / 2, y + 96, num(wt, 0), 'sw', 'middle')}`;
-    })
-    .join('');
+  const bw = 120 / n;
+  return `<svg viewBox="0 0 120 64" class="pic">${d.weights.map((w, i) => {
+    const h = 6 + 52 * Math.sqrt(w / mx);
+    return `<rect x="${i * bw + 1}" y="${58 - h}" width="${bw - 2}" height="${h}" rx="1.5" class="${d.steps[i].kind === 'cap' ? 'cw' : 'ch'}"/>`;
+  }).join('')}<line x1="0" x2="120" y1="60" y2="60" class="base"/></svg>`;
 }
 
-function bits(n, x, y, w) {
-  const bw = w / n;
-  return Array.from({ length: n }, (_, i) => `<rect x="${x + i * bw}" y="${y}" width="${bw - 4}" height="30" rx="4" class="bt"/>${T(x + i * bw + (bw - 4) / 2, y + 21, `d${i + 1}`, 'sbit', 'middle')}`).join('');
+function compPic() {
+  return '<svg viewBox="0 0 120 64" class="pic"><path d="M40 8 L40 56 L84 32 Z" class="csym"/><path d="M14 20 H40 M14 44 H40 M84 32 H108" class="cw2"/><text x="44" y="24" class="pt">+</text><text x="44" y="50" class="pt">−</text></svg>';
 }
 
-const wire = (d, cls) => `<path d="${d}" class="sw-n ${cls}"/>`;
-
-function horizontal(ctx) {
-  const { P, d } = ctx;
-  const W = 1760;
-  const H = 760;
-  const p = [];
-  p.push(`<svg viewBox="0 0 ${W} ${H}" class="sysvg" role="img" aria-label="Signal chain from beamformer to IQ demodulator">`);
-  p.push('<defs><marker id="sa" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" class="sah"/></marker></defs>');
-  // inputs
-  for (let n = 0; n < 16; n++) p.push(wire(`M20 ${190 + n * 22} H150`, 'an thin'));
-  p.push(T(20, 170, `${P.channels} channels in`, 'sl'));
-  // beamformer
-  p.push(blockBox('bf', 'beamformer', 160, 90, 420, 560, 'Beamformer', [`${P.channels} × ${P.memCells} memory cells`, `step ${eng(P.delayStep, 's')} (CLK, CLK 180°)`, `longest delay ${eng(ctx.tauMax, 's')}`], `<g>${cellGrid(ctx, 182, 250, 376, 310)}</g>${T(182, 592, 'violet: CLK 180° · green: read now', 'sxs')}`));
-  p.push(wire('M580 360 H630', 'an thick') );
-  // node + cdac
-  p.push(blockBox('cdac', 'sar', 630, 90, 430, 380, 'Charge sharing + CDAC', [`${d.decisions} decisions, 1 LSB = ${eng(d.qLsb, 'C')}`, `CDAC ${eng(d.cdac, 'F')}, ${d.units} units`, `memory cell ${eng(d.cm, 'F')}`], `<g>${capRow(ctx, 652, 280, 386)}</g>`));
-  p.push(blockBox('ref', 'sar', 630, 490, 430, 160, 'Reference', [`VREF ${eng(P.vref, 'V')}`, 'precharge per conversion']));
-  p.push(wire('M845 490 V470', 'ref thick'));
-  // comparator and logic
-  p.push(blockBox('cmp', 'timing', 1110, 90, 260, 220, 'Comparator', [`τ ${eng(ctx.tauC, 's')}`, `end LSB ${eng(d.qLsb / d.cNode[d.decisions - 1], 'V')}`], `<path d="M1300 190 L1300 250 L1345 220 Z" class="csym"/>`));
-  p.push(blockBox('logic', 'logic', 1110, 350, 260, 300, 'SAR logic', ['self-timed', `${d.decisions} steps`, `median ${eng(ctx.timing.median, 's')}`], `<path d="M1180 600 C1180 640, 1300 640, 1300 600" class="loop" marker-end="url(#sa)"/>`));
-  p.push(wire('M1060 200 H1110', 'an thick'));
-  p.push(wire('M1240 310 V350', 'dig thick'));
-  p.push(wire('M1110 520 H1090 V470', 'clk thick dashed'));
-  // digital out
-  p.push(blockBox('reg', 'logic', 1420, 90, 320, 200, 'Output register', [`${d.decisions} raw decisions`], `<g>${bits(Math.min(d.decisions, 14), 1442, 210, 276)}</g>`));
-  p.push(blockBox('comb', 'mismatch', 1420, 320, 320, 170, 'Combiner + LUT', [`Σ dᵢ wᵢ → ${P.bits} bit`, `ENOB ${num(ctx.budget.enob, 2)} (aim ${num(P.enobAim, 1)})`]));
-  p.push(blockBox('iq', 'iq', 1420, 520, 320, 130, 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}, low-pass, ↓${Math.round(P.iqDecim)}`]));
-  p.push(wire('M1370 470 H1395 V190 H1420', 'dig thick'));
-  p.push(wire('M1580 290 V320', 'dig thick'));
-  p.push(wire('M1580 490 V520', 'dig thick'));
-  // clocks
-  p.push(wire(`M160 700 H1740`, 'clk'));
-  p.push(wire(`M160 730 H1740`, 'clk'));
-  p.push(T(170, 692, `CLK ${num(P.fs / 1e6, 0)} MHz`, 'sxs clk-t'));
-  p.push(T(170, 722, `CLK 180°: ${eng(ctx.tw / 2, 's')} later`, 'sxs clk-t'));
-  p.push(wire('M370 700 V650', 'clk dashed'));
-  p.push(wire('M400 730 V650', 'clk dashed'));
-  p.push('</svg>');
-  return p.join('');
+function logicPic(ctx) {
+  const n = Math.min(ctx.d.decisions, 14);
+  const bw = 112 / n;
+  return `<svg viewBox="0 0 120 64" class="pic">${Array.from({ length: n }, (_, i) => `<rect x="${4 + i * bw}" y="22" width="${bw - 2}" height="20" rx="2" class="bt ${i < n / 2 ? 'on' : ''}"/>`).join('')}<path d="M10 52 C40 64, 80 64, 110 52" class="loop"/></svg>`;
 }
 
-function vertical(ctx) {
-  const { P, d } = ctx;
-  const W = 700;
-  const H = 1900;
-  const p = [`<svg viewBox="0 0 ${W} ${H}" class="sysvg" role="img" aria-label="Signal chain">`];
-  p.push(T(30, 40, `${P.channels} channels in ↓`, 'sl'));
-  p.push(blockBox('bf', 'beamformer', 20, 60, 660, 470, 'Beamformer', [`${P.channels} × ${P.memCells} memory cells`, `step ${eng(P.delayStep, 's')} (CLK, CLK 180°)`, `longest delay ${eng(ctx.tauMax, 's')}`], `<g>${cellGrid(ctx, 42, 230, 616, 260)}</g>`));
-  p.push(wire('M350 530 V570', 'an thick'));
-  p.push(blockBox('cdac', 'sar', 20, 570, 660, 330, 'Charge sharing + CDAC', [`${d.decisions} decisions`, `CDAC ${eng(d.cdac, 'F')}, ${d.units} units`, `memory cell ${eng(d.cm, 'F')}`], `<g>${capRow(ctx, 42, 760, 616)}</g>`));
-  p.push(blockBox('ref', 'sar', 20, 930, 660, 130, 'Reference', [`VREF ${eng(P.vref, 'V')}, charged once per conversion`]));
-  p.push(blockBox('cmp', 'timing', 20, 1090, 320, 200, 'Comparator', [`τ ${eng(ctx.tauC, 's')}`]));
-  p.push(blockBox('logic', 'logic', 360, 1090, 320, 200, 'SAR logic', ['self-timed', `${d.decisions} steps`]));
-  p.push(blockBox('reg', 'logic', 20, 1320, 660, 170, 'Output register', [`${d.decisions} raw decisions`], `<g>${bits(Math.min(d.decisions, 14), 42, 1430, 616)}</g>`));
-  p.push(blockBox('comb', 'mismatch', 20, 1520, 660, 150, 'Combiner + LUT', [`Σ dᵢ wᵢ → ${P.bits} bit`]));
-  p.push(blockBox('iq', 'iq', 20, 1700, 660, 130, 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}, low-pass, ↓${Math.round(P.iqDecim)}`]));
-  p.push('</svg>');
-  return p.join('');
+function lutPic(ctx) {
+  return `<svg viewBox="0 0 120 64" class="pic"><text x="8" y="24" class="pt">Σ d<tspan baseline-shift="sub" font-size="9">i</tspan> w<tspan baseline-shift="sub" font-size="9">i</tspan></text><rect x="64" y="8" width="48" height="48" rx="4" class="lut"/>${[0, 1, 2, 3].map((i) => `<line x1="68" x2="108" y1="${18 + i * 10}" y2="${18 + i * 10}" class="base"/>`).join('')}<text x="8" y="50" class="pt">${Math.round(ctx.P.outBits)} bit</text></svg>`;
+}
+
+function iqPic() {
+  return '<svg viewBox="0 0 120 64" class="pic"><path d="M4 56 H116" class="base"/><path d="M70 56 Q80 10 90 56" class="sp1"/><path d="M30 56 Q40 10 50 56" class="sp2"/><path d="M76 30 C64 20, 56 20, 46 28" class="mv"/></svg>';
+}
+
+function chain(ctx) {
+  const { P, d, budget: b } = ctx;
+  const lastLsb = d.qLsb / d.cNode[d.decisions - 1];
+  const comp = b.lines.find((l) => l.id === 'comp');
+  const main = [
+    card('beamformer', 'Beamformer', [`${P.channels} × ${P.memCells} memory cells`, `step ${eng(P.delayStep, 's')}`, `CM ${eng(d.cm, 'F')}`], cellsPic(ctx), stateOf(ctx, ['cells'])),
+    arrow('charge'),
+    card('sar', 'Charge sharing', [`${d.decisions} decisions`, `CDAC ${eng(d.cdac, 'F')}, ${num(d.units, 0)} units`, `1 LSB = ${eng(d.qLsb, 'C')}`], capsPic(ctx), stateOf(ctx, ['cover', 'tol', 'small'])),
+    arrow('V node'),
+    card('budget', 'Comparator', [`noise ${eng(P.compNoise, 'V')} rms`, `last LSB ${eng(lastLsb, 'V')}`, `${num(comp.share, 0)} % of the noise allowance`], compPic(), comp.ok ? 'ok' : 'warn'),
+    arrow('bit'),
+    card('logic', 'SAR logic', ['self-timed', `${d.decisions} raw decisions`, `${eng(ctx.timing.median, 's')} of ${eng(ctx.tw, 's')}`], logicPic(ctx), stateOf(ctx, ['time', 'dec'])),
+    arrow(`${d.decisions} bits`),
+    card('mismatch', 'Combiner + LUT', [`Σ dᵢ wᵢ → ${Math.round(P.outBits)} bit`, `weights: ${esc(String(P.calMethod).split(' (')[0])}`, `ENOB ${num(b.enob, 2)} (aim ${num(P.enobAim, 1)})`], lutPic(ctx), stateOf(ctx, ['enob'])),
+    arrow(`${Math.round(P.outBits)} bits`),
+    card('iq', 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}`, `low-pass, ↓ ${Math.round(P.iqDecim)}`, `${eng(P.fs / Math.round(P.iqDecim), 'S/s')} I and Q`], iqPic(), 'ok'),
+  ].join('');
+  const feed = [
+    `<div class="feed ref" data-go="sar"><b>Reference</b><span>VREF ${eng(P.vref, 'V')}, precharges the CDAC steps once per conversion</span><span class="to">→ CDAC</span></div>`,
+    `<div class="feed clk" data-go="timing"><b>Clocks</b><span>CLK ${num(P.fs / 1e6, 0)} MHz and CLK 180° (${eng(ctx.tw / 2, 's')} later) write the cells</span><span class="to">→ beamformer, SAR logic</span></div>`,
+    `<div class="feed cal" data-go="mismatch"><b>Calibration</b><span>weights into the LUT; comparator offset trimmed to ${eng(P.vosCal, 'V')}</span><span class="to">→ LUT, comparator</span></div>`,
+  ].join('');
+  return `<div class="chain">${main}</div><div class="feeds">${feed}</div>
+    <p class="cap syscap">From the beamformer onward; everything before it is left out. A dot on a card is green when its checks pass, orange when one asks for a look, red when one fails. Click a card to open its page.</p>`;
 }

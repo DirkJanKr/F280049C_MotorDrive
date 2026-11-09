@@ -1,23 +1,38 @@
-// Charge-sharing CDAC sizing from the charge balance (review slide 15):
-//   N x Vin,max x CM = 4 x VREF x C
-// One unit step delivers the differential charge q_unit = 2 x VREF x Cu (assumption,
-// consistent with slides 11, 15 and 36); one LSB is q_unit / (LSB per unit).
+// Charge-sharing CDAC sizing from the charge balance (review slide 15).
+// One unit step delivers the differential charge q unit = 2 VREF Cu (assumption,
+// consistent with slides 11, 15 and 36); one step LSB is q unit / (LSB per unit).
 
 import { buildSteps, areaUnits, tolerances, coverage } from './steps.js';
 
+/**
+ * Charge balance, P.balance:
+ *  'range' (default): the input full scale equals 2^N step LSB: N CM V FS = 2^N Q step
+ *  'total': the input full scale equals the total step charge, both directions: N CM V FS = 2 Σw Q step
+ *  'slide': as on the review slides, with the total CDAC capacitance: N CM V FS = 4 VREF C DAC
+ * One input LSB is Q LSB = N CM V FS / 2^N; weights are expressed in input LSB.
+ */
+export function balanceOf(P) {
+  const b = String(P.balance || 'range');
+  return b.startsWith('total') ? 'total' : b.startsWith('slide') ? 'slide' : 'range';
+}
+
 export function designCdac(P, cells = 22, givenSteps = null) {
   const steps = givenSteps || buildSteps(P);
-  const weights = steps.map((s) => s.units * P.lsbPerUnit);
+  const stepW = steps.map((s) => s.units * P.lsbPerUnit);
   const codes = 2 ** P.bits;
   const units = areaUnits(steps, P.halvings);
   const cdac = units * P.cu;
   const qUnit = 2 * P.vref * P.cu;
-  const qLsb = qUnit / P.lsbPerUnit;
+  const qStep = qUnit / P.lsbPerUnit;
+  const sumW = stepW.reduce((a, w) => a + w, 0);
+  const mode = balanceOf(P);
+  const cm = mode === 'total' ? (2 * sumW * qStep) / (P.channels * P.fullScale) : mode === 'slide' ? (4 * P.vref * cdac) / (P.channels * P.fullScale) : (codes * qStep) / (P.channels * P.fullScale);
+  const qLsb = (P.channels * cm * P.fullScale) / codes;
+  const weights = stepW.map((w) => (w * qStep) / qLsb);
   const qFs = codes * qLsb;
-  // Half-range charge balance: input charge over the full scale equals 1024 LSB of step charge.
-  const cm = qFs / (P.channels * P.fullScale);
-  // As on slide 25/26: charge balance with the total CDAC (redundancy and halving caps included).
+  const cmRange = (codes * qStep) / (P.channels * P.fullScale);
   const cmSlide = (4 * P.vref * cdac) / (P.channels * P.fullScale);
+  const cmTotal = (2 * sumW * qStep) / (P.channels * P.fullScale);
   // Node capacitance before each decision: memory cells, then 2 x C of every shared step.
   const cAdd = steps.map((s) => 2 * (s.kind === 'cap' || s.kind === 'small' ? s.units : 1) * P.cu);
   const cNode = [P.channels * cm];
@@ -25,7 +40,7 @@ export function designCdac(P, cells = 22, givenSteps = null) {
   const memCaps = cells * P.channels * 2;
   const plates = (cdac + memCaps * cm) / P.density;
   return {
-    steps, weights, decisions: steps.length + 1, codes, units, cdac, qUnit, qLsb, qFs, cm, cmSlide, cAdd, cNode,
+    steps, weights, stepW, decisions: steps.length + 1, codes, units, cdac, qUnit, qStep, qLsb, qFs, cm, cmRange, cmSlide, cmTotal, balance: mode, cAdd, cNode,
     tol: tolerances(weights), cover: coverage(weights, P.bits), memCaps, plateArea: plates, area: plates * P.routing,
   };
 }

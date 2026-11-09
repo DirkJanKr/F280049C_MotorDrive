@@ -9,14 +9,17 @@ function fixFor(line, ctx) {
   const a = line.maxAlone;
   const lastC = d.cNode[d.decisions - 1];
   switch (line.id) {
-    case 'q':
-      return `Quantisation alone uses ${num(line.share, 0)} % of what ENOB ${num(P.enobAim, 1)} allows. Only more output bits or a lower aim changes this.`;
+    case 'sar':
+    case 'quant':
+      return `The levels of the SAR are ${num(Math.min(...d.weights), 2)} LSB apart at the finest; a smaller smallest step (one more charge-halving step) makes them finer, and more combiner output bits keep that resolution.`;
+    case 'round':
+      return `Keep more bits after the combiner: rounding to ${Math.round(P.outBits)} bits throws away what the calibrated weights resolve. ${Math.round(P.outBits) + 2} bits removes most of this line at no cost in decisions.`;
+    case 'lut':
+      return 'Measure the weights more accurately: longer averaging, or measure them externally and load the LUT.';
     case 'comp':
       return a > 0
         ? `Comparator noise below ${eng(a / lastC, 'V')} rms (now ${eng(P.compNoise, 'V')}), or a smaller node capacitance at the last decision (now ${eng(lastC, 'F')}): the same voltage noise is less charge on a smaller node.`
         : 'Even without comparator noise the other lines exceed the allowance.';
-    case 'cal':
-      return `Mostly rounding: the smallest step is ${num(Math.min(...ctx.d.weights), 2)} LSB, so the calibrated levels are no finer than the output LSB. One more charge-halving step (smallest step ½ LSB) or a combiner output with more bits removes most of it; see the Mismatch page.`;
     case 'samp':
       return `This charge is √(2kT·N·CM)${budget.arrayGain ? '' : ' × √N (beamformer gain is off)'}. Relative to the signal it shrinks with a larger CM, which follows from VREF and Cu through the charge balance.`;
     case 'pre':
@@ -32,9 +35,9 @@ function enobCheck(ctx) {
   const { P, budget: b } = ctx;
   const sorted = b.lines.slice().sort((x, y) => y.share - x.share);
   const over = sorted.filter((l) => !l.ok);
-  const top = sorted.find((l) => l.id !== 'q');
-  const q = b.lines.find((l) => l.id === 'q');
-  const why = `${b.ok ? '' : 'Too much noise. '}The noise adds up to ${fq(ctx, b.total, true)} (${num(b.total / ctx.d.qLsb, 3)} LSB), ${num(b.used, 0)} % of the ${fq(ctx, b.allowed, true)} that ENOB ${num(P.enobAim, 1)} allows. Quantisation of the ${P.bits}-bit output takes ${num(q.share, 0)} % by itself; the largest other line is ${top.label.toLowerCase()} with ${num(top.share, 0)} %.${over.length ? ` Over its own allocation: ${over.map((l) => `${l.label.toLowerCase()} (${num(l.share, 1)} % of ${num(l.alloc, 1)} %)`).join('; ')}.` : ''}`;
+  const top = sorted.find((l) => !l.fixed) || sorted[0];
+  const q = b.lines.find((l) => l.fixed);
+  const why = `${b.ok ? '' : 'Too much noise. '}The noise adds up to ${fq(ctx, b.total, true)} (${num(b.total / ctx.d.qLsb, 3)} LSB), ${num(b.used, 0)} % of the ${fq(ctx, b.allowed, true)} that ENOB ${num(P.enobAim, 1)} allows. The quantisation by the SAR levels takes ${num(q.share, 0)} % by itself; the largest other line is ${top.label.toLowerCase()} with ${num(top.share, 0)} %.${over.length ? ` Over its own allocation: ${over.map((l) => `${l.label.toLowerCase()} (${num(l.share, 1)} % of ${num(l.alloc, 1)} %)`).join('; ')}.` : ''}`;
   return { id: 'enob', label: 'ENOB of the converter', state: b.ok ? 'ok' : 'bad', value: `${num(b.enob, 2)} bit`, limit: `aim ${num(P.enobAim, 1)}`, why, fix: b.ok ? '' : fixFor(top, ctx), go: 'budget', f: 'enob' };
 }
 

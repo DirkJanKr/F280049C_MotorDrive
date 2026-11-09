@@ -19,8 +19,11 @@ function settings(ctx) {
   const B = P.fbw * P.f0;
   const fc = P.iqCut ?? B / 2;
   const ftest = P.iqTest ?? P.f0 + 0.2122 * B;
-  const noise = ctx.budget.lines.filter((l) => l.id !== 'q').reduce((a, l) => a + l.sigma ** 2, 0);
-  return { fs: P.fs, f0: P.f0, B, fc, ftest, K: Math.round(P.iqTaps) | 1, D: Math.max(1, Math.round(P.iqDecim)), codes: ctx.d.codes, noiseLsb: Math.sqrt(noise) / ctx.d.qLsb, ampDbfs: -1, bits: P.bits };
+  // the chain rounds to the output bits itself, so take the ideal rounding out of the budget total
+  const fb = Math.max(0, Math.round(P.outBits - P.bits));
+  const lsbOut = ctx.d.qLsb * 2 ** -fb;
+  const noise = Math.max(ctx.budget.total ** 2 - lsbOut ** 2 / 12, 0);
+  return { fs: P.fs, f0: P.f0, B, fc, ftest, K: Math.round(P.iqTaps) | 1, D: Math.max(1, Math.round(P.iqDecim)), codes: ctx.d.codes * 2 ** fb, noiseLsb: (Math.sqrt(noise) / ctx.d.qLsb) * 2 ** fb, ampDbfs: -1, bits: Math.round(P.outBits) };
 }
 
 export const page = {

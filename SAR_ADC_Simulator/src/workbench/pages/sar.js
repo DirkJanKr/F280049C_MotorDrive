@@ -31,12 +31,12 @@ export const page = {
   main(store) {
     const m = store.ui.sarMode || 'diff';
     return `<div id="sarFails"></div><div id="wstrip" class="wstrip"></div><div id="sarErr"></div><div id="sarro"></div>
-      <section class="card wide"><header><h3>One conversion as buckets of charge</h3><span class="ctl">
+      <section class="card wide"><header><h3>One conversion, step by step</h3><span class="ctl">
         <span class="seg sm2"><button class="${m === 'diff' ? 'on' : ''}" data-sarmode="diff">differential</button><button class="${m === 'single' ? 'on' : ''}" data-sarmode="single">single-ended</button></span>
         <button class="mini" id="sBack">◀ step</button><button class="mini primary" id="sPlay">▶ play</button><button class="mini" id="sNext">step ▶</button><button class="mini" id="sReset">⏮</button>
         <label class="mini-l">input <input type="range" id="sVin" step="0.001"/> <output id="sVinO"></output></label></span></header>
         <div id="sarView"></div><p class="cap" id="sarSay"></p>
-        <p class="cap">Width of a bucket is capacitance, height of the water above the Vcm line is voltage, so the coloured area is charge. When a step joins, the bucket gets wider and the charge stays: the level must drop. Cyan: charge above Vcm, pink: below.</p></section>
+        <p class="cap">Left: the charge of the memory cells on the node. Each CDAC step is a capacitor precharged to VREF; after each decision it is connected with the polarity that pulls the charge towards zero (green +, magenta −). In the differential view one capacitor floats between node + and node − (dotted), so the two nodes get opposite charges. The charge is kept; the node capacitance grows with every step, so later steps see a smaller voltage per LSB.</p></section>
       <section class="card wide"><header><h3>What each decision needs from its tolerance</h3></header><div class="cbody" id="sTol"></div><p class="cap" id="sTol-cap"></p></section>
       ${optimizerCard(store)}
       <div class="grid2">${card('sWalk', 'The search: comparison level per decision')}${card('sTable', 'Charges per decision')}</div>

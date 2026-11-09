@@ -24,6 +24,9 @@ function decimals(step) {
 
 /** Slider plus number field for one value; both stay in sync. Empty field = not set. */
 export function knob(v, used = new Set()) {
+  if (v.kind === 'choice' && v.options.join('').length > 34) {
+    return `<div class="knob"><div class="kl kcol"><label for="c-${v.id}">${termify(v.label, used)}</label><select id="c-${v.id}" class="sel" data-choicesel="${v.id}">${v.options.map((o) => `<option ${o === v.value ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>${v.source || v.note ? `<div class="ks">${esc([v.source, v.note].filter(Boolean).join(' · '))}</div>` : ''}</div>`;
+  }
   if (v.kind === 'choice') {
     return `<div class="knob"><div class="kl">${termify(v.label, used)}</div><div class="seg">${v.options
       .map((o) => `<button class="${o === v.value ? 'on' : ''}" data-choice="${v.id}" data-opt="${esc(o)}">${esc(o)}</button>`)

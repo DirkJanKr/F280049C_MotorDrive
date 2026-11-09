@@ -107,20 +107,23 @@ Imported Cadence or PDK data goes in `local-data/`, which git ignores. Never com
 
 Pages, each filling the screen, from the beamformer onward (nothing before the beamformer):
 
-* System: the chain from beamformer to IQ demodulator, large and clickable; each block opens its page.
-  The side panel lists every check that does not pass.
-* Budget: the noise of the converter on the summing node, shown in fC or as the voltage it means at
-  the input (header button). Q in = N CM V in and one LSB = 2 VREF Cu / (LSB per unit). Lines:
-  quantisation; calibration residual (simulated, averaged over 4 chips); comparator noise
-  C node,last · vn; memory-cell kT/C √(N · 2kT CM); CDAC precharge √(4kT CDAC + n½ · 4kT Cu/2)
-  (each step is one floating capacitor, so its plate noise reaches both nodes with opposite sign);
-  jitter. Shares of the allowed noise power, an editable allocation, a power bar, ENOB against one
-  value, and every check with why it fails and what fixes it. A button switches the
-  10 log10 N = 12 dB beamformer gain on the channel-independent cell noise on or off.
+* System: the chain from the beamformer to the IQ demodulator as cards with their key numbers and a
+  status dot, a sample moving along the chain, and what feeds it (reference, clocks, calibration).
+* Budget: the noise of the converter on the summing node, in fC or as the voltage at the input.
+  What is left after calibration is simulated (4 chips) and split into its parts, or joined in one
+  line: quantisation by the SAR levels (smallest step), rounding to the combiner output bits, and the
+  LUT weight error of the chosen calibration (measured externally = exact, on-chip least squares,
+  on-chip LMS). Plus comparator noise C node,last · vn, memory-cell kT/C √(N · 2kT CM), CDAC precharge
+  √(4kT CDAC + n½ · 4kT Cu/2), jitter. Explanations of comparator noise (S-curve) and of offset and
+  trimming; every check with why and fix; the 12 dB beamformer gain switch.
+* Optimizer: runs the design search: for Cu from 10 to 150 fF and a smallest step of 1 or ½ LSB, the
+  weights are built from what each step needs, simulated, and scored for 10, 11 and 12 output bits.
+  It gives the smallest CM that meets the ENOB aim, with decisions and (illustrative) conversion time,
+  and applies it in one click.
 * Beamformer: the memory cells as they sit on the chip (write pointer, CLK 180° writes, read cells),
   the charge each cell holds, the 16 read charges added on the node, and the node charge with and
   without delays; delays, cells needed, beam pattern, write timing.
-* SAR ADC: weight designer; a conversion as buckets of charge, differential or single-ended; per
+* SAR ADC: weight designer; a conversion step by step as the circuit, differential or single-ended; per
   decision what the tolerance must cover (DAC mismatch 3σ, comparator offset after calibration,
   comparator noise) against what it has; an optimizer that builds the weights from the smallest
   step up, giving every step the largest whole number of unit capacitors whose tolerance still
@@ -136,6 +139,9 @@ Pages, each filling the screen, from the beamformer onward (nothing before the b
   output, mixing with the NCO, FIR low-pass, decimation), the SNR after every step and the gain
   1 / (2 Σ h²) of the filter. Filter and decimation values are illustrative.
 * Values: every value editable, design versions (browser and JSON file), LaTeX and MATLAB export.
+
+Charge balance (CDAC and reference values): half range (N CM VFS = 2^N Q step), total step charge
+(N CM VFS = 2 Σw Q step, larger CM with redundancy) or the review slide formula (N CM VFS = 4 VREF CDAC).
 
 Themes: soft (default), dark and light.
 

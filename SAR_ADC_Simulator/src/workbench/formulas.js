@@ -17,8 +17,8 @@ function line(name, ctx) {
   return ctx.budget.lines.find((l) => l.id === name);
 }
 
-function budgetRow(ctx, id) {
-  const l = line(id, ctx);
+function budgetRow(c, id) {
+  const l = line(id, c);
   const other = c.ui && c.ui.qUnit === 'V' ? eng(l.sigma, 'C') : `${eng(l.sigma / c.d.cNode[0], 'V')} at the input`;
   return `${fq(c, l.sigma, true)} = ${num(l.lsb, 3)} LSB (${other}); ${num(l.share, 1)} % of the allowed noise power`;
 }
@@ -65,7 +65,7 @@ export const FORMULAS = {
     title: 'Charge noise allowed for the ENOB aim',
     rows: [[`${v('σ', 'Q,max')} = ${frac(`${v('Q', 'FS')} / ${paren(`2${sqrt('2')}`)}`, `${sup('10', paren(`6.02 ${t('ENOB')} + 1.76`) + ' / 20')}`)}`, frac(`${eng(c.d.qFs, 'C')} / 2.83`, sup('10', `${num((6.02 * c.P.enobAim + 1.76) / 20, 3)}`))]],
     res: `${fq(c, c.budget.allowed, true)} = ${num(c.budget.allowed / c.d.qLsb, 3)} LSB`,
-    note: `For a full-scale sine. Quantisation alone is ${QL} / √12 = 0.289 LSB, so it uses ${num(line('q', c).share, 0)} % of this.`,
+    note: `For a full-scale sine. Ideal ${c.P.bits}-bit quantisation alone is ${QL} / √12 = 0.289 LSB, half of this power at ENOB 9.5.`,
   }),
   enob: (c) => ({
     title: 'ENOB from the charge budget',
@@ -77,7 +77,10 @@ export const FORMULAS = {
     res: `${num(c.budget.enob, 2)} bit (aim ${num(c.P.enobAim, 1)})`,
     note: 'Converter only, from the beamformer onward. Charges add in power, never in rms.',
   }),
-  'b-q': (c) => ({ title: 'Quantisation noise as charge', rows: [[`${v('σ', 'Q,q')} = ${frac(QL, sqrt('12'))}`, frac(eng(c.d.qLsb, 'C'), '3.46')]], res: budgetRow(c, 'q'), note: `Uniform rounding error of the ${c.P.bits}-bit output.` }),
+  'b-sar': (c) => ({ title: 'Quantisation by the SAR levels', rows: [[`${v('σ', 'sar')} ≈ ${frac(v('w', 'min'), sqrt('12'))}`, frac(`${num(Math.min(...c.d.weights), 3)} LSB`, '3.46')]], res: budgetRow(c, 'sar'), note: `The levels the SAR can make are spaced by its smallest step, ${num(Math.min(...c.d.weights), 3)} LSB; with mismatch they are not exactly uniform. Simulated on ${c.sim && c.res ? c.res.enob.length : 4} chips with perfect weights and no rounding (the formula is the estimate for uniform levels).` }),
+  'b-round': (c) => ({ title: `Rounding to ${Math.round(c.P.outBits)} output bits`, rows: [[`${sup(v('σ', 'round'), 2)} = ${sup(v('σ', 'rounded'), 2)} − ${sup(v('σ', 'sar'), 2)}`, `≈ ${frac(`${sup(v('LSB', 'out'), 2)}`, '12')}, ${v('LSB', 'out')} = ${num(2 ** -Math.max(0, Math.round(c.P.outBits - c.P.bits)), 3)} LSB`]], res: budgetRow(c, 'round'), note: 'With mismatch the calibrated levels lie between output codes. Rounding them to the output bits adds a second quantisation on top of the first. With the output LSB equal to the smallest step this almost doubles the quantisation power; two more output bits remove most of it. Simulated: same chips and weights, rounded minus not rounded.' }),
+  'b-lut': (c) => ({ title: 'Weight error of the LUT', rows: [[`${sup(v('σ', 'LUT'), 2)} = ${sup(v('σ', 'with LUT weights'), 2)} − ${sup(v('σ', 'with perfect weights'), 2)}`, `${c.P.calMethod}`]], res: budgetRow(c, 'lut'), note: 'How much worse the chosen calibration is than perfectly known weights. Measured externally (LMS or least squares on a laptop with long averaging) the LUT is practically exact, so this line is zero. On-chip least squares on a ramp with 2 samples per code, or on-chip LMS with comparator noise, leave a small error.' }),
+  'b-quant': (c) => (!line('quant', c) ? null : { title: 'Quantisation, rounding and LUT error together', rows: [[`${v('σ')} = ${sqrt(`${sup(v('σ', 'sar'), 2)} + ${sup(v('σ', 'round'), 2)} + ${sup(v('σ', 'LUT'), 2)}`)}`, `${num(line('quant', c).lsb, 3)} LSB`]], res: budgetRow(c, 'quant'), note: 'Switch the split on in the budget to see the three parts.' }),
   'b-samp': (c) => ({
     title: 'kT/C of the memory cells as charge',
     rows: c.budget.arrayGain
@@ -105,10 +108,6 @@ export const FORMULAS = {
   'b-jit': (c) => {
     const f = c.P.f0 * (1 + c.P.fbw / 2);
     return { title: 'Sampling clock jitter as charge', rows: [[`${v('σ', 'Q,j')} = ${NCH} ${CM} · 2π ${v('f', 'max')} ${v('σ', 't')} ${v('V', 'rms')}`, `${eng(c.P.channels * c.d.cm, 'F')} × 2π × ${eng(f, 'Hz')} × ${eng(c.P.jitter, 's')} × ${eng(c.vrms, 'V')}`]], res: budgetRow(c, 'jit'), note: 'A full-scale sine at the band edge f0 (1 + bw / 2) changes fastest; a timing error σt gives a voltage error 2π f σt V rms. Counted as if all channels jitter together (worst case: the 16 errors add like the signal).' };
-  },
-  'b-cal': (c) => {
-    const e = c.sim.res.map((x) => x.enob);
-    return { title: 'Mismatch, offset and rounding after calibration', rows: [[`${v('σ', 'Q,cal')} = ${NCH} ${CM} ${sqrt(`${t('mean')} ${sup(v('σ', 'V,sim'), 2)} − ${sup(v('σ', 'V,q'), 2)}`)}`, `${eng(c.d.cNode[0], 'F')} × ${eng(line('cal', c).sigma / c.d.cNode[0], 'V')}`]], res: budgetRow(c, 'cal'), note: `Simulated on ${e.length} chips (seeds from ${c.P.seed}) without comparator noise; ENOB after calibration ${num(Math.min(...e), 2)} to ${num(Math.max(...e), 2)}. The error of each chip minus ideal quantisation, averaged in power. Most of it is rounding: with the smallest step at ${num(Math.min(...c.d.weights), 2)} LSB, the calibrated levels are not finer than the output LSB, so rounding to ${c.P.bits} bits makes some codes 0 or 2 LSB wide.` };
   },
   gain: (c) => ({ title: 'Beamformer gain on channel noise', rows: [[`${v('G')} = 10 log<sub>10</sub> ${NCH}`, `10 log<sub>10</sub> ${c.P.channels}`]], res: `${num(c.budget.arrayGainDb, 2)} dB`, note: 'Signal from N aligned channels adds as N, independent noise as √N. Only noise that is independent per channel gets this; here that is the kT/C of the memory cells.' }),
   tol: (c) => ({ title: 'Tolerance of decision 1', rows: [[`${v('t', 'i')} = ${t('Σ')}<sub>j&gt;i</sub> ${v('w', 'j')} + 1 − ${v('w', 'i')}`, `${num(c.d.weights.slice(1).reduce((a, w) => a + w, 0), 2)} + 1 − ${num(c.d.weights[0], 2)}`]], res: `${num(c.d.tol[0], 2)} LSB`, note: 'How far the level after this decision may be wrong and still be reached by the later steps.' }),
@@ -145,7 +144,13 @@ export const FORMULAS = {
 export function formulaHtml(id, ctx) {
   const f = FORMULAS[id];
   if (!f) return null;
-  const e = f(ctx);
+  let e;
+  try {
+    e = f(ctx);
+  } catch {
+    return null;
+  }
+  if (!e) return null;
   return `<div class="pop-h"><b>${e.title}</b><button class="pop-x" aria-label="close">×</button></div>
     ${e.rows.map(([sym, numeric]) => `<div class="eqline">${sym}</div><div class="eqnum">= ${numeric}</div>`).join('')}
     <div class="eqres">= ${e.res}</div>${e.note ? `<p class="pop-n">${e.note}</p>` : ''}`;

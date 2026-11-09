@@ -1,22 +1,22 @@
 /* Zaan workbench. Pages: System, Budget, Beamformer, SAR ADC, Mismatch and area, Timing, SAR logic, Values.
    Header with page links and toggles; optional summary bar; optional side panel with the knobs of the page.
    Dark instrument look by default, light theme for printing. One colour per signal class:
-   analog cyan, reference amber, clock and control violet, digital green, calibration pink. */
+   analog blue, reference teal, clock and control violet, digital green, calibration magenta, warnings orange. */
 :root {
-  --bg: #090e13; --panel: #0e151c; --panel2: #131c25; --ink: #dde7f1; --muted: #8597a9; --line: #223142; --grid: #18232e; --border: #2b3b4c;
-  --accent: #3fd0ff; --an: #3fd0ff; --ref: #ffb547; --clk: #ae92ff; --dig: #52e08f; --cal: #ff70b8; --bad: #ff6161; --ok: #52e08f; --warn: #ffb547;
-  --glow: drop-shadow(0 0 4px color-mix(in srgb, currentColor 55%, transparent));
+  --bg: #0d131a; --panel: #121a23; --panel2: #18222d; --ink: #dfe7ef; --muted: #8b9aab; --line: #263342; --grid: #1b2631; --border: #2f3e4f;
+  --accent: #5b9dff; --an: #5b9dff; --ref: #33c3b1; --clk: #a88bff; --dig: #4fd18a; --cal: #ff6fb1; --bad: #ff6464; --ok: #4fd18a; --warn: #ff9b52;
+  --glow: none;
   --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace; --math: "STIX Two Text", Cambria, serif;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
-  --bg: #f2f5f8; --panel: #ffffff; --panel2: #f6f8fb; --ink: #142231; --muted: #586a7b; --line: #d4dbe4; --grid: #e6ebf0; --border: #c6d0db;
-  --accent: #0a74a6; --an: #0a74a6; --ref: #b46b00; --clk: #6a4bc4; --dig: #1b8a4b; --cal: #c2357c; --bad: #c62828; --ok: #1b8a4b; --warn: #b46b00;
+  --bg: #f4f6f9; --panel: #ffffff; --panel2: #f7f9fb; --ink: #17212c; --muted: #5a6675; --line: #d8dee6; --grid: #e8ecf1; --border: #c9d1db;
+  --accent: #1f5fcf; --an: #1f5fcf; --ref: #0b7f77; --clk: #6a46c4; --dig: #1b8346; --cal: #b32c7a; --bad: #c62828; --ok: #1b8346; --warn: #c75a12;
   --glow: none; color-scheme: light;
 }
 :root[data-theme="soft"] {
-  --bg: #d3d9df; --panel: #e2e7eb; --panel2: #dae0e5; --ink: #1d2933; --muted: #4c5c6b; --line: #b8c2cb; --grid: #ccd3da; --border: #a9b5c0;
-  --accent: #0b6890; --an: #0b6890; --ref: #935600; --clk: #5a3ead; --dig: #17744a; --cal: #a8296a; --bad: #b0281f; --ok: #17744a; --warn: #935600;
+  --bg: #e4e8ed; --panel: #f1f3f6; --panel2: #e9edf1; --ink: #1e2935; --muted: #566373; --line: #cdd4dc; --grid: #dce1e7; --border: #bfc8d2;
+  --accent: #2c66cf; --an: #2c66cf; --ref: #0d877e; --clk: #7550c9; --dig: #21894b; --cal: #b8367f; --bad: #c9383a; --ok: #21894b; --warn: #c9641c;
   --glow: none; color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -124,34 +124,38 @@ p.cap:empty { display: none; }
 .k { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid; margin-left: 8px; }
 
 /* system page */
-.sysview { height: calc(100vh - 150px); min-height: 520px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 32px 32px; padding: 10px; }
-.no-top .sysview { height: calc(100vh - 100px); }
-.sysvg { width: 100%; height: 100%; display: block; }
-.sysvg text { fill: var(--ink); font-family: var(--sans); }
-.sysvg .sb { cursor: pointer; }
-.sysvg .sbr { fill: color-mix(in srgb, var(--panel) 92%, transparent); stroke: var(--border); stroke-width: 2.5; transition: stroke 0.15s; }
-.sysvg .sb:hover .sbr, .sysvg .sb:focus .sbr { stroke: var(--an); }
-.sysvg .st { font-size: 34px; font-weight: 600; }
-.sysvg .sl { font: 23px var(--mono); fill: var(--muted); }
-.sysvg .sgo { font-size: 20px; fill: var(--an); }
-.sysvg .sxs { font-size: 18px; fill: var(--muted); }
-.sysvg .g0 { fill: color-mix(in srgb, var(--an) 22%, transparent); }
-.sysvg .g180 { fill: color-mix(in srgb, var(--clk) 30%, transparent); }
-.sysvg .gr { fill: var(--dig); }
-.sysvg .cw { fill: color-mix(in srgb, var(--an) 55%, transparent); stroke: var(--an); }
-.sysvg .ch { fill: color-mix(in srgb, var(--clk) 55%, transparent); stroke: var(--clk); }
-.sysvg .sw { font: 17px var(--mono); fill: var(--muted); }
-.sysvg .bt { fill: var(--panel2); stroke: var(--dig); }
-.sysvg .sbit { font: 14px var(--mono); fill: var(--muted); }
-.sysvg .csym { fill: none; stroke: var(--ink); stroke-width: 3; }
-.sysvg .loop { fill: none; stroke: var(--clk); stroke-width: 3.5; }
-.sysvg .sah { fill: var(--clk); }
-.sysvg .clk-t { fill: var(--clk); }
-.sw-n { fill: none; stroke-width: 3; stroke-dasharray: 14 10; animation: flow 1.6s linear infinite; filter: var(--glow); }
-.sw-n.an { stroke: var(--an); color: var(--an); } .sw-n.ref { stroke: var(--ref); color: var(--ref); } .sw-n.clk { stroke: var(--clk); color: var(--clk); } .sw-n.dig { stroke: var(--dig); color: var(--dig); }
-.sw-n.thick { stroke-width: 6; } .sw-n.thin { stroke-width: 2; }
-.sw-n.dashed { stroke-dasharray: 6 8; }
-@keyframes flow { to { stroke-dashoffset: -48; } }
+.sysview { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 22px 18px; }
+.chain { display: flex; align-items: stretch; gap: 0; }
+.blk { flex: 1 1 0; min-width: 0; background: var(--panel); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px 30px; position: relative; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+.blk:hover, .blk:focus-visible { border-color: var(--an); transform: translateY(-2px); }
+.blk .bh { display: flex; align-items: center; gap: 8px; font-size: 15px; line-height: 1.25; min-height: 38px; }
+.blk .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); flex: none; }
+.blk.warn .dot { background: var(--warn); } .blk.bad .dot { background: var(--bad); } .blk.bad { border-color: var(--bad); }
+.blk .bp { margin: 10px 0 6px; }
+.blk ul { list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 1.5; color: var(--muted); } .blk li { margin-bottom: 2px; }
+.blk .bgo { position: absolute; right: 12px; bottom: 8px; font-size: 12px; color: var(--an); }
+.pic { width: 100%; height: auto; display: block; }
+.pic .g0 { fill: color-mix(in srgb, var(--an) 18%, transparent); } .pic .g180 { fill: color-mix(in srgb, var(--clk) 30%, transparent); } .pic .gr { fill: var(--dig); }
+.pic .cw { fill: color-mix(in srgb, var(--an) 50%, transparent); stroke: var(--an); stroke-width: 0.8; }
+.pic .ch { fill: color-mix(in srgb, var(--clk) 45%, transparent); stroke: var(--clk); stroke-width: 0.8; }
+.pic .base { stroke: var(--border); stroke-width: 1; }
+.pic .csym { fill: var(--panel2); stroke: var(--ink); stroke-width: 2; } .pic .cw2 { stroke: var(--an); stroke-width: 2; fill: none; }
+.pic .pt { font: 13px var(--mono); fill: var(--ink); }
+.pic .bt { fill: var(--panel2); stroke: var(--dig); stroke-width: 1; } .pic .bt.on { fill: color-mix(in srgb, var(--dig) 40%, transparent); }
+.pic .loop { fill: none; stroke: var(--clk); stroke-width: 2; }
+.pic .lut { fill: var(--panel2); stroke: var(--cal); stroke-width: 1.5; }
+.pic .sp1 { fill: color-mix(in srgb, var(--an) 25%, transparent); stroke: var(--an); stroke-width: 1.5; } .pic .sp2 { fill: color-mix(in srgb, var(--dig) 25%, transparent); stroke: var(--dig); stroke-width: 1.5; }
+.pic .mv { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.arr { flex: 0 0 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; }
+.arr small { font-size: 10.5px; color: var(--muted); text-align: center; line-height: 1.2; }
+.arr .lane { width: 100%; height: 4px; background: var(--line); border-radius: 2px; position: relative; overflow: hidden; }
+.arr .lane i { position: absolute; top: 0; left: -30%; width: 30%; height: 100%; background: var(--an); border-radius: 2px; animation: lane 1.4s linear infinite; }
+@keyframes lane { to { left: 100%; } }
+.feeds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.feed { background: var(--panel2); border: 1px solid var(--line); border-left: 4px solid var(--ref); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; cursor: pointer; }
+.feed.clk { border-left-color: var(--clk); } .feed.cal { border-left-color: var(--cal); }
+.feed span { color: var(--muted); } .feed .to { font: 12px var(--mono); color: var(--ink); }
+.syscap { margin-top: 12px; }
 
 /* small timing, area, block svgs */
 .tsvg { width: 100%; height: auto; display: block; }
@@ -320,16 +324,33 @@ input.alloc { width: 58px; background: var(--bg); border: 1px solid var(--line);
 /* optimizer inputs, IQ page, LMS diagram */
 .numin { width: 56px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; font: 12.5px var(--mono); color: var(--an); }
 .wlist { font: 12.5px var(--mono); margin: 0 0 8px; line-height: 1.6; } .wlist .dim { color: var(--muted); }
+.whyl { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; } .whyl li { margin-bottom: 6px; }
+.kl.kcol { flex-direction: column; align-items: stretch; gap: 4px; }
+.pleg { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--muted); margin-top: 4px; } .pleg i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .snrtag { font: 600 13px var(--mono); color: var(--dig); }
 .lsvg .lcs.sm { font-size: 11px; } .lsvg .warnt { fill: var(--warn); } .lsvg .okt { fill: var(--ok); }
 .lsvg .lc.reg { fill: var(--panel2); stroke: var(--clk); }
+/* SAR circuit view */
+.dsvg .axis { stroke: var(--border); }
+.dsvg .plate { stroke: var(--muted); stroke-width: 4; stroke-linecap: round; }
+.dsvg .capg.plus .plate { stroke: var(--dig); } .dsvg .capg.minus .plate { stroke: var(--cal); }
+.dsvg .capg.half .plate, .dsvg .capg.rest .plate { stroke-dasharray: 5 3; }
+.dsvg .capg.now .plate { stroke-width: 6; }
+.dsvg .lead2 { stroke: var(--border); stroke-width: 1.5; }
+.dsvg .float { fill: none; stroke: var(--border); stroke-dasharray: 2 4; } .dsvg .float.on { stroke: var(--muted); }
+.dsvg .gnd { stroke: var(--muted); stroke-width: 2; }
+.dsvg .wire2 { fill: none; stroke: var(--an); stroke-width: 2; }
+.dsvg .pol.neg { fill: var(--cal); } .dsvg .pol.posv { fill: var(--dig); }
 @media (max-width: 900px) {
   .body { grid-template-columns: minmax(0, 1fr); }
   .side { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
-  .sysview { height: auto; min-height: 0; }
+  .chain { flex-direction: column; }
+  .arr { flex: 0 0 34px; flex-direction: row; } .arr .lane { width: 4px; height: 26px; } .arr .lane i { left: 0; top: -30%; width: 100%; height: 30%; animation: lanev 1.4s linear infinite; }
+  .feeds { grid-template-columns: minmax(0, 1fr); }
   .top { position: static; }
   .verdict { flex-direction: column; align-items: flex-start; }
   .checks { grid-template-columns: minmax(0, 1fr); }
 }
+@keyframes lanev { to { top: 100%; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

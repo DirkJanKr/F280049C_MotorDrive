@@ -14,8 +14,9 @@ import { page as timing } from './pages/timing.js';
 import { page as logic } from './pages/logic.js';
 import { page as valuesPage } from './pages/values.js';
 import { page as iqPage } from './pages/iq.js';
+import { page as optPage } from './pages/optimizer.js';
 
-const PAGES = [system, budgetPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
+const PAGES = [system, budgetPage, optPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
 const $ = (id) => document.getElementById(id);
 let current = null;
 
@@ -194,6 +195,12 @@ document.addEventListener('click', (e) => {
   if (!b) return;
   if (b.dataset.gain) {
     store.ui.arrayGain = store.ui.arrayGain === false;
+    changed('values');
+    changed('page');
+    return;
+  }
+  if (b.dataset.split) {
+    store.ui.splitRes = store.ui.splitRes === false;
     changed('values');
     changed('page');
     return;

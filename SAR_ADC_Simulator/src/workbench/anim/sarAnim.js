@@ -1,12 +1,9 @@
-// Charge sharing as buckets. Width of a bucket = capacitance, water level above
-// the common-mode line = voltage, area between the line and the level = charge.
-// Connected capacitors share one level, so the node bucket is the memory cells
-// plus every step shared so far. Charge is kept when a step joins.
-//
-// Differential: each step is one floating capacitor between node + and node −,
-// precharged to VREF. In the half circuit of each side it is 2C holding ±VREF/2,
-// so each side receives ∓q/2 (q = 2 VREF C). Single-ended view: one node holding
-// the differential charge Q on C node, the same LSB and the same decisions.
+// SAR conversion step by step, drawn as the circuit: the memory cells on the node,
+// the CDAC steps as capacitors that join the node one by one with the polarity the
+// decision chose, the comparator and the raw decisions.
+// Differential: one floating capacitor per step between node + and node −; node + gets
+// ∓q/2 and node − the opposite (Q+ = Q/2, Q− = −Q/2 around a constant common mode).
+// Single-ended view: one node holding the differential charge Q on C node, the same decisions.
 
 import { eng, num } from '../kit.js';
 
@@ -17,134 +14,94 @@ export function maxState(ctx) {
   return 2 * ctx.d.decisions - 1;
 }
 
-function sharedCount(state) {
-  if (state === 0) return 0;
-  const k = Math.floor((state - 1) / 2);
-  return state % 2 === 0 ? k + 1 : k;
+function cellsBlock(x, y, q, qMax, label, sub) {
+  const h = 92;
+  const fillH = (Math.abs(q) / qMax) * (h / 2 - 6);
+  return `<rect x="${x}" y="${y - h / 2}" width="190" height="${h}" rx="10" class="mem"/>
+    <line x1="${x + 30}" x2="${x + 30}" y1="${y - h / 2 + 6}" y2="${y + h / 2 - 6}" class="axis"/>
+    <rect x="${x + 22}" y="${q >= 0 ? y - fillH : y}" width="16" height="${Math.max(1, fillH)}" class="${q >= 0 ? 'qpos' : 'qneg'}"/>
+    <text x="${x + 48}" y="${y - 8}" class="lbl">${label}</text><text x="${x + 48}" y="${y + 14}" class="lbl dim">${sub}</text>`;
 }
 
-/** Vertical scale: a round number of mV per bucket half-height, so the level is readable. */
-function scaleFor(vmax, hh) {
-  const raw = Math.max(Math.abs(vmax), 1e-7) / 0.8;
-  const p = 10 ** Math.floor(Math.log10(raw));
-  const full = [1, 2, 5, 10].map((m) => m * p).find((x) => x >= raw);
-  return { full, k: hh / full };
-}
-
-function bucket(x, y, w, h, cls) {
-  return `<path d="M${x} ${y} V${y + h} H${x + w} V${y}" class="bk ${cls}"/>`;
-}
-
-/** One side: a node bucket made of segments, all at one level. sign = +1 (node +) or −1 (node −). */
-function side(o) {
-  const { x0, y, h, segs, level, sc, label, sign, mode } = o;
-  const mid = y + h / 2;
-  const width = segs.reduce((a, s) => a + s.w, 0);
-  const ly = mid - Math.max(-h / 2, Math.min(h / 2, level * sc.k));
-  const out = [];
-  out.push(`<rect x="${x0}" y="${Math.min(ly, y + h)}" width="${width}" height="${Math.max(0, y + h - ly)}" class="water"/>`);
-  out.push(`<rect x="${x0}" y="${Math.min(ly, mid)}" width="${width}" height="${Math.abs(mid - ly)}" class="${level >= 0 ? 'qp' : 'qn'}"/>`);
-  let x = x0;
-  for (const s of segs) {
-    out.push(`<line x1="${x}" x2="${x}" y1="${y}" y2="${y + h}" class="seg"/>`);
-    if (s.w > 26) out.push(`<text x="${x + s.w / 2}" y="${sign > 0 || mode === 'single' ? y - 6 : y + h + 16}" class="sgl" text-anchor="middle">${s.label}</text>`);
-    x += s.w;
-  }
-  out.push(bucket(x0, y, width, h, ''));
-  out.push(`<line x1="${x0 - 8}" x2="${x0 + width + 8}" y1="${mid}" y2="${mid}" class="vcm"/>`);
-  out.push(`<text x="${x0 + width + 12}" y="${mid + 4}" class="sgl">Vcm</text>`);
-  out.push(`<text x="${x0 + 6}" y="${y + 18}" class="lbl b">${label}</text>`);
-  return { svg: out.join(''), width, ly };
-}
-
-export function view(ctx, trace, state, w, mode = 'diff', f = 1, from = state) {
+export function view(ctx, trace, state, w, mode = 'diff') {
   const { d, P } = ctx;
   const n = d.decisions;
   const diff = mode === 'diff';
-  const H = diff ? 500 : 440;
-  const cFinal = trace.steps[n - 1].cn;
-  const sx = (w - 230) / cFinal;
-  const x0 = 24;
-  const nNow = sharedCount(state);
-  const moving = state % 2 === 0 && state > 0 && from === state - 1 && f < 1 ? nNow - 1 : -1;
-  const before = trace.steps[Math.max(0, nNow - 1)];
-  const after = trace.steps[nNow];
-  const lerp = (a, b) => a + (b - a) * f;
-  const vNode = moving >= 0 ? lerp(before.v, after.v) : after.v;
-  const vSide = diff ? vNode / 2 : vNode;
-  const hB = diff ? 120 : 210;
-  const yTop = 44;
-  const yDac = diff ? yTop + hB + 36 : yTop + hB + 44;
-  const yBot = yDac + 96;
-  const vScale = Math.max(Math.abs(diff ? before.v / 2 : before.v), Math.abs(vSide));
-  const sc = scaleFor(vScale, hB / 2);
-  const segs = [{ w: d.cNode[0] * sx, label: `${P.channels} cells` }];
-  for (let i = 0; i < nNow; i++) if (i !== moving) segs.push({ w: d.cAdd[i] * sx, label: num(d.weights[i], d.weights[i] < 10 ? 1 : 0) });
-  const parts = [`<svg viewBox="0 0 ${w} ${H}" class="dsvg" role="img" aria-label="Charge sharing shown as buckets">`];
-  const top = side({ x0, y: yTop, h: hB, segs, level: vSide, sc, label: diff ? 'node +' : 'node', sign: 1, mode });
-  parts.push(top.svg);
-  let bot = null;
+  const k = state === 0 ? -1 : Math.floor((state - 1) / 2);
+  const decided = state === 0 ? 0 : k + 1;
+  const sharedUpTo = state === 0 ? -1 : state % 2 === 0 ? k : k - 1;
+  const st = trace.steps[Math.min(sharedUpTo + 1, n)];
+  const steps = d.weights.length;
+  const H = diff ? 480 : 330;
+  const x0 = 300;
+  const x1 = w - 200;
+  const cw = (x1 - x0) / steps;
+  const yP = diff ? 175 : 190;
+  const yN = 305;
+  const q = st.Q;
+  const qMax = Math.max(...trace.steps.map((s) => Math.abs(s.Q)), 1e-18);
+  const p = [`<svg viewBox="0 0 ${w} ${H}" class="dsvg" role="img" aria-label="${diff ? 'Differential' : 'Single-ended'} conversion">`];
+  p.push(`<text x="16" y="26" class="lbl b">${P.channels} memory cells, read together</text>`);
   if (diff) {
-    bot = side({ x0, y: yBot, h: hB, segs, level: -vSide, sc, label: 'node −', sign: -1, mode });
-    parts.push(bot.svg);
-  }
-  // scale bar
-  parts.push(`<line x1="${w - 196}" x2="${w - 196}" y1="${yTop + hB / 2}" y2="${yTop}" class="sbar"/><text x="${w - 190}" y="${yTop + 12}" class="sgl">${eng(sc.full, 'V')}</text>`);
-  // DAC capacitors not yet shared, and the one moving in
-  let dx = x0;
-  const dacH = 54;
-  for (let i = 0; i < d.weights.length; i++) {
-    const cw = Math.max(3, d.cAdd[i] * sx);
+    p.push(cellsBlock(16, yP, q / 2, qMax / 2, `Q+ ${eng(q / 2, 'C')}`, `V+ − Vcm ${eng(st.v / 2, 'V')}`));
+    p.push(cellsBlock(16, yN, -q / 2, qMax / 2, `Q− ${eng(-q / 2, 'C')}`, `V− − Vcm ${eng(-st.v / 2, 'V')}`));
+  } else p.push(cellsBlock(16, yP, q, qMax, `Q ${eng(q, 'C')}`, `V − Vcm ${eng(st.v, 'V')}`));
+  p.push(`<line x1="206" x2="${x1 + 20}" y1="${yP}" y2="${yP}" class="node"/><text x="${x0 - 56}" y="${yP - 10}" class="lbl b">${diff ? 'node +' : 'node'}</text>`);
+  if (diff) p.push(`<line x1="206" x2="${x1 + 20}" y1="${yN}" y2="${yN}" class="node"/><text x="${x0 - 56}" y="${yN + 26}" class="lbl b">node −</text>`);
+  for (let i = 0; i < steps; i++) {
+    const cx = x0 + i * cw + cw / 2;
+    const shared = i <= sharedUpTo;
+    const bit = trace.dec[i];
+    const now = state % 2 === 0 && i === k && state > 0;
     const kind = d.steps[i].kind;
-    if (i < nNow && i !== moving) {
-      dx += cw + 4;
-      continue;
+    const wt = d.weights[i];
+    const pol = shared ? (bit ? 'minus' : 'plus') : 'wait';
+    const half = Math.min(cw * 0.36, 26);
+    // the capacitor: two plates; above node + (and below node − in differential)
+    const plates = (y, dir, cls) => `<g class="capg ${cls} ${kind} ${now ? 'now' : ''}"><line x1="${cx}" x2="${cx}" y1="${y}" y2="${y + dir * 46}" class="lead ${shared ? 'on' : ''}"/>
+      <line x1="${cx - half}" x2="${cx + half}" y1="${y + dir * 46}" y2="${y + dir * 46}" class="plate"/><line x1="${cx - half}" x2="${cx + half}" y1="${y + dir * 56}" y2="${y + dir * 56}" class="plate"/>
+      <line x1="${cx}" x2="${cx}" y1="${y + dir * 56}" y2="${y + dir * 74}" class="lead2"/></g>`;
+    p.push(plates(yP, -1, pol));
+    p.push(`<text x="${cx}" y="${yP - 84}" class="wl" text-anchor="middle">${num(wt, wt < 10 ? 2 : 0)}</text>`);
+    if (diff) {
+      p.push(plates(yN, 1, shared ? (bit ? 'plus' : 'minus') : 'wait'));
+      p.push(`<path d="M${cx + half + 4} ${yP - 64} C${cx + half + 16} ${yP - 20}, ${cx + half + 16} ${yN + 20}, ${cx + half + 4} ${yN + 64}" class="float ${shared ? 'on' : ''}"/>`);
+    } else p.push(`<path d="M${cx - 8} ${yP - 74} H${cx + 8} M${cx - 5} ${yP - 78} H${cx + 5}" class="gnd"/>`);
+    if (shared) {
+      p.push(`<text x="${cx}" y="${yP - 100}" class="pol ${bit ? 'neg' : 'posv'}" text-anchor="middle">${bit ? '−' : '+'}</text>`);
+      if (diff) p.push(`<text x="${cx}" y="${yN + 100}" class="pol ${bit ? 'posv' : 'neg'}" text-anchor="middle">${bit ? '+' : '−'}</text>`);
     }
-    let x = dx;
-    let y = yDac;
-    if (i === moving) {
-      const tx = x0 + top.width;
-      x = lerp(dx, tx);
-      y = lerp(yDac, diff ? yDac : yTop + hB - dacH);
-    }
-    const pol = trace.dec[i] ? '−' : '+';
-    const showPol = i < nNow || (state % 2 === 1 && i === nNow);
-    parts.push(`<rect x="${x}" y="${y}" width="${cw}" height="${dacH}" rx="3" class="dac ${kind} ${i === moving ? 'mv' : ''}"/>`);
-    if (cw > 22) parts.push(`<text x="${x + cw / 2}" y="${y + dacH / 2 + 5}" class="wl" text-anchor="middle">${num(d.weights[i], d.weights[i] < 10 ? 1 : 0)}</text>`);
-    if (showPol && cw > 10) parts.push(`<text x="${x + cw / 2}" y="${y - 6}" class="pol" text-anchor="middle">${diff ? `${pol}½q` : `${pol}q`}</text>`);
-    dx += cw + 4;
   }
-  parts.push(`<text x="${x0}" y="${yDac + dacH + 18}" class="sgl">${diff ? `CDAC steps, each a floating capacitor between node + and node −, precharged to VREF = ${eng(P.vref, 'V')}` : `CDAC steps, each precharged to VREF = ${eng(P.vref, 'V')}`}; width = capacitance, label = weight in LSB</text>`);
-  // comparator
-  const cx = w - 150;
-  const cy = diff ? (yTop + hB / 2 + yBot + hB / 2) / 2 : yTop + hB / 2;
+  // comparator and output
+  const cx = x1 + 52;
+  const cy = diff ? (yP + yN) / 2 : yP;
   const act = state % 2 === 1 ? 'act' : '';
-  parts.push(`<path d="M${cx} ${cy - 46} L${cx} ${cy + 46} L${cx + 64} ${cy} Z" class="cmp ${act}"/>`);
-  parts.push(`<path d="M${x0 + top.width + 40} ${yTop + hB / 2} H${cx - 14} V${cy - 22} H${cx}" class="wire"/>`);
-  if (diff) parts.push(`<path d="M${x0 + bot.width + 40} ${yBot + hB / 2} H${cx - 14} V${cy + 22} H${cx}" class="wire"/>`);
-  parts.push(`<text x="${cx + 6}" y="${cy - 16}" class="sgl">+</text><text x="${cx + 6}" y="${cy + 28}" class="sgl">${diff ? '−' : 'Vcm'}</text>`);
-  const decided = state === 0 ? 0 : Math.floor((state - 1) / 2) + 1;
-  parts.push(`<text x="${cx + 84}" y="${cy + 14}" class="big ${act}">${decided ? trace.dec[decided - 1] : '·'}</text>`);
-  const q = moving >= 0 ? lerp(before.Q, after.Q) : after.Q;
-  parts.push(`<text x="${w - 12}" y="22" class="lbl" text-anchor="end">${diff ? `Q+ = ${eng(q / 2, 'C')}, Q− = ${eng(-q / 2, 'C')}` : `Q = ${eng(q, 'C')}`} · C node ${eng(moving >= 0 ? lerp(before.cn, after.cn) : after.cn, 'F')} · ${diff ? 'V+ − V−' : 'V − Vcm'} = ${eng(vNode, 'V')}</text>`);
+  p.push(`<path d="M${cx} ${cy - 46} L${cx} ${cy + 46} L${cx + 66} ${cy} Z" class="cmp ${act}"/>`);
+  p.push(`<path d="M${x1 + 20} ${yP} H${cx - 12} V${cy - 22} H${cx}" class="wire2"/>`);
+  if (diff) p.push(`<path d="M${x1 + 20} ${yN} H${cx - 12} V${cy + 22} H${cx}" class="wire2"/>`);
+  else p.push(`<text x="${cx - 40}" y="${cy + 30}" class="lbl dim">Vcm</text><path d="M${cx - 12} ${cy + 22} H${cx}" class="wire2"/>`);
+  p.push(`<text x="${cx + 6}" y="${cy - 14}" class="lbl">+</text><text x="${cx + 6}" y="${cy + 28}" class="lbl">−</text>`);
+  p.push(`<text x="${cx + 86}" y="${cy + 14}" class="big ${act}">${decided ? trace.dec[decided - 1] : '·'}</text>`);
   // raw decisions
-  const bw = Math.min(30, (w - 260) / n);
+  const bw = Math.min(32, (w - 300) / n);
   for (let i = 0; i < n; i++) {
     const known = i < decided;
-    parts.push(`<rect x="${x0 + i * bw}" y="${H - 44}" width="${bw - 4}" height="30" rx="5" class="rb ${known ? (trace.dec[i] ? 'one' : 'zero') : ''} ${i === decided - 1 && act ? 'cur' : ''}"/><text x="${x0 + i * bw + (bw - 4) / 2}" y="${H - 23}" class="rbt" text-anchor="middle">${known ? trace.dec[i] : '·'}</text>`);
+    p.push(`<rect x="${20 + i * bw}" y="${H - 48}" width="${bw - 4}" height="32" rx="5" class="rb ${known ? (trace.dec[i] ? 'one' : 'zero') : ''} ${i === decided - 1 && act ? 'cur' : ''}"/><text x="${20 + i * bw + (bw - 4) / 2}" y="${H - 26}" class="rbt" text-anchor="middle">${known ? trace.dec[i] : '·'}</text>`);
   }
-  parts.push(`<text x="${x0 + n * bw + 10}" y="${H - 23}" class="sgl">raw decisions d1 … d${n}</text></svg>`);
-  return parts.join('');
+  p.push(`<text x="${24 + n * bw}" y="${H - 26}" class="lbl dim">raw decisions d1 … d${n}</text>`);
+  p.push(`<text x="${w - 14}" y="26" class="lbl" text-anchor="end">Q ${eng(q, 'C')} · C node ${eng(st.cn, 'F')} · ${diff ? 'V+ − V−' : 'V − Vcm'} ${eng(st.v, 'V')}</text>`);
+  p.push('</svg>');
+  return p.join('');
 }
 
-export function describe(ctx, trace, state, mode) {
+export function describe(ctx, trace, state, mode = 'diff') {
   const n = ctx.d.decisions;
   const diff = mode === 'diff';
-  if (state === 0) return `Sampled: the ${ctx.P.channels} selected memory cells form the node bucket. The water above the Vcm line is the input charge Q = ${ctx.P.channels} CM · V in = ${eng(trace.steps[0].Q, 'C')}${diff ? ', half on each side with opposite sign' : ''}.`;
+  if (state === 0) return `Sampled: the ${ctx.P.channels} selected memory cells are connected to the node; their charge Q = ${ctx.P.channels} CM · V in = ${eng(trace.steps[0].Q, 'C')} is the input. No step is shared yet.`;
   const k = Math.floor((state - 1) / 2);
   const st = trace.steps[k];
   if (state % 2 === 1) return `Decision ${k + 1} of ${n}: the comparator sees ${diff ? 'V+ − V−' : 'V − Vcm'} = ${eng(st.v, 'V')} and outputs ${trace.dec[k]}.`;
   const w = ctx.d.weights[k];
   const nx = trace.steps[k + 1];
-  return `Step ${k + 1} (${num(w, 2)} LSB, charge q = ${eng(w * ctx.d.qLsb, 'C')}) joins the node with sign ${trace.dec[k] ? '−' : '+'}${diff ? ' on node + and the opposite on node −' : ''}. The bucket gets ${eng(ctx.d.cAdd[k], 'F')} wider; the charge goes from ${eng(st.Q, 'C')} to ${eng(nx.Q, 'C')} and the level to ${eng(nx.v, 'V')}.`;
+  return `Step ${k + 1} (${num(w, 2)} LSB, q = ${eng(w * ctx.d.qLsb, 'C')}) is connected with sign ${trace.dec[k] ? '−' : '+'}${diff ? ' to node + and the opposite to node −' : ''}, pulling the charge towards zero: ${eng(st.Q, 'C')} → ${eng(nx.Q, 'C')}. The node capacitance grows to ${eng(nx.cn, 'F')}.`;
 }

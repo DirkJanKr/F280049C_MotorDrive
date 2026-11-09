@@ -15,6 +15,7 @@
 
 import { designCdac } from '../zaan/model/cdac.js';
 import { chargeBudget, toleranceNeeds } from './budget.js';
+import { residualEstimate } from './residual.js';
 
 /** σ of a step weight in LSB: w σu / √units for whole capacitors, about w σu / √2 for a halving step. */
 function sigmaW(w, units, kind, sigmaU) {
@@ -104,6 +105,6 @@ export function optimise(P, cells, opts) {
   if (!r.steps) return r;
   const d = designCdac(P, cells, r.steps);
   const need = toleranceNeeds(P, d, opts.sigmaU);
-  const b = chargeBudget(P, d, { arrayGain: opts.arrayGain, residualQ: (opts.residualLsb || 0) * d.qLsb });
+  const b = chargeBudget(P, d, { arrayGain: opts.arrayGain, res: residualEstimate(d, P, opts.lutLsb || 0) });
   return { ...r, d, need, enob: b.enob, budget: b };
 }

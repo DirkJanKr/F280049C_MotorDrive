@@ -4,6 +4,8 @@
 
 import { fill, widthOf, num, esc, eng } from '../kit.js';
 import { optimise } from '../optimizer.js';
+import { chargeBudget } from '../budget.js';
+import { residualEstimate } from '../residual.js';
 import { changed } from '../store.js';
 
 const O = { key: '', r: null };
@@ -63,7 +65,7 @@ export function drawOptimizer(store, ctx) {
   const key = JSON.stringify([P, o, budget.arrayGain, ctx.sigmaU]);
   if (key !== O.key) {
     O.key = key;
-    O.r = optimise(P, P.memCells, { ...o, sigmaU: ctx.sigmaU, arrayGain: budget.arrayGain, residualLsb: 0 });
+    O.r = optimise(P, P.memCells, { ...o, sigmaU: ctx.sigmaU, arrayGain: budget.arrayGain, lutLsb: 0 });
   }
   const r = O.r;
   if (!r.steps) {
@@ -93,8 +95,8 @@ export function drawOptimizer(store, ctx) {
   svg.push(`<text x="${w - 6}" y="${ty + 12}" class="tiny" text-anchor="end">LSB</text></svg>`);
   fill('optSteps', svg.join(''));
   const cur = ctx.d;
-  const curB = ctx.budget.lines.filter((l) => l.id !== 'cal').reduce((a, l) => a + l.sigma ** 2, 0);
-  const newB = r.budget.lines.filter((l) => l.id !== 'cal').reduce((a, l) => a + l.sigma ** 2, 0);
+  const curB = chargeBudget(P, cur, { arrayGain: budget.arrayGain, res: residualEstimate(cur, P, 0) }).total ** 2;
+  const newB = r.budget.total ** 2;
   const qFs = (dd) => dd.qFs / 2 / Math.SQRT2;
   const enobOf = (dd, v2) => (20 * Math.log10(qFs(dd) / Math.sqrt(v2)) - 1.76) / 6.02;
   const row = (k, a, b) => `<tr><td>${k}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`;
@@ -105,7 +107,7 @@ export function drawOptimizer(store, ctx) {
     ${row('CDAC', eng(cur.cdac, 'F'), eng(r.d.cdac, 'F'))}
     ${row('node at the last decision', eng(cur.cNode[cur.decisions - 1], 'F'), eng(r.d.cNode[r.d.decisions - 1], 'F'))}
     ${row('worst tolerance margin', `${num(margin(ctx.tolNeed), 2)} LSB`, `${num(margin(r.need), 2)} LSB`)}
-    ${row('ENOB, budget without simulated residual', num(enobOf(cur, curB), 3), num(enobOf(r.d, newB), 3))}
+    ${row('ENOB, budget estimate', num(enobOf(cur, curB), 3), num(enobOf(r.d, newB), 3))}
   </tbody></table></div><button class="mini primary" id="optApply">use these weights</button>`);
   fill('optCap', `How it works: start from the steps below one unit (charge halving down to ${o.smallest === 1 ? '1' : '½'} LSB). Then, going up, every next step gets the largest whole number of unit capacitors whose tolerance (sum of the steps below + 1 − w) plus ½ LSB still covers what that decision needs: ${num(o.k, 1)}σ DAC mismatch (pink), the part of the calibrated offset that differs from the last decision (amber)${o.noise ? ', comparator noise (violet)' : ''}${o.margin ? ` and ${num(o.margin, 2)} LSB margin` : ''}. Green line: tolerance + ½ LSB. It stops as soon as the steps reach both ends of the range (${2 ** (P.bits - 1) - 1} LSB), which gives the fewest decisions for these errors. The range left over is then spread over all steps as extra margin (${num(r.extra, 2)} LSB each). More redundancy than this only adds decisions and capacitance, and a larger node makes comparator and precharge noise larger as charge. Using the weights runs the full simulation, including the calibration residual.`);
 }
