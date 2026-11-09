@@ -2,14 +2,14 @@
 // watch a conversion as buckets of charge, see what each decision needs from its
 // tolerance, and let the optimizer search the weights.
 
-import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, esc, COL, fv } from '../kit.js';
+import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, esc, COL, fv, fq } from '../kit.js';
 import { PRESETS } from '../weights.js';
 import { view, describe, maxState, S } from '../anim/sarAnim.js';
 import { idealChip, convert, combine, designWeights } from '../../zaan/model/chargeSar.js';
 import { createRng } from '../../model/rng.js';
 import { termify } from '../terms.js';
 import { failBox } from '../checks.js';
-import { offsetLsb, comparatorCharge, Q_E } from '../budget.js';
+import { offsetLsb, comparatorCharge } from '../budget.js';
 import { optimizerCard, drawOptimizer, mountOptimizer } from './sarOptimizer.js';
 
 export const page = {
@@ -98,7 +98,7 @@ export const page = {
     fill('sarro', readouts([
       ['Decisions', `${d.decisions}`, `planned ${P.rawDecisions}`, d.decisions === P.rawDecisions ? 'ok' : 'warn', 'decisions'],
       ['Sum of the steps', `${num(d.cover.sum, 1)} LSB`, `${d.cover.need} needed`, d.cover.ok ? 'ok' : 'bad', 'cover'],
-      ['One LSB as charge', eng(d.qLsb, 'C'), `${num(d.qLsb / Q_E, 0)} electrons`, '', 'qlsb'],
+      ['One LSB as charge', eng(d.qLsb, 'C'), `${eng(d.qLsb / d.cNode[0], 'V')} at the input`, '', 'qlsb'],
       ['CDAC', eng(d.cdac, 'F'), `${num(d.units, 2)} units of ${eng(P.cu, 'F')}`, '', 'cdac'],
       ['Memory cell CM', eng(d.cm, 'F'), 'from the charge balance', '', 'cm'],
       ['Node at the last decision', eng(d.cNode[d.decisions - 1], 'F'), `1 LSB = ${eng(d.qLsb / d.cNode[d.decisions - 1], 'V')} there`, '', 'cnode'],
@@ -192,7 +192,7 @@ function tolerance(ctx) {
   p.push('</svg>');
   const P = ctx.P;
   const d = ctx.d;
-  fill('sTol', p.join(''), `Green line: the tolerance plus ½ LSB, what the later steps can still repair. The need for the check is ${fv('need', 'mismatch + offset')}; comparator noise is drawn on top but counted in the ${fv('b-comp', 'noise budget')}, since an unrepaired noise error is output noise. White tick: mismatch + the offset before calibration (${eng(P.vos, 'V')}); calibration brings it to ${eng(P.vosCal, 'V')}. The offset as charge grows with the node, ${num(offsetLsb(d, P.vosCal, 0).total, 2)} LSB at decision 1 to ${num(offsetLsb(d, P.vosCal, d.decisions - 1).total, 2)} LSB at the last; only the difference from the last uses tolerance, the rest shifts every code equally. Comparator noise as charge: ${eng(comparatorCharge(P, d, 0), 'C')} at decision 1, ${eng(comparatorCharge(P, d, d.decisions - 1), 'C')} at the last.`);
+  fill('sTol', p.join(''), `Green line: the tolerance plus ½ LSB, what the later steps can still repair. The need for the check is ${fv('need', 'mismatch + offset')}; comparator noise is drawn on top but counted in the ${fv('b-comp', 'noise budget')}, since an unrepaired noise error is output noise. White tick: mismatch + the offset before calibration (${eng(P.vos, 'V')}); calibration brings it to ${eng(P.vosCal, 'V')}. The offset as charge grows with the node, ${num(offsetLsb(d, P.vosCal, 0).total, 2)} LSB at decision 1 to ${num(offsetLsb(d, P.vosCal, d.decisions - 1).total, 2)} LSB at the last; only the difference from the last uses tolerance, the rest shifts every code equally. Comparator noise as charge: ${fq(ctx, comparatorCharge(P, d, 0), true)} at decision 1, ${fq(ctx, comparatorCharge(P, d, d.decisions - 1), true)} at the last.`);
 }
 
 function table(ctx) {

@@ -3,12 +3,12 @@
 import { createValues, SEED } from './values.js';
 import { design } from './design.js';
 
-const KEY = 'zaan-workbench-v3';
+const KEY = 'zaan-workbench-v4';
 const VKEY = 'zaan-workbench-versions-v2';
 
 export const store = {
   values: createValues(),
-  ui: { page: 'system', showTop: true, showSide: true, weightMode: 'generator', customWeights: '256, 136, 72, 40, 24, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'dark', vin: 0.217, arrayGain: true, alloc: {}, sarMode: 'diff', optGoal: 'enob', optRes: true, sweep: 'compNoise', bfDelays: true },
+  ui: { page: 'system', showTop: true, showSide: true, weightMode: 'generator', customWeights: '256, 136, 72, 40, 24, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'soft', vin: 0.217, qUnit: 'fC', arrayGain: true, alloc: {}, sarMode: 'diff', optGoal: 'enob', optRes: true, sweep: 'compNoise', bfDelays: true },
   versions: [],
   ctx: null,
   listeners: [],

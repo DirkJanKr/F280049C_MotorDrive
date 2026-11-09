@@ -64,6 +64,18 @@ export function widthOf(id, fallback = 600) {
   return el && el.clientWidth ? el.clientWidth - 2 : fallback;
 }
 
+/** A charge shown as the user chose: in fC, or as the voltage it means at the input (Q / (N CM)). */
+export function fq(ctx, q, rms = false) {
+  const tail = rms ? ' rms' : '';
+  if (ctx.ui && ctx.ui.qUnit === 'V') return `${eng(q / ctx.d.cNode[0], 'V')}${tail}`;
+  return `${Number((q * 1e15).toPrecision(3))} fC${tail}`;
+}
+
+/** Unit label for tables: fC or µV at the input. */
+export function qUnitLabel(ctx) {
+  return ctx.ui && ctx.ui.qUnit === 'V' ? 'µV rms at the input' : 'fC rms';
+}
+
 /** A value that opens its formula when clicked. */
 export function fv(id, text) {
   return `<button class="fv" data-f="${id}" title="show the formula">${text}</button>`;

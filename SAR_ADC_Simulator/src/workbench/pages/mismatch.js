@@ -2,11 +2,13 @@
 
 import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, esc, COL } from '../kit.js';
 import { designCdac } from '../../zaan/model/cdac.js';
-import { drawChip } from '../../zaan/model/chargeSar.js';
+import { drawChip, convert, combine } from '../../zaan/model/chargeSar.js';
+import { leastSquaresWeights } from '../../zaan/model/calibrate.js';
+import { rampLinearity } from '../../zaan/model/analysis.js';
 import { testChip } from '../../zaan/model/testbench.js';
 import { summarise } from '../../zaan/model/montecarlo.js';
 import { createRng } from '../../model/rng.js';
-import { playCalibration } from '../anim/calAnim.js';
+import { L, runLms, dnlWith, diagram, describeLms } from '../anim/lmsAnim.js';
 import { CHIP } from '../design.js';
 
 const mc = { result: null, yieldCu: null, running: false, key: '' };
@@ -18,12 +20,14 @@ export const page = {
     const used = new Set();
     return group('Capacitors', knobs(store.values, ['cu', 'pairSigma', 'density', 'routing'], used)) + group('Simulation', knobs(store.values, ['chips', 'seed', 'bits'], used)) + `<p class="ks pad">The weights come from the SAR ADC page.</p>`;
   },
-  main() {
+  main(store) {
     return `<div id="mmro"></div>
       <section class="card wide"><header><h3>Monte Carlo: many chips, before and after calibration</h3><span class="ctl"><button class="mini primary" id="mcRun">run Monte Carlo</button></span></header>
         <div class="grid2 inner"><div id="mcHist" class="cbody"></div><div id="mcYield" class="cbody"></div></div><p class="cap" id="mcCap">Press run. Each chip gets its own random capacitor errors from the PDK matching; its weights are then calibrated with a ramp, and the ENOB of a sine is measured with design and with calibrated weights.</p></section>
       <div class="grid2">${card('mmErr', 'This chip: weight error per step')}${card('mmDnl', 'This chip: DNL and INL before and after calibration')}</div>
-      <div class="grid2">${card('mmCal', 'Calibration: the weights converge', '<button class="mini" id="calPlay">play calibration</button>')}${card('mmArea', 'Area on the 3.2 mm × 5 mm chip, to scale')}</div>
+      <section class="card wide"><header><h3>LMS calibration on chip: the hookup and the weights converging</h3><span class="ctl"><label class="mini-l">μ <select id="lmsMu">${[5, 7, 9].map((k) => `<option value="${k}" ${(store.ui.lmsMu || 7) === k ? 'selected' : ''}>2^−${k}</option>`).join('')}</select></label><button class="mini primary" id="lmsPlay">▶ run calibration</button></span></header>
+        <div id="lmsDiag"></div><div class="grid2 inner"><div id="lmsW" class="cbody"></div><div id="lmsE" class="cbody"></div></div><p class="cap" id="lmsCap"></p></section>
+      <div class="grid2">${card('mmWhy', 'Why the DNL does not go below about 1 LSB here')}${card('mmArea', 'Area on the 3.2 mm × 5 mm chip, to scale')}</div>
       ${explain('What mismatch does here', [
         'Every capacitor comes out a little off its design value. A step built from k unit capacitors has a relative error of σu / √k, so the big steps are relatively accurate but carry the largest absolute error in LSB.',
         'With redundancy the comparison levels still find the input; only the weights used to add up the decisions are wrong. Calibration measures them once per chip and puts them in the LUT. Without redundancy a wrong weight loses codes, and calibration cannot get them back.',
@@ -31,10 +35,12 @@ export const page = {
   },
   mount(store) {
     document.getElementById('mcRun').onclick = (e) => runMc(store, e.target);
-    document.getElementById('calPlay').onclick = () => {
-      const el = document.getElementById('mmCal');
-      playCalibration(el, store.ctx, el.clientWidth - 4);
+    document.getElementById('lmsMu').onchange = (e) => {
+      store.ui.lmsMu = Number(e.target.value);
+      L.key = '';
+      lms(store.ctx, true);
     };
+    document.getElementById('lmsPlay').onclick = () => lms(store.ctx, true);
   },
   update(store, ctx) {
     const { d, P, sim } = ctx;
@@ -66,8 +72,10 @@ export const page = {
     }, w), `Dots: true minus design weight of this chip (seed ${P.seed}). Shaded: ±3σ over many chips, lines at ±1σ; σ = w σu / √units for whole and small capacitors, about w σu / √2 for a halving step (approximation). What the tolerance must cover is on the SAR ADC page.`);
     const k = Array.from({ length: d.codes - 2 }, (_, i) => i + 1);
     const lim = Math.max(1, sim.linRaw.peakDnl, sim.linCal.peakDnl) * 1.1;
-    fill('mmDnl', plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -lim, max: lim, label: 'DNL' }, series: [{ points: k.map((i) => [i, sim.linRaw.dnl[i]]), color: COL.muted, width: 0.9, label: 'design weights' }, { points: k.map((i) => [i, sim.linCal.dnl[i]]), color: COL.an, width: 1.1, label: 'calibrated' }], legend: true }, w) + plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -Math.max(1, sim.linRaw.peakInl) * 1.1, max: Math.max(1, sim.linRaw.peakInl) * 1.1, label: 'INL' }, series: [{ points: k.map((i) => [i, sim.linRaw.inl[i]]), color: COL.muted, width: 0.9 }, { points: k.map((i) => [i, sim.linCal.inl[i]]), color: COL.an, width: 1.1 }] }, w), 'Ramp histogram, 2 samples per code, with comparator noise; the curves are therefore a little noisy.');
+    fill('mmDnl', plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -lim, max: lim, label: 'DNL' }, series: [{ points: k.map((i) => [i, sim.linRaw.dnl[i]]), color: COL.muted, width: 0.9, label: 'design weights' }, { points: k.map((i) => [i, sim.linCal.dnl[i]]), color: COL.an, width: 1.1, label: 'calibrated' }], legend: true }, w) + plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -Math.max(1, sim.linRaw.peakInl) * 1.1, max: Math.max(1, sim.linRaw.peakInl) * 1.1, label: 'INL' }, series: [{ points: k.map((i) => [i, sim.linRaw.inl[i]]), color: COL.muted, width: 0.9 }, { points: k.map((i) => [i, sim.linCal.inl[i]]), color: COL.an, width: 1.1 }] }, w), 'Ramp of 16 samples per code without comparator noise (offset after calibration included), so the histogram itself does not scatter. Grey: design weights, cyan: calibrated weights rounded to the output bits.');
     area(ctx, widthOf('mmArea'));
+    whyDnl(ctx);
+    lms(ctx, false);
   },
 };
 
@@ -147,4 +155,79 @@ function drawMc(P) {
   if (y && mc.yieldCu) y.innerHTML = plot({ height: 250, x: { min: 0, max: 160, label: 'Cu [fF]' }, y: { min: 0, max: 105, label: 'chips at or above the aim [%]' }, series: [{ points: mc.yieldCu, color: COL.an, width: 2.2 }, { points: mc.yieldCu, color: COL.an, mode: 'dots', r: 4.5 }], vlines: [{ x: 35, color: COL.ref, label: 'PDK min' }] }, y.clientWidth - 4);
   const yieldNow = (r.enobCal.values.filter((x) => x >= P.enobAim).length / r.n) * 100;
   document.getElementById('mcCap').textContent = `${r.n} chips: mean ENOB ${num(r.enobRaw.mean, 2)} → ${num(r.enobCal.mean, 2)} bit, worst after calibration ${num(r.enobCal.min, 2)}; ${num(yieldNow, 0)} % reach the aim of ${num(P.enobAim, 1)}. Right: the same with 30 chips per unit capacitor value.`;
+}
+
+const W = { key: '', alt: null };
+
+/** The same weights with one more charge-halving step (smallest step half as large), simulated on the same seed. */
+function finerVariant(ctx) {
+  const { P, d } = ctx;
+  const key = JSON.stringify([d.weights, P.cu, P.aC, P.seed, P.vosCal, P.vref]);
+  if (key === W.key) return W.alt;
+  const caps = ctx.steps.filter((x) => x.kind === 'cap' || x.kind === 'small');
+  const subs = ctx.steps.filter((x) => x.kind === 'half');
+  const h = subs.length + 1;
+  const steps = caps.concat(Array.from({ length: h }, (_, k) => ({ units: 0.5 ** (k + 1), kind: 'half' })), [{ units: 0.5 ** h, kind: 'rest' }]);
+  const dv = designCdac(P, P.memCells, steps);
+  const chip = drawChip(dv, P, createRng(P.seed));
+  const xs = [];
+  for (let j = 0; j < dv.codes * 8; j++) xs.push((j + 0.5) / 8);
+  const dec = xs.map((x) => convert(chip, dv, x - dv.codes / 2, { vos: P.vosCal }));
+  const cal = leastSquaresWeights(dec, xs);
+  const lin = rampLinearity(dec.map((q) => combine(q, cal, dv.codes)), dv.codes);
+  const enob = testChip(chip, dv, { ...P, compNoise: 0 }, createRng(P.seed + 9), { samplesPerCode: 1 }).sCal.enob;
+  W.key = key;
+  W.alt = { weights: dv.weights, lin, enob, decisions: dv.decisions };
+  return W.alt;
+}
+
+function whyDnl(ctx) {
+  const { d, sim } = ctx;
+  const smallest = Math.min(...d.weights);
+  const alt = finerVariant(ctx);
+  fill('mmWhy', `<table class="tbl"><thead><tr><th></th><th>current</th><th>one more halving step</th></tr></thead><tbody>
+    <tr><td>smallest step</td><td class="num">${num(smallest, 2)} LSB</td><td class="num">${num(Math.min(...alt.weights), 2)} LSB</td></tr>
+    <tr><td>decisions</td><td class="num">${d.decisions}</td><td class="num">${alt.decisions}</td></tr>
+    <tr><td>peak DNL after calibration</td><td class="num">${num(sim.linCal.peakDnl, 2)} LSB</td><td class="num">${num(alt.lin.peakDnl, 2)} LSB</td></tr>
+    <tr><td>peak INL after calibration</td><td class="num">${num(sim.linCal.peakInl, 2)} LSB</td><td class="num">${num(alt.lin.peakInl, 2)} LSB</td></tr>
+    <tr><td>ENOB after calibration, no comparator noise</td><td class="num">${num(sim.sCal0.enob, 2)}</td><td class="num">${num(alt.enob, 2)}</td></tr></tbody></table>`,
+  `Calibration finds the true weights, but the result is still rounded to ${ctx.P.bits} bits. The levels a chip can produce are spaced by its smallest step. When that step is 1 LSB and the weights are off by a fraction of an LSB, a level can land anywhere between two output codes; after rounding, some codes get no input (DNL −1) and their neighbours get twice as much (DNL +1). The calibration is correct; the converter has no finer level to offer. One more charge-halving step makes the levels ½ LSB apart, so rounding can always pick the nearest code: DNL about ½ LSB. It costs one decision and one unit capacitor. A combiner output with more bits does not help here, because the levels themselves are not finer.`);
+}
+
+function lms(ctx, play) {
+  const mu = ctx.ui.lmsMu || 7;
+  const key = JSON.stringify([ctx.d.weights, ctx.P.seed, ctx.P.cu, ctx.P.aC, ctx.P.compNoise, ctx.P.vosCal, mu]);
+  if (key !== L.key) {
+    L.key = key;
+    L.snaps = runLms(ctx, mu);
+    L.frame = L.snaps.length - 1;
+    L.dnl = dnlWith(ctx, { c: L.snaps[L.snaps.length - 1].c, w: L.snaps[L.snaps.length - 1].w });
+  }
+  clearTimeout(L.timer);
+  const draw = () => {
+    const s = L.snaps[L.frame];
+    fill('lmsDiag', diagram(ctx, s, widthOf('lmsDiag', 1000)));
+    const upto = L.snaps.slice(0, L.frame + 1);
+    const cols = [COL.an, COL.ref, COL.cal, COL.clk];
+    const kmax = L.snaps[L.snaps.length - 1].k;
+    const lx = (k) => Math.log10(k + 1);
+    const xax = { min: 0, max: lx(kmax), label: 'calibration samples', ticks: [0, 1, 2, 3].filter((v) => v <= lx(kmax)), format: (v) => `${10 ** v}` };
+    const emax = Math.max(0.5, ...L.snaps.map((p) => Math.max(...p.err.slice(0, 4).map(Math.abs)))) * 1.1;
+    fill('lmsW', plot({ height: 220, x: xax, y: { min: -emax, max: emax, label: 'w i − w true [LSB]' }, series: [0, 1, 2, 3].map((i) => ({ points: upto.map((p) => [lx(p.k), p.err[i]]), color: cols[i], width: 1.8, label: `w${i + 1}` })), hlines: [{ y: 0, color: COL.muted }], legend: true }, widthOf('lmsW')));
+    fill('lmsE', plot({ height: 220, x: xax, y: { min: 0, max: Math.max(1.5, ...L.snaps.slice(0, 6).map((p) => p.erms)), label: 'rms of e [LSB]' }, series: [{ points: upto.map((p) => [lx(p.k), p.erms]), color: COL.dig, width: 2 }] }, widthOf('lmsE')));
+    fill('lmsCap', `${describeLms(ctx, s)} After ${kmax + 1} samples: peak DNL ${num(L.dnl.peakDnl, 2)} LSB with the LMS weights (least squares on a ramp: ${num(ctx.sim.linCal.peakDnl, 2)} LSB).`);
+  };
+  if (!play) {
+    draw();
+    return;
+  }
+  L.frame = 0;
+  const step = () => {
+    draw();
+    if (L.frame < L.snaps.length - 1 && document.getElementById('lmsDiag')) {
+      L.frame = Math.min(L.snaps.length - 1, L.frame + 1);
+      L.timer = setTimeout(step, 30);
+    }
+  };
+  step();
 }

@@ -1,8 +1,7 @@
 // System page: the chain from the beamformer to the IQ demodulator, large and
 // clickable. Horizontal on wide screens, vertical on narrow ones.
 
-import { eng, num, esc, readouts } from '../kit.js';
-import { Q_E } from '../budget.js';
+import { eng, num, esc, readouts, fq } from '../kit.js';
 
 export const page = {
   id: 'system',
@@ -31,8 +30,8 @@ function summaryPanel(ctx) {
     : '<p class="okline">Every check passes.</p>';
   return `<div id="sysside"><h3 class="sh">At a glance</h3>${readouts([
     ['ENOB, converter only', `${num(b.enob, 2)}`, `aim ${num(P.enobAim, 1)}`, b.ok ? 'ok' : 'bad', 'enob'],
-    ['Noise as charge', eng(b.total, 'C'), `allowed ${eng(b.allowed, 'C')}`, b.ok ? 'ok' : 'bad', 'allowed'],
-    ['One LSB', eng(d.qLsb, 'C'), `${num(d.qLsb / Q_E, 0)} electrons`, '', 'qlsb'],
+    [ctx.ui.qUnit === 'V' ? 'Noise at the input' : 'Noise as charge', fq(ctx, b.total, true), `allowed ${fq(ctx, b.allowed, true)}`, b.ok ? 'ok' : 'bad', 'allowed'],
+    ['One LSB', eng(d.qLsb, 'C'), `${eng(d.qLsb / d.cNode[0], 'V')} at the input`, '', 'qlsb'],
     ['Decisions', `${d.decisions}`, `planned ${P.rawDecisions}`, '', 'decisions'],
     ['CDAC', eng(d.cdac, 'F'), `${num(d.units, 0)} × ${eng(P.cu, 'F')}`, '', 'cdac'],
     ['Memory cell', eng(d.cm, 'F'), `${d.memCaps} in the array`, '', 'cm'],
@@ -120,7 +119,7 @@ function horizontal(ctx) {
   // digital out
   p.push(blockBox('reg', 'logic', 1420, 90, 320, 200, 'Output register', [`${d.decisions} raw decisions`], `<g>${bits(Math.min(d.decisions, 14), 1442, 210, 276)}</g>`));
   p.push(blockBox('comb', 'mismatch', 1420, 320, 320, 170, 'Combiner + LUT', [`Σ dᵢ wᵢ → ${P.bits} bit`, `ENOB ${num(ctx.budget.enob, 2)} (aim ${num(P.enobAim, 1)})`]));
-  p.push(blockBox('iq', '', 1420, 520, 320, 130, 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}`]));
+  p.push(blockBox('iq', 'iq', 1420, 520, 320, 130, 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}, low-pass, ↓${Math.round(P.iqDecim)}`]));
   p.push(wire('M1370 470 H1395 V190 H1420', 'dig thick'));
   p.push(wire('M1580 290 V320', 'dig thick'));
   p.push(wire('M1580 490 V520', 'dig thick'));
@@ -149,7 +148,7 @@ function vertical(ctx) {
   p.push(blockBox('logic', 'logic', 360, 1090, 320, 200, 'SAR logic', ['self-timed', `${d.decisions} steps`]));
   p.push(blockBox('reg', 'logic', 20, 1320, 660, 170, 'Output register', [`${d.decisions} raw decisions`], `<g>${bits(Math.min(d.decisions, 14), 42, 1430, 616)}</g>`));
   p.push(blockBox('comb', 'mismatch', 20, 1520, 660, 150, 'Combiner + LUT', [`Σ dᵢ wᵢ → ${P.bits} bit`]));
-  p.push(blockBox('iq', '', 20, 1700, 660, 130, 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}`]));
+  p.push(blockBox('iq', 'iq', 20, 1700, 660, 130, 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}, low-pass, ↓${Math.round(P.iqDecim)}`]));
   p.push('</svg>');
   return p.join('');
 }

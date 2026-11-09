@@ -34,6 +34,18 @@ export function offsetLsb(d, vos, i) {
   return { total: (vos * d.cNode[i]) / d.qLsb, differential: (vos * (last - d.cNode[i])) / d.qLsb };
 }
 
+/**
+ * CDAC precharge noise as differential node charge. Each step is one floating capacitor C between
+ * node + and node −; when its precharge switches open it keeps a plate charge error with variance kT C.
+ * That error enters node + and node − with opposite sign, so the differential charge sees 2× it:
+ * variance 4 kT C. A halving step also opens the switch between the two halves (series C u / 2): 4 kT C u / 2.
+ */
+export function prechargeCharge(P, d) {
+  const kT = K_B * P.temperature;
+  const halves = d.steps.filter((s) => s.kind === 'half').length;
+  return Math.sqrt(4 * kT * d.cdac + halves * 4 * kT * (P.cu / 2));
+}
+
 /** The noise lines in charge. residualQ: simulated mismatch, offset and rounding residual (C rms). */
 export function chargeLines(P, d, { arrayGain = true, residualQ = 0 } = {}) {
   const kT = K_B * P.temperature;
@@ -46,7 +58,7 @@ export function chargeLines(P, d, { arrayGain = true, residualQ = 0 } = {}) {
     { id: 'cal', label: 'Mismatch, offset and rounding after calibration', sigma: residualQ, knob: 'cu', perChannel: false, simulated: true },
     { id: 'comp', label: 'Comparator noise at the last decision', sigma: comparatorCharge(P, d, d.decisions - 1), knob: 'compNoise', perChannel: false },
     { id: 'samp', label: 'kT/C of the memory cells', sigma: arrayGain ? Math.sqrt(N) * cellOne : N * cellOne, knob: 'temperature', perChannel: true },
-    { id: 'pre', label: 'CDAC precharge kT/C', sigma: Math.sqrt(2 * kT * d.cdac), knob: 'vref', perChannel: false },
+    { id: 'pre', label: 'CDAC precharge kT/C', sigma: prechargeCharge(P, d), knob: 'vref', perChannel: false },
     { id: 'jit', label: 'Sampling clock jitter', sigma: N * d.cm * 2 * Math.PI * fJ * P.jitter * vrms, knob: 'jitter', perChannel: false },
   ];
 }
@@ -69,7 +81,6 @@ export function chargeBudget(P, d, opts = {}) {
   const total = Math.sqrt(lines.reduce((a, l) => a + l.sigma ** 2, 0));
   for (const l of lines) {
     l.lsb = l.sigma / d.qLsb;
-    l.electrons = l.sigma / Q_E;
     l.share = (l.sigma / allowed) ** 2 * 100;
     l.alloc = alloc[l.id];
     l.ok = l.share <= l.alloc + 1e-9;

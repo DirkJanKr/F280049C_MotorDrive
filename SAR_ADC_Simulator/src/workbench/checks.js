@@ -1,7 +1,6 @@
 // Every pass or fail of the design, with the reason in numbers and what would fix it.
 
-import { eng, num } from './kit.js';
-import { Q_E } from './budget.js';
+import { eng, num, fq } from './kit.js';
 
 const PDK_MIN = 35e-15;
 
@@ -17,11 +16,11 @@ function fixFor(line, ctx) {
         ? `Comparator noise below ${eng(a / lastC, 'V')} rms (now ${eng(P.compNoise, 'V')}), or a smaller node capacitance at the last decision (now ${eng(lastC, 'F')}): the same voltage noise is less charge on a smaller node.`
         : 'Even without comparator noise the other lines exceed the allowance.';
     case 'cal':
-      return 'A larger Cu, more redundancy or a combiner with more bits; see the Mismatch page.';
+      return `Mostly rounding: the smallest step is ${num(Math.min(...ctx.d.weights), 2)} LSB, so the calibrated levels are no finer than the output LSB. One more charge-halving step (smallest step ½ LSB) or a combiner output with more bits removes most of it; see the Mismatch page.`;
     case 'samp':
       return `This charge is √(2kT·N·CM)${budget.arrayGain ? '' : ' × √N (beamformer gain is off)'}. Relative to the signal it shrinks with a larger CM, which follows from VREF and Cu through the charge balance.`;
     case 'pre':
-      return `This charge is √(2kT·CDAC) = ${eng(line.sigma, 'C')}; one LSB is 2·VREF·Cu / ${P.lsbPerUnit}. A larger VREF makes the LSB larger at the same CDAC.`;
+      return `This charge is √(4kT·CDAC) = ${fq(ctx, line.sigma, true)}; one LSB is 2·VREF·Cu / ${P.lsbPerUnit}. A larger VREF makes the LSB larger at the same CDAC.`;
     case 'jit':
       return a > 0 ? `Jitter below ${eng(a / (P.channels * d.cm * 2 * Math.PI * P.f0 * (1 + P.fbw / 2) * (ctx.vrms)), 's')} rms (now ${eng(P.jitter, 's')}).` : 'Even without jitter the other lines exceed the allowance.';
     default:
@@ -35,7 +34,7 @@ function enobCheck(ctx) {
   const over = sorted.filter((l) => !l.ok);
   const top = sorted.find((l) => l.id !== 'q');
   const q = b.lines.find((l) => l.id === 'q');
-  const why = `${b.ok ? '' : 'Too much noise. '}The noise adds up to ${eng(b.total, 'C')} rms (${num(b.total / ctx.d.qLsb, 3)} LSB, ${num(b.total / Q_E, 0)} electrons), ${num(b.used, 0)} % of the ${eng(b.allowed, 'C')} rms that ENOB ${num(P.enobAim, 1)} allows. Quantisation of the ${P.bits}-bit output takes ${num(q.share, 0)} % by itself; the largest other line is ${top.label.toLowerCase()} with ${num(top.share, 0)} %.${over.length ? ` Over its own allocation: ${over.map((l) => `${l.label.toLowerCase()} (${num(l.share, 1)} % of ${num(l.alloc, 1)} %)`).join('; ')}.` : ''}`;
+  const why = `${b.ok ? '' : 'Too much noise. '}The noise adds up to ${fq(ctx, b.total, true)} (${num(b.total / ctx.d.qLsb, 3)} LSB), ${num(b.used, 0)} % of the ${fq(ctx, b.allowed, true)} that ENOB ${num(P.enobAim, 1)} allows. Quantisation of the ${P.bits}-bit output takes ${num(q.share, 0)} % by itself; the largest other line is ${top.label.toLowerCase()} with ${num(top.share, 0)} %.${over.length ? ` Over its own allocation: ${over.map((l) => `${l.label.toLowerCase()} (${num(l.share, 1)} % of ${num(l.alloc, 1)} %)`).join('; ')}.` : ''}`;
   return { id: 'enob', label: 'ENOB of the converter', state: b.ok ? 'ok' : 'bad', value: `${num(b.enob, 2)} bit`, limit: `aim ${num(P.enobAim, 1)}`, why, fix: b.ok ? '' : fixFor(top, ctx), go: 'budget', f: 'enob' };
 }
 

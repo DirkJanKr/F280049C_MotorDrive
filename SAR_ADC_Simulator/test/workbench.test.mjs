@@ -73,12 +73,35 @@ test('tolerance check: binary weights fail at decision 1, the default redundant 
   assert.ok(def.checks.every((k) => typeof k.why === 'string' && k.why.length > 10));
 });
 
-test('optimizer: the best candidate passes the tolerance and beats or equals the default ENOB', async () => {
-  const { search, best } = await import('../src/workbench/optimizer.js');
+test('needs-driven optimizer: every step is covered, range reached, no more units than the radix design', async () => {
+  const { optimise } = await import('../src/workbench/optimizer.js');
   const c = design(createValues(), ui);
-  const all = search(c.P, c.P.memCells, { sigmaU: c.sigmaU, arrayGain: true, residualLsb: 0 });
-  const top = best(all, 'enob', c.P.enobAim)[0];
-  assert.ok(top.tolOk && top.cover);
-  const cur = all.find((x) => x.radix === 1.9 && x.topUnits === 32 && x.halvings === 3);
-  assert.ok(top.enob >= cur.enob - 1e-12);
+  for (const o of [{ smallest: 1 }, { smallest: 0.5 }, { smallest: 1, noise: true }]) {
+    const r = optimise(c.P, c.P.memCells, { sigmaU: c.sigmaU, arrayGain: true, ...o });
+    assert.ok(r.steps, 'builds');
+    assert.ok(r.need.every((x) => x.ok), 'every decision covered');
+    assert.ok(r.d.cover.ok, 'reaches both ends');
+    assert.ok(Math.min(...r.d.weights) <= o.smallest + 1e-12);
+    assert.ok(r.d.units <= c.d.units + 1, 'no larger than the default');
+  }
+});
+
+test('noise formulas: precharge is 4kT per farad of CDAC plus the halving switches; cell kT/C is 2kT CM per channel', async () => {
+  const { chargeLines } = await import('../src/workbench/budget.js');
+  const c = design(createValues(), ui);
+  const kT = 1.381e-23 * c.P.temperature;
+  const lines = chargeLines(c.P, c.d, { arrayGain: true });
+  const pre = lines.find((l) => l.id === 'pre').sigma;
+  const halves = c.d.steps.filter((x) => x.kind === 'half').length;
+  assert.ok(Math.abs(pre ** 2 - (4 * kT * c.d.cdac + halves * 2 * kT * c.P.cu)) / pre ** 2 < 1e-9);
+  const samp = lines.find((l) => l.id === 'samp').sigma;
+  assert.ok(Math.abs(samp ** 2 - c.P.channels * 2 * kT * c.d.cm) / samp ** 2 < 1e-9);
+});
+
+test('IQ demodulator: SNR gain after the low-pass matches 1 / (2 Σh²) for white noise', async () => {
+  const { runIq } = await import('../src/workbench/iq.js');
+  const r = runIq({ fs: 40e6, f0: 10e6, ftest: 11.2731e6, K: 63, fc: 3e6, D: 4, codes: 1024, noiseLsb: 3, ampDbfs: -1 });
+  const gain = r.stages[2].snr - r.stages[0].snr;
+  assert.ok(Math.abs(gain - r.gainTheory) < 0.6, `${gain} vs ${r.gainTheory}`);
+  assert.ok(Math.abs(r.stages[3].snr - r.stages[2].snr) < 0.5, 'decimation keeps the SNR');
 });

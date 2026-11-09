@@ -1,6 +1,6 @@
 // Beamformer page: the memory cells at work for any steering angle, and what follows from it.
 
-import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, COL } from '../kit.js';
+import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, COL, fq } from '../kit.js';
 import { startBeamAnim, beamControls, setBeamAngle } from '../anim/beamAnim.js';
 import { receiveDelays, quantise, cellsNeeded, beamPattern, worstPhaseError } from '../../zaan/model/beamformer.js';
 import { failBox } from '../checks.js';
@@ -14,9 +14,9 @@ export const page = {
   },
   main(store) {
     const dOn = store.ui.bfDelays !== false;
-    return `<div id="bfFails"></div><section class="card wide"><header><h3>Sampled charge per channel, and the combining</h3><span class="ctl"><button class="mini" id="bfPlay">pause</button><button class="mini ${dOn ? 'on' : ''}" data-bfdelays="1">delays ${dOn ? 'on' : 'off'}</button><button class="mini" id="bfSweep">sweep −15° … +15°</button><label class="mini-l">speed <select id="bfSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></span></header>
+    return `<div id="bfFails"></div><section class="card wide"><header><h3>The memory cells at work: sampled charge and the combining</h3><span class="ctl"><button class="mini" id="bfPlay">pause</button><button class="mini ${dOn ? 'on' : ''}" data-bfdelays="1">delays ${dOn ? 'on' : 'off'}</button><button class="mini" id="bfSweep">sweep −15° … +15°</button><label class="mini-l">speed <select id="bfSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></span></header>
         <canvas id="bfcv" class="cv"></canvas>
-        <p class="cap">Left: the echo from the steering direction reaches the elements one after another. Middle: every channel samples its echo into a memory cell once per slot; each bar is the charge CM · V in one cell, newest at the right. The read select takes from each channel the cell written its delay ago (green frames): with the delays on, the frames follow the echo, so all 16 hold the same part of it. Right: those 16 charges are connected to one node and add up. Bottom: the node charge with the delays (green) reaches about 16 times one channel; without them (grey) the parts do not line up. Switch the delays off or change the angle to see the pattern move. Cells are drawn by age; on the chip they stay in place and a pointer goes round.</p></section>
+        <p class="cap">Left: the echo reaching each element; the line through the pulse centres is the wavefront at the steering angle. Middle: the memory cells as they sit on the chip. Every channel writes one cell per slot, going round (white frame); a channel with an extra half step writes on CLK 180°, half a slot later (violet). Each bar is the charge CM · V the cell holds. At every read the read select takes from each channel the cell written its delay ago (green frame), so all 16 green cells hold the same part of the echo. Right: those 16 charges are connected to one node and add; below, the node charge over time with the delays (green, up to about 16 times one channel) and without them (grey). Switch the delays off or change the angle and the green pattern moves.</p></section>
       <div id="bfro"></div>
       <div class="grid2">${card('bfDelay', 'Delay per element, exact and rounded to the step')}${card('bfCells', 'Memory cells needed against steering angle')}</div>
       <div class="grid2">${card('bfBeam', 'Beam pattern: exact, 12.5 ns and 25 ns steps')}${card('bfClk', 'Write and read timing with CLK and CLK 180°')}</div>
@@ -55,7 +55,7 @@ export const page = {
       ['Channels on CLK 180°', `${halfSteps.filter((h) => h).length} of ${P.channels}`, 'at this angle'],
       ['Worst phase error', `${num(worstPhaseError(P.f0, P.delayStep), 1)}°`, `at ${eng(P.delayStep, 's')} steps`, '', 'phase'],
       ['Memory cell CM', eng(cmVal, 'F'), 'from the charge balance', '', 'cm'],
-      ['kT/C of the cells as charge', eng(samp.sigma, 'C'), ctx.budget.arrayGain ? `with the ${num(ctx.budget.arrayGainDb, 1)} dB beamformer gain` : 'beamformer gain off', '', 'b-samp'],
+      [ctx.ui.qUnit === 'V' ? 'kT/C of the cells at the input' : 'kT/C of the cells as charge', fq(ctx, samp.sigma, true), ctx.budget.arrayGain ? `with the ${num(ctx.budget.arrayGainDb, 1)} dB beamformer gain` : 'beamformer gain off', '', 'b-samp'],
       ['Beamformer gain', `${num(ctx.budget.arrayGainDb, 1)} dB`, ctx.budget.arrayGain ? 'counted, Budget page' : 'not counted, Budget page', '', 'gain'],
     ]));
     const w = widthOf('bfDelay');

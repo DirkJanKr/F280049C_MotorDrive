@@ -2,9 +2,8 @@
 // formula with the current numbers, and the result. One entry per value id.
 
 import { v, t, frac, sqrt, sup, paren } from '../zaan/ui/math.js';
-import { eng, num } from './kit.js';
+import { eng, num, fq } from './kit.js';
 export { fv } from './kit.js';
-import { Q_E } from './budget.js';
 
 const QL = v('Q', 'LSB');
 const CM = v('C', 'M');
@@ -20,15 +19,16 @@ function line(name, ctx) {
 
 function budgetRow(ctx, id) {
   const l = line(id, ctx);
-  return `${eng(l.sigma, 'C')} rms = ${num(l.electrons, 0)} e⁻ = ${num(l.lsb, 3)} LSB; ${num(l.share, 1)} % of the allowed noise power`;
+  const other = c.ui && c.ui.qUnit === 'V' ? eng(l.sigma, 'C') : `${eng(l.sigma / c.d.cNode[0], 'V')} at the input`;
+  return `${fq(c, l.sigma, true)} = ${num(l.lsb, 3)} LSB (${other}); ${num(l.share, 1)} % of the allowed noise power`;
 }
 
 export const FORMULAS = {
   qlsb: (c) => ({
     title: 'Charge of one LSB',
     rows: [[`${QL} = ${frac(`2 ${VREF} ${CU}`, v('n', 'u'))}`, `${frac(`2 × ${eng(c.P.vref, 'V')} × ${eng(c.P.cu, 'F')}`, `${c.P.lsbPerUnit}`)}`]],
-    res: eng(c.d.qLsb, 'C'),
-    note: `One unit capacitor precharged to VREF and shared differentially moves 2 VREF Cu (assumption, consistent with the review). n u = ${c.P.lsbPerUnit} LSB per unit capacitor. ${num(c.d.qLsb / Q_E, 0)} electrons.`,
+    res: `${eng(c.d.qLsb, 'C')}, which is ${eng(c.d.qLsb / c.d.cNode[0], 'V')} at the input`,
+    note: `One unit capacitor precharged to VREF and shared differentially moves 2 VREF Cu (assumption, consistent with the review). n u = ${c.P.lsbPerUnit} LSB per unit capacitor. Charge and input voltage are tied by Q in = N ch CM V in.`,
   }),
   qfs: (c) => ({
     title: 'Charge of the full scale',
@@ -64,13 +64,13 @@ export const FORMULAS = {
   allowed: (c) => ({
     title: 'Charge noise allowed for the ENOB aim',
     rows: [[`${v('σ', 'Q,max')} = ${frac(`${v('Q', 'FS')} / ${paren(`2${sqrt('2')}`)}`, `${sup('10', paren(`6.02 ${t('ENOB')} + 1.76`) + ' / 20')}`)}`, frac(`${eng(c.d.qFs, 'C')} / 2.83`, sup('10', `${num((6.02 * c.P.enobAim + 1.76) / 20, 3)}`))]],
-    res: `${eng(c.budget.allowed, 'C')} rms = ${num(c.budget.allowed / c.d.qLsb, 3)} LSB`,
+    res: `${fq(c, c.budget.allowed, true)} = ${num(c.budget.allowed / c.d.qLsb, 3)} LSB`,
     note: `For a full-scale sine. Quantisation alone is ${QL} / √12 = 0.289 LSB, so it uses ${num(line('q', c).share, 0)} % of this.`,
   }),
   enob: (c) => ({
     title: 'ENOB from the charge budget',
     rows: [
-      [`${v('σ', 'Q')} = ${sqrt(`${t('Σ')} ${sup(v('σ', 'Q,k'), 2)}`)}`, `${eng(c.budget.total, 'C')} rms`],
+      [`${v('σ', 'Q')} = ${sqrt(`${t('Σ')} ${sup(v('σ', 'Q,k'), 2)}`)}`, fq(c, c.budget.total, true)],
       [`${t('SNDR')} = 20 log<sub>10</sub> ${frac(`${v('Q', 'FS')} / ${paren(`2${sqrt('2')}`)}`, v('σ', 'Q'))}`, `${num(c.budget.sndr, 2)} dB`],
       [`${t('ENOB')} = ${frac(`${t('SNDR')} − 1.76`, '6.02')}`, frac(`${num(c.budget.sndr, 2)} − 1.76`, '6.02')],
     ],
@@ -85,19 +85,31 @@ export const FORMULAS = {
       : [[`${v('σ', 'Q,M')} = ${NCH} ${sqrt(`2 ${kT} ${CM}`)}`, `${c.P.channels} × ${sqrt(`2 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.d.cm, 'F')}`)}`]],
     res: budgetRow(c, 'samp'),
     note: c.budget.arrayGain
-      ? `Every cell freezes √(2kT CM) differentially when its switch opens. The ${c.P.channels} cells are independent, so the charges add in power (√N) while the aligned signal adds in amplitude (N): the beamformer gain of 10 log10 N = ${num(c.budget.arrayGainDb, 1)} dB.`
+      ? `Each channel has a cell CM on node + and one on node −; each keeps a random charge with variance kT CM when its write switch opens, independent of the other side, so the differential charge of one channel has variance 2 kT CM. The ${c.P.channels} cells are independent, so the charges add in power (√N) while the aligned signal adds in amplitude (N): the beamformer gain of 10 log10 N = ${num(c.budget.arrayGainDb, 1)} dB.`
       : 'Beamformer gain off: the cell noise is counted as if it added like the signal (N times), a worst case 12 dB higher in power.',
   }),
-  'b-pre': (c) => ({ title: 'CDAC precharge kT/C as charge', rows: [[`${v('σ', 'Q,pre')} = ${sqrt(`2 ${kT} ${v('C', 'DAC')}`)}`, sqrt(`2 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.d.cdac, 'F')}`)]], res: budgetRow(c, 'pre'), note: 'Each precharged capacitor carries √(kT C) of charge when its precharge switch opens; both sides, all steps. Upper bound: only the shared steps add it.' }),
+  'b-pre': (c) => {
+    const halves = c.d.steps.filter((x) => x.kind === 'half').length;
+    return {
+      title: 'CDAC precharge kT/C as charge',
+      rows: [[`${v('σ', 'Q,pre')} = ${sqrt(`4 ${kT} ${v('C', 'DAC')} + ${v('n', '½')} · 4 ${kT} ${frac(CU, '2')}`)}`, sqrt(`4 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.d.cdac, 'F')} + ${halves} × 4 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.P.cu / 2, 'F')}`)]],
+      res: budgetRow(c, 'pre'),
+      note: 'Each step is one floating capacitor C between node + and node −. When its precharge switches open it keeps a random plate charge with variance kT C. That charge enters node + and node − with opposite sign, so the differential charge sees twice it: variance 4 kT C. Every step is shared once, so all of the CDAC counts. A halving step also opens the switch between its two halves (series capacitance Cu / 2).',
+    };
+  },
   'b-comp': (c) => {
     const cl = c.d.cNode[c.d.decisions - 1];
-    return { title: 'Comparator noise as charge', rows: [[`${v('σ', 'Q,cmp')} = ${v('C', 'node,last')} ${v('v', 'n')}`, `${eng(cl, 'F')} × ${eng(c.P.compNoise, 'V')}`]], res: budgetRow(c, 'comp'), note: 'Earlier decisions see the same voltage noise on a smaller node, and their errors are repaired by redundancy; the last decision has no repair.' };
+    const simL = (c.sim.compSimV * c.d.cNode[0]) / c.d.qLsb;
+    return { title: 'Comparator noise as charge', rows: [[`${v('σ', 'Q,cmp')} = ${v('C', 'node,last')} ${v('v', 'n')}`, `${eng(cl, 'F')} × ${eng(c.P.compNoise, 'V')}`]], res: budgetRow(c, 'comp'), note: `A voltage noise v n at the comparator is the charge C node · v n on the node. Earlier decisions see it on a smaller node and are repaired by redundancy; the last decisions are not, so the largest node counts. This is a first-order upper estimate: the simulated chip with and without comparator noise gives ${num(simL, 3)} LSB against ${num(cl * c.P.compNoise / c.d.qLsb, 3)} LSB here, because a noisy last decision only changes the code when the residue is within the noise.` };
   },
   'b-jit': (c) => {
     const f = c.P.f0 * (1 + c.P.fbw / 2);
-    return { title: 'Sampling clock jitter as charge', rows: [[`${v('σ', 'Q,j')} = ${NCH} ${CM} · 2π ${v('f', 'max')} ${v('σ', 't')} ${v('V', 'rms')}`, `${eng(c.P.channels * c.d.cm, 'F')} × 2π × ${eng(f, 'Hz')} × ${eng(c.P.jitter, 's')} × ${eng(c.vrms, 'V')}`]], res: budgetRow(c, 'jit'), note: 'Full-scale sine at the band edge f0 (1 + bw / 2). Counted as if all channels jitter together (worst case).' };
+    return { title: 'Sampling clock jitter as charge', rows: [[`${v('σ', 'Q,j')} = ${NCH} ${CM} · 2π ${v('f', 'max')} ${v('σ', 't')} ${v('V', 'rms')}`, `${eng(c.P.channels * c.d.cm, 'F')} × 2π × ${eng(f, 'Hz')} × ${eng(c.P.jitter, 's')} × ${eng(c.vrms, 'V')}`]], res: budgetRow(c, 'jit'), note: 'A full-scale sine at the band edge f0 (1 + bw / 2) changes fastest; a timing error σt gives a voltage error 2π f σt V rms. Counted as if all channels jitter together (worst case: the 16 errors add like the signal).' };
   },
-  'b-cal': (c) => ({ title: 'Mismatch, offset and rounding after calibration', rows: [[`${v('σ', 'Q,cal')} = ${NCH} ${CM} ${sqrt(`${sup(v('σ', 'V,sim'), 2)} − ${sup(v('σ', 'V,q'), 2)}`)}`, `${eng(c.d.cNode[0], 'F')} × ${eng(line('cal', c).sigma / c.d.cNode[0], 'V')}`]], res: budgetRow(c, 'cal'), note: `From the simulated chip (seed ${c.P.seed}) without comparator noise: the SNDR after calibration gives σ V,sim; ideal quantisation is taken out.` }),
+  'b-cal': (c) => {
+    const e = c.sim.res.map((x) => x.enob);
+    return { title: 'Mismatch, offset and rounding after calibration', rows: [[`${v('σ', 'Q,cal')} = ${NCH} ${CM} ${sqrt(`${t('mean')} ${sup(v('σ', 'V,sim'), 2)} − ${sup(v('σ', 'V,q'), 2)}`)}`, `${eng(c.d.cNode[0], 'F')} × ${eng(line('cal', c).sigma / c.d.cNode[0], 'V')}`]], res: budgetRow(c, 'cal'), note: `Simulated on ${e.length} chips (seeds from ${c.P.seed}) without comparator noise; ENOB after calibration ${num(Math.min(...e), 2)} to ${num(Math.max(...e), 2)}. The error of each chip minus ideal quantisation, averaged in power. Most of it is rounding: with the smallest step at ${num(Math.min(...c.d.weights), 2)} LSB, the calibrated levels are not finer than the output LSB, so rounding to ${c.P.bits} bits makes some codes 0 or 2 LSB wide.` };
+  },
   gain: (c) => ({ title: 'Beamformer gain on channel noise', rows: [[`${v('G')} = 10 log<sub>10</sub> ${NCH}`, `10 log<sub>10</sub> ${c.P.channels}`]], res: `${num(c.budget.arrayGainDb, 2)} dB`, note: 'Signal from N aligned channels adds as N, independent noise as √N. Only noise that is independent per channel gets this; here that is the kT/C of the memory cells.' }),
   tol: (c) => ({ title: 'Tolerance of decision 1', rows: [[`${v('t', 'i')} = ${t('Σ')}<sub>j&gt;i</sub> ${v('w', 'j')} + 1 − ${v('w', 'i')}`, `${num(c.d.weights.slice(1).reduce((a, w) => a + w, 0), 2)} + 1 − ${num(c.d.weights[0], 2)}`]], res: `${num(c.d.tol[0], 2)} LSB`, note: 'How far the level after this decision may be wrong and still be reached by the later steps.' }),
   need: (c) => {

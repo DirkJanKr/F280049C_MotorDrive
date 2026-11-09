@@ -14,6 +14,11 @@
   --accent: #0a74a6; --an: #0a74a6; --ref: #b46b00; --clk: #6a4bc4; --dig: #1b8a4b; --cal: #c2357c; --bad: #c62828; --ok: #1b8a4b; --warn: #b46b00;
   --glow: none; color-scheme: light;
 }
+:root[data-theme="soft"] {
+  --bg: #d3d9df; --panel: #e2e7eb; --panel2: #dae0e5; --ink: #1d2933; --muted: #4c5c6b; --line: #b8c2cb; --grid: #ccd3da; --border: #a9b5c0;
+  --accent: #0b6890; --an: #0b6890; --ref: #935600; --clk: #5a3ead; --dig: #17744a; --cal: #a8296a; --bad: #b0281f; --ok: #17744a; --warn: #935600;
+  --glow: none; color-scheme: light;
+}
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -312,6 +317,12 @@ input.alloc { width: 58px; background: var(--bg); border: 1px solid var(--line);
 .tbl.opt tr.best td { color: var(--dig); font-weight: 600; }
 .tbl.opt tr.wrow td { font: 11.5px var(--mono); color: var(--muted); padding-top: 0; border-top: 0; }
 
+/* optimizer inputs, IQ page, LMS diagram */
+.numin { width: 56px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; font: 12.5px var(--mono); color: var(--an); }
+.wlist { font: 12.5px var(--mono); margin: 0 0 8px; line-height: 1.6; } .wlist .dim { color: var(--muted); }
+.snrtag { font: 600 13px var(--mono); color: var(--dig); }
+.lsvg .lcs.sm { font-size: 11px; } .lsvg .warnt { fill: var(--warn); } .lsvg .okt { fill: var(--ok); }
+.lsvg .lc.reg { fill: var(--panel2); stroke: var(--clk); }
 @media (max-width: 900px) {
   .body { grid-template-columns: minmax(0, 1fr); }
   .side { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }

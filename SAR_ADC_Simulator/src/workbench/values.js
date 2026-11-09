@@ -8,6 +8,7 @@ export const GROUPS = {
   cdac: 'CDAC and reference',
   comparator: 'Comparator',
   timing: 'Timing (illustrative)',
+  iq: 'IQ demodulator (illustrative)',
   sim: 'Simulation',
 };
 
@@ -60,6 +61,11 @@ export const SEED = [
   num('vfinal', 'timing', 'Comparator swing for a valid output', 0.9, 'V', 1, 'V', [0.3, 1.8, 0.05], 'illustrative'),
   num('tLogic', 'timing', 'Logic delay per decision', 0.2, 'ns', 1e-9, 's', [0, 1, 0.01], 'illustrative'),
   num('jitter', 'timing', 'Sampling clock jitter', 1, 'ps rms', 1e-12, 's', [0, 20, 0.1], 'illustrative'),
+
+  num('iqTaps', 'iq', 'Low-pass filter taps', 63, '', 1, '1', [7, 127, 2], 'illustrative'),
+  num('iqDecim', 'iq', 'Decimation factor', 4, '', 1, '1', [1, 8, 1], 'illustrative'),
+  num('iqCut', 'iq', 'Low-pass cutoff (empty = half the echo band)', null, 'MHz', 1e6, 'Hz', [0.5, 10, 0.1], 'not decided'),
+  num('iqTest', 'iq', 'Test tone (empty = inside the band)', null, 'MHz', 1e6, 'Hz', [1, 19, 0.01], 'not decided'),
 
   num('chips', 'sim', 'Monte Carlo chips', 100, '', 1, '1', [10, 400, 10], ''),
   num('seed', 'sim', 'Random seed', 1, '', 1, '1', [1, 999, 1], ''),

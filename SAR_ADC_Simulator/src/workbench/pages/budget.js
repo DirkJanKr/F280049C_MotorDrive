@@ -4,7 +4,7 @@
 
 import { group, knobs, card, fill, widthOf, plot, explain, eng, num, esc, COL, fv } from '../kit.js';
 import { designCdac } from '../../zaan/model/cdac.js';
-import { chargeBudget, Q_E } from '../budget.js';
+import { chargeBudget } from '../budget.js';
 import { changed } from '../store.js';
 
 const FID = { q: 'b-q', cal: 'b-cal', comp: 'b-comp', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
@@ -28,7 +28,7 @@ export const page = {
   main(store) {
     const on = store.ui.arrayGain !== false;
     return `<div id="bgVerdict"></div>
-      <section class="card wide"><header><h3>Noise budget as charge on the summing node</h3><span class="ctl"><button class="mini ${on ? 'on' : ''}" data-gain="1">beamformer gain ${on ? 'on' : 'off'}</button>${fv('gain', `${num(10 * Math.log10(store.ctx.P.channels), 1)} dB on cell noise`)}<button class="mini" id="allocReset">equal allocation</button></span></header>
+      <section class="card wide"><header><h3>Noise budget on the summing node</h3><span class="ctl"><button class="mini ${on ? 'on' : ''}" data-gain="1">beamformer gain ${on ? 'on' : 'off'}</button>${fv('gain', `${num(10 * Math.log10(store.ctx.P.channels), 1)} dB on cell noise`)}<button class="mini" id="allocReset">equal allocation</button></span></header>
         <div class="cbody" id="bgTable"></div><p class="cap" id="bgTable-cap"></p></section>
       <section class="card wide"><header><h3>Where the allowed noise power goes</h3></header><div class="cbody" id="bgBar"></div><p class="cap" id="bgBar-cap"></p></section>
       <section class="card wide"><header><h3>Every check, why it passes or fails</h3></header><div class="cbody" id="bgChecks"></div></section>
@@ -67,17 +67,19 @@ function verdict(ctx) {
 
 function table(ctx) {
   const { budget: b, d } = ctx;
+  const V = ctx.ui.qUnit === 'V';
+  const val = (q) => (V ? num((q / d.cNode[0]) * 1e6, 1) : num(q * 1e15, 3));
   const bar = (l) => `<span class="shb"><span class="shf ${l.ok ? '' : 'over'}" style="width:${Math.min(100, l.share)}%"></span><span class="sha" style="left:${Math.min(100, l.alloc)}%"></span></span>`;
-  const rows = b.lines.map((l) => `<tr class="${l.ok ? '' : 'over'}"><td>${fv(FID[l.id], esc(l.label))}${l.perChannel ? ` <span class="tag">${b.arrayGain ? 'with beamformer gain' : 'no beamformer gain'}</span>` : ''}${l.simulated ? ' <span class="tag">simulated chip</span>' : ''}</td>
-    <td class="num">${num(l.sigma * 1e18, 0)}</td><td class="num">${num(l.electrons, 0)}</td><td class="num">${num(l.lsb, 3)}</td>
+  const rows = b.lines.map((l) => `<tr class="${l.ok ? '' : 'over'}"><td>${fv(FID[l.id], esc(l.label))}${l.perChannel ? ` <span class="tag">${b.arrayGain ? 'with beamformer gain' : 'no beamformer gain'}</span>` : ''}${l.simulated ? ` <span class="tag">simulated, ${ctx.sim.res.length} chips</span>` : ''}</td>
+    <td class="num">${val(l.sigma)}</td><td class="num">${num(l.lsb, 3)}</td>
     <td class="shc">${bar(l)}<span class="num">${num(l.share, 1)} %</span></td>
     <td class="num">${l.id === 'q' ? `${num(l.alloc, 1)}` : `<input type="number" class="alloc" data-alloc="${l.id}" value="${+l.alloc.toFixed(1)}" step="1" min="0" max="100"/>`} %</td>
     <td class="num">${num(l.enobWithout, 2)}</td><td>${l.ok ? '<span class="okc">within</span>' : '<span class="badc">over</span>'}</td></tr>`).join('');
   const allocSum = b.lines.reduce((a, l) => a + l.alloc, 0);
-  fill('bgTable', `<div class="tablewrap"><table class="tbl budget"><thead><tr><th>Line (click for the formula)</th><th>σ [aC rms]</th><th>electrons</th><th>LSB</th><th>share of the allowed power</th><th>allocation</th><th>ENOB without it</th><th></th></tr></thead><tbody>${rows}
-    <tr class="tot"><td>Total, root sum of squares</td><td class="num">${num(b.total * 1e18, 0)}</td><td class="num">${num(b.total / Q_E, 0)}</td><td class="num">${num(b.total / d.qLsb, 3)}</td><td class="num">${num(b.used, 1)} %</td><td class="num ${allocSum > 100.05 ? 'badc' : ''}">${num(allocSum, 1)} %</td><td class="num">${fv('enob', num(b.enob, 2))}</td><td>${b.ok ? '<span class="okc">pass</span>' : '<span class="badc">fail</span>'}</td></tr>
-    <tr class="tot"><td>${fv('allowed', `Allowed for ENOB ${num(ctx.P.enobAim, 1)}`)}</td><td class="num">${num(b.allowed * 1e18, 0)}</td><td class="num">${num(b.allowed / Q_E, 0)}</td><td class="num">${num(b.allowed / d.qLsb, 3)}</td><td class="num">100 %</td><td></td><td></td><td></td></tr>
-  </tbody></table></div>`, `Referred to the differential charge on the node at the start of the conversion: Q in = ${ctx.P.channels} CM · V in, one LSB = ${fv('qlsb', eng(d.qLsb, 'C'))}. 1 aC = 10⁻¹⁸ C ≈ 6.2 electrons. The allocation is yours to set; it starts with quantisation as it is and the rest split evenly. A line is over when its share exceeds its allocation.`);
+  fill('bgTable', `<div class="tablewrap"><table class="tbl budget"><thead><tr><th>Line (click for the formula)</th><th>σ [${V ? 'µV rms at the input' : 'fC rms'}]</th><th>LSB</th><th>share of the allowed power</th><th>allocation</th><th>ENOB without it</th><th></th></tr></thead><tbody>${rows}
+    <tr class="tot"><td>Total, root sum of squares</td><td class="num">${val(b.total)}</td><td class="num">${num(b.total / d.qLsb, 3)}</td><td class="num">${num(b.used, 1)} %</td><td class="num ${allocSum > 100.05 ? 'badc' : ''}">${num(allocSum, 1)} %</td><td class="num">${fv('enob', num(b.enob, 2))}</td><td>${b.ok ? '<span class="okc">pass</span>' : '<span class="badc">fail</span>'}</td></tr>
+    <tr class="tot"><td>${fv('allowed', `Allowed for ENOB ${num(ctx.P.enobAim, 1)}`)}</td><td class="num">${val(b.allowed)}</td><td class="num">${num(b.allowed / d.qLsb, 3)}</td><td class="num">100 %</td><td></td><td></td><td></td></tr>
+  </tbody></table></div>`, `${V ? `Shown as the voltage each charge means at the input: V = Q / (${ctx.P.channels} CM) = Q / ${eng(d.cNode[0], 'F')}. Switch to fC in the header.` : `Differential charge on the node at the start of the conversion, Q in = ${ctx.P.channels} CM · V in. Switch to µV at the input in the header.`} One LSB = ${fv('qlsb', eng(d.qLsb, 'C'))} = ${eng(d.qLsb / d.cNode[0], 'V')} at the input. The allocation is yours to set; it starts with quantisation as it is and the rest split evenly. A line is over when its share exceeds its allocation.`);
 }
 
 function powerBar(ctx) {

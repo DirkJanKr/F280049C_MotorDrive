@@ -3,7 +3,7 @@
 
 import { store, load, subscribe, setValue, setUi, changed, resetValues, saveVersion, deleteVersion, loadVersion, exportJson, importJson } from './store.js';
 import { PRESETS } from './weights.js';
-import { eng, num, esc } from './kit.js';
+import { eng, num, esc, fq } from './kit.js';
 import { page as system } from './pages/system.js';
 import { page as budgetPage } from './pages/budget.js';
 import { formulaHtml } from './formulas.js';
@@ -13,8 +13,9 @@ import { page as mismatch } from './pages/mismatch.js';
 import { page as timing } from './pages/timing.js';
 import { page as logic } from './pages/logic.js';
 import { page as valuesPage } from './pages/values.js';
+import { page as iqPage } from './pages/iq.js';
 
-const PAGES = [system, budgetPage, beamformer, sar, mismatch, timing, logic, valuesPage];
+const PAGES = [system, budgetPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
 const $ = (id) => document.getElementById(id);
 let current = null;
 
@@ -30,7 +31,7 @@ function summary() {
   const items = [
     ['ENOB, converter', `${num(c.budget.enob, 2)} / ${num(P.enobAim, 1)}`, 'budget', c.budget.ok ? '' : 'bad'],
     ['checks', fails.length ? `${fails.length} fail` : warns.length ? `${warns.length} to look at` : 'all pass', 'budget', fails.length ? 'bad' : warns.length ? 'warn' : 'ok'],
-    ['noise as charge', `${eng(c.budget.total, 'C')} rms`, 'budget', c.budget.ok ? '' : 'bad'],
+    [store.ui.qUnit === 'V' ? 'noise at the input' : 'noise as charge', fq(c, c.budget.total, true), 'budget', c.budget.ok ? '' : 'bad'],
     ['1 LSB', eng(d.qLsb, 'C'), 'budget'],
     ['delay step', eng(P.delayStep, 's'), 'beamformer'],
     ['cells per channel', `${P.memCells}`, 'beamformer', c.need.m > P.memCells ? 'bad' : ''],
@@ -48,6 +49,8 @@ function layout() {
   document.body.classList.toggle('no-side', !store.ui.showSide || current?.id === 'values');
   $('togTop').classList.toggle('on', store.ui.showTop);
   $('togSide').classList.toggle('on', store.ui.showSide);
+  $('togUnit').textContent = store.ui.qUnit === 'V' ? 'show in µV' : 'show in fC';
+  $('togTheme').textContent = `theme: ${store.ui.theme || 'soft'}`;
   document.documentElement.dataset.theme = store.ui.theme;
 }
 
@@ -220,7 +223,12 @@ document.addEventListener('click', (e) => {
     setTimeout(() => changed('side'), 0);
   } else if (b.id === 'togTop') setUi({ showTop: !store.ui.showTop }, 'layout');
   else if (b.id === 'togSide') setUi({ showSide: !store.ui.showSide }, 'layout');
-  else if (b.id === 'togTheme') setUi({ theme: store.ui.theme === 'dark' ? 'light' : 'dark' }, 'layout');
+  else if (b.id === 'togTheme') setUi({ theme: { soft: 'dark', dark: 'light', light: 'soft' }[store.ui.theme] || 'soft' }, 'layout');
+  else if (b.id === 'togUnit') {
+    store.ui.qUnit = store.ui.qUnit === 'V' ? 'fC' : 'V';
+    changed('values');
+    changed('page');
+  }
   else if (b.dataset.resetg) {
     resetValues(b.dataset.resetg);
     setTimeout(() => changed('page'), 0);

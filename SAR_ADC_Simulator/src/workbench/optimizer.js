@@ -1,60 +1,109 @@
-// Weight optimizer: search radix, first step and the steps below one unit, and
-// score every candidate on the same checks as the design itself: coverage,
-// tolerance against mismatch and offset, and the charge noise budget.
+// Weight optimizer driven by the redundancy each step needs.
+// The weights are built from the smallest step upward. For every new step the
+// largest whole number of unit capacitors is taken whose tolerance still covers
+// what that decision needs:
+//   t i = (sum of the steps below) + 1 − w i
+//   need i = k σ · sqrt(σ w,i² + sum below σ w,j²)            DAC mismatch
+//          + |v os| · (C node,last − C node,i) / Q LSB          offset after calibration
+//          (+ k σ · C node,i · v n / Q LSB                     comparator noise, if chosen)
+//          + margin
+//   check: need i ≤ t i + ½ LSB
+// The largest step that passes gives the fewest decisions for these errors: more
+// redundancy than needed only costs decisions and capacitance. Building stops as soon
+// as the steps reach both ends of the range; the range left over is then spread as
+// extra margin over all steps, so no step is left with just enough.
 
-import { buildSteps } from '../zaan/model/steps.js';
 import { designCdac } from '../zaan/model/cdac.js';
 import { chargeBudget, toleranceNeeds } from './budget.js';
 
-export const GOALS = {
-  enob: 'highest ENOB',
-  decisions: 'fewest decisions',
-  area: 'smallest CDAC',
-};
-
-/** Evaluate one candidate. residualLsb: calibration residual carried over from the simulated chip. */
-export function evaluate(P, cells, steps, { sigmaU, arrayGain, residualLsb }) {
-  const d = designCdac(P, cells, steps);
-  const minW = Math.min(...d.weights);
-  const need = toleranceNeeds(P, d, sigmaU);
-  const margin = Math.min(...need.filter((r) => !r.last).map((r) => r.have + 0.5 - r.need));
-  const b = chargeBudget(P, d, { arrayGain, residualQ: residualLsb * d.qLsb });
-  return {
-    weights: d.weights, decisions: d.decisions, units: d.units, cdac: d.cdac, cover: d.cover.ok, resolves: minW <= 1 + 1e-9,
-    margin, tolOk: margin >= -1e-9, enob: b.enob, enobOk: b.enob >= P.enobAim,
-  };
+/** σ of a step weight in LSB: w σu / √units for whole capacitors, about w σu / √2 for a halving step. */
+function sigmaW(w, units, kind, sigmaU) {
+  return kind === 'cap' ? (w * sigmaU) / Math.sqrt(units) : (w * sigmaU) / Math.SQRT2;
 }
 
-/** All candidates over the search grid. halvingOn as in the current design. */
-export function search(P, cells, opts) {
+/** Steps below one unit: charge halving down to the chosen smallest step, plus the charge left as one more step. */
+function bottomSteps(P, smallest) {
+  const h = Math.max(0, Math.round(Math.log2(P.lsbPerUnit / smallest)));
   const out = [];
-  for (let r = 160; r <= 200; r += 2) {
-    for (let top = 16; top <= 48; top++) {
-      for (let h = 0; h <= 4; h++) {
-        const radix = r / 100;
-        const steps = buildSteps({ topUnits: top, radix, halvings: h, halvingOn: P.halvingOn === 'charge halving' });
-        const e = evaluate(P, cells, steps, opts);
-        if (!e.cover || !e.resolves) continue;
-        out.push({ radix, topUnits: top, halvings: h, ...e });
-      }
-    }
-  }
+  for (let k = 1; k <= h; k++) out.push({ units: 0.5 ** k, kind: 'half' });
+  if (h > 0) out.push({ units: 0.5 ** h, kind: 'rest' });
   return out;
 }
 
-/** Best candidate for a goal; tolerance must pass, and for the size goals the ENOB too. */
-export function best(cands, goal, aim) {
-  const ok = cands.filter((c) => c.tolOk && (goal === 'enob' || c.enob >= aim));
-  const key = {
-    enob: (a, b) => b.enob - a.enob || a.units - b.units,
-    decisions: (a, b) => a.decisions - b.decisions || a.units - b.units || b.enob - a.enob,
-    area: (a, b) => a.units - b.units || a.decisions - b.decisions || b.enob - a.enob,
-  }[goal];
-  const seen = new Set();
-  return ok.sort(key).filter((c) => {
-    const k = c.weights.join(',');
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+/**
+ * Build weights from the needs. opts: sigmaU, k (σ multiple), margin [LSB], noise (bool),
+ * smallest [LSB], cNodeLast (estimate for the noise term). Returns steps (largest first) and a log per step.
+ */
+export function buildFromNeeds(P, cells, opts) {
+  const { sigmaU, k = 3, margin = 0, noise = false, smallest = 1 } = opts;
+  const lsbU = P.lsbPerUnit;
+  const cover = 2 ** (P.bits - 1) - 1;
+  const cm = (2 ** P.bits * (2 * P.vref * P.cu) / lsbU) / (P.channels * P.fullScale);
+  const qLsb = (2 * P.vref * P.cu) / lsbU;
+  const below = bottomSteps(P, smallest).reverse(); // smallest first
+  let sum = below.reduce((a, s) => a + s.units * lsbU, 0);
+  let var2 = below.reduce((a, s) => a + sigmaW(s.units * lsbU, s.units, s.kind, sigmaU) ** 2, 0);
+  let capBelow = below.reduce((a, s) => a + 2 * (s.kind === 'half' || s.kind === 'rest' ? 1 : s.units) * P.cu, 0);
+  const caps = [];
+  const log = [];
+  for (let guard = 0; guard < 40 && sum < cover; guard++) {
+    let best = 0;
+    let bestNeed = null;
+    for (let u = 1; u <= 4096; u++) {
+      const w = u * lsbU;
+      const sw = sigmaW(w, u, 'cap', sigmaU);
+      const mis = k * Math.sqrt(sw ** 2 + var2);
+      const off = (Math.abs(P.vosCal) * (capBelow + 2 * u * P.cu)) / qLsb;
+      const cNode = opts.cNodeLast ? opts.cNodeLast - capBelow - 2 * u * P.cu : P.channels * cm;
+      const nz = noise ? (k * Math.max(cNode, P.channels * cm) * P.compNoise) / qLsb : 0;
+      const need = mis + off + nz + margin;
+      const tol = sum + 1 - w;
+      if (need > tol + 0.5) break;
+      best = u;
+      bestNeed = { need, tol, mis, off, nz };
+    }
+    if (best === 0) return { steps: null, log, error: 'Even a single unit capacitor needs more tolerance than the steps below give. Lower the margin or the offset, or use a smaller smallest step.' };
+    // the top step only needs to reach the end of the range
+    if (sum + best * lsbU >= cover) best = Math.min(best, Math.ceil((cover - sum) / lsbU));
+    caps.push(best);
+    log.push({ units: best, weight: best * lsbU, ...bestNeed });
+    sum += best * lsbU;
+    var2 += sigmaW(best * lsbU, best, 'cap', sigmaU) ** 2;
+    capBelow += 2 * best * P.cu;
+  }
+  const steps = caps.reverse().map((u) => ({ units: u, kind: 'cap' })).concat(bottomSteps(P, smallest));
+  return { steps, log: log.reverse(), error: null };
+}
+
+/** Build once, then spread the range left over as extra margin on every step, keeping the number of steps. */
+function buildSpread(P, cells, opts) {
+  const base = buildFromNeeds(P, cells, opts);
+  if (!base.steps) return { ...base, extra: 0 };
+  const n = base.steps.length;
+  let lo = 0;
+  let hi = 20;
+  let best = base;
+  for (let it = 0; it < 30; it++) {
+    const mid = (lo + hi) / 2;
+    const r = buildFromNeeds(P, cells, { ...opts, margin: (opts.margin || 0) + mid });
+    if (r.steps && r.steps.length === n) {
+      lo = mid;
+      best = r;
+    } else hi = mid;
+  }
+  return { ...best, extra: lo };
+}
+
+/** Run the builder (twice when noise is included, to estimate the final node) and score the result. */
+export function optimise(P, cells, opts) {
+  let r = buildSpread(P, cells, opts);
+  if (opts.noise && r.steps) {
+    const d0 = designCdac(P, cells, r.steps);
+    r = buildSpread(P, cells, { ...opts, cNodeLast: d0.cNode[d0.decisions - 1] });
+  }
+  if (!r.steps) return r;
+  const d = designCdac(P, cells, r.steps);
+  const need = toleranceNeeds(P, d, opts.sigmaU);
+  const b = chargeBudget(P, d, { arrayGain: opts.arrayGain, residualQ: (opts.residualLsb || 0) * d.qLsb });
+  return { ...r, d, need, enob: b.enob, budget: b };
 }
