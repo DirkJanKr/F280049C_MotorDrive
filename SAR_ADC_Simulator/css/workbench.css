@@ -360,6 +360,11 @@ input.alloc { width: 58px; background: var(--bg); border: 1px solid var(--line);
 .stsel { font: 600 12px var(--mono); border-radius: 5px; padding: 1px 2px; background: var(--bg); border: 1px solid var(--border); }
 .eqgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 18px; align-items: start; }
 .flagc { border-left: 4px solid var(--warn); }
+.lvsvg .lv-p { fill: color-mix(in srgb, var(--dig) 22%, transparent); stroke: var(--dig); }
+.lvsvg .lv-r { fill: color-mix(in srgb, var(--an) 20%, transparent); stroke: var(--an); }
+.lvsvg .lv-t { stroke: var(--ink); stroke-width: 2; } .lvsvg .lv-a { stroke: var(--muted); stroke-width: 1.2; fill: none; }
+.lvsvg .lv-c { stroke: var(--border); } .lvsvg .lv-c.n1 { fill: color-mix(in srgb, var(--dig) 30%, transparent); } .lvsvg .lv-c.n2 { fill: color-mix(in srgb, var(--warn) 45%, transparent); } .lvsvg .lv-c.n0 { fill: color-mix(in srgb, var(--bad) 40%, transparent); }
+.tsvg .lv-up { fill: var(--an); } .tsvg .lv-dn { fill: var(--cal); }
 .snrtag { font: 600 13px var(--mono); color: var(--dig); }
 .lsvg .lcs.sm { font-size: 11px; } .lsvg .warnt { fill: var(--warn); } .lsvg .okt { fill: var(--ok); }
 .lsvg .lc.reg { fill: var(--panel2); stroke: var(--clk); }

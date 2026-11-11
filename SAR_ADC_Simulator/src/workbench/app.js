@@ -16,11 +16,12 @@ import { page as valuesPage } from './pages/values.js';
 import { page as iqPage } from './pages/iq.js';
 import { page as optPage } from './pages/optimizer.js';
 import { page as balancePage } from './pages/balance.js';
+import { page as levelsPage } from './pages/levels.js';
 
-const PAGES = [system, balancePage, budgetPage, optPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
+const PAGES = [system, levelsPage, balancePage, budgetPage, optPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
 // The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
 const NAV = [
-  ['Overview', [['system', []]]],
+  ['Overview', [['system', []], ['levels', []]]],
   ['Decide', [['balance', []], ['budget', ['enob']], ['optimizer', []]]],
   ['Blocks, in signal order', [['beamformer', ['cells']], ['sar', ['cover', 'tol', 'small', 'dec']], ['logic', []], ['timing', ['time']], ['mismatch', []], ['iq', []]]],
   ['Record', [['values', []]]],
