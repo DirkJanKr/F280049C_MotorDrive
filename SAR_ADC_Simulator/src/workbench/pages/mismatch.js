@@ -24,6 +24,7 @@ export const page = {
     return `<div id="mmro"></div>
       <section class="card wide"><header><h3>Monte Carlo: many chips, before and after calibration</h3><span class="ctl"><button class="mini primary" id="mcRun">run Monte Carlo</button></span></header>
         <div class="grid2 inner"><div id="mcHist" class="cbody"></div><div id="mcYield" class="cbody"></div></div><p class="cap" id="mcCap">Press run. Each chip gets its own random capacitor errors from the PDK matching; its weights are then calibrated with a ramp, and the ENOB of a sine is measured with design and with calibrated weights.</p></section>
+      <section class="card wide"><header><h3>Why binary matching needs such a large unit capacitor</h3></header><div class="cbody" id="mmFlip"></div><p class="cap" id="mmFlip-cap"></p></section>
       <div class="grid2">${card('mmErr', 'This chip: weight error per step')}${card('mmDnl', 'This chip: DNL and INL before and after calibration')}</div>
       <section class="card wide"><header><h3>LMS calibration on chip: the hookup and the weights converging</h3><span class="ctl"><label class="mini-l">μ <select id="lmsMu">${[5, 7, 9].map((k) => `<option value="${k}" ${(store.ui.lmsMu || 7) === k ? 'selected' : ''}>2^−${k}</option>`).join('')}</select></label><button class="mini primary" id="lmsPlay">▶ run calibration</button></span></header>
         <div id="lmsDiag"></div><div class="grid2 inner"><div id="lmsW" class="cbody"></div><div id="lmsE" class="cbody"></div></div><p class="cap" id="lmsCap"></p></section>
@@ -44,6 +45,7 @@ export const page = {
   },
   update(store, ctx) {
     const { d, P, sim } = ctx;
+    flipCard(ctx);
     fill('mmro', readouts([
       ['σ of one unit capacitor', `${num(ctx.sigmaU * 100, 3)} %`, `at Cu = ${eng(P.cu, 'F')}`, '', 'sigmau'],
       ['Binary matching would need', eng(ctx.binCu, 'F'), 'unit capacitor for 3σ DNL < 0.5 LSB'],
@@ -230,4 +232,32 @@ function lms(ctx, play) {
     }
   };
   step();
+}
+
+/** The two codes around mid-scale of a binary list: every capacitor reverses, so every error counts twice. */
+function flipCard(ctx) {
+  const { P } = ctx;
+  const ws = ctx.dBin.weights;
+  const w = Math.max(520, widthOf('mmFlip'));
+  const L = 190;
+  const bw = (w - L - 20) / ws.length;
+  const p = [`<svg viewBox="0 0 ${w} 150" class="tsvg tolc" role="img" aria-label="The two codes around mid-scale">`];
+  const rowOf = (y, label, first) => {
+    p.push(`<text x="8" y="${y + 20}" class="lbl">${label}</text>`);
+    ws.forEach((x, i) => {
+      const plus = i === 0 ? first : !first;
+      p.push(`<rect x="${L + i * bw + 2}" y="${y}" width="${bw - 4}" height="30" rx="4" class="${plus ? 'tn-mis' : 'tn-off'}" opacity="0.85"/><text x="${L + i * bw + bw / 2}" y="${y + 20}" text-anchor="middle" class="tiny" style="fill:#fff">${plus ? '+' : '−'}${num(x, 0)}</text>`);
+    });
+  };
+  rowOf(14, 'just below mid-scale', false);
+  rowOf(64, 'just above mid-scale', true);
+  p.push(`<text x="8" y="134" class="lbl">change of each step</text>`);
+  ws.forEach((x, i) => p.push(`<text x="${L + i * bw + bw / 2}" y="134" text-anchor="middle" class="tiny">${i === 0 ? '+' : '−'}2·${num(x, 0)}</text>`));
+  p.push('</svg>');
+  const units = 2 * P.topUnits;
+  const sNow = 2 * P.lsbPerUnit * Math.sqrt(units);
+  const sigU = 0.5 / (3 * sNow);
+  const sigConv = 0.5 / (3 * Math.sqrt(2 ** P.bits));
+  const cConv = (P.aC / 100 / sigConv) ** 2 * 1e-15;
+  fill('mmFlip', p.join(''), `Each box is one CDAC step with its weight in LSB: + is connected parallel, − antiparallel. The two codes should be one code step apart. Every step reverses, so its error counts twice: error of the code step = 2 · (δw 1 − δw 2 − … ). A step of k unit capacitors has σ = n u · σ u · √k LSB (n u = ${P.lsbPerUnit} LSB per unit). All ${units} units together: σ = 2 · n u · σ u · √${units} = ${num(sNow, 0)} · σ u LSB. For 3σ < 0.5 LSB: σ u < ${num(sigU * 100, 3)} %, and with the PDK matching that is C u = ${eng(ctx.binCu, 'F')}. The earlier ${eng(ctx.binCu / 4, 'F')} left out the factor 2 (it counted a capacitor as on or off, not as reversed); half the σ needs four times the capacitance. Cross-check: a usual binary array has ${2 ** P.bits} units of 1 LSB, σ = σ u · √${2 ** P.bits}, needing ${eng(cConv, 'F')} per unit and ${eng(cConv * 2 ** P.bits, 'F')} in total. This array has ${units} units of ${eng(ctx.binCu, 'F')}: ${eng(ctx.binCu * units, 'F')} in total, the same. Matching sets the total capacitance, however it is divided.`);
 }

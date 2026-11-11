@@ -188,7 +188,7 @@ function tolerance(ctx) {
       else if (!r.ok) p.push(`<text x="${w - R + 6}" y="${y + 15}" class="tiny bad">short</text>`);
     } else p.push(`<text x="${w - R + 6}" y="${y + 15}" class="tiny">no repair</text>`);
   });
-  p.push(`<g class="tleg"><rect x="${L}" y="8" width="12" height="12" class="tn-mis"/><text x="${L + 16}" y="18" class="tiny">DAC mismatch 3σ</text><rect x="${L + 150}" y="8" width="12" height="12" class="tn-off"/><text x="${L + 166}" y="18" class="tiny">offset: difference to the last decision</text><rect x="${L + 360}" y="8" width="12" height="12" class="tn-noise"/><text x="${L + 376}" y="18" class="tiny">comparator noise 3σ</text></g>`);
+  p.push(`<g class="tleg"><rect x="${L}" y="8" width="12" height="12" class="tn-mis"/><text x="${L + 16}" y="18" class="tiny">DAC mismatch 3σ</text><rect x="${L + 150}" y="8" width="12" height="12" class="tn-off"/><text x="${L + 166}" y="18" class="tiny">offset against the last decision</text><rect x="${L + 400}" y="8" width="12" height="12" class="tn-noise"/><text x="${L + 416}" y="18" class="tiny">comparator noise 3σ</text></g>`);
   p.push('</svg>');
   const P = ctx.P;
   const d = ctx.d;
