@@ -20,7 +20,7 @@ export const page = {
     const vers = store.versions.map((v) => `<li><b>${esc(v.name)}</b> <span class="cap">${esc(v.date.slice(0, 16).replace('T', ' '))}</span> <button class="mini" data-loadv="${esc(v.name)}">load</button> <button class="mini" data-delv="${esc(v.name)}">delete</button></li>`).join('');
     const c = store.ctx;
     const dv = [
-      ['alpha', num(c.P.alphaIn, 3), '2 · V REF / V in,max', 'Chen 2018 eq. 3 with Rabuske 2016 eq. 3'],
+      ['V REF', eng(c.P.vref, 'V'), 'alpha · V in,max / 2', 'Chen 2018 eq. 3 with Rabuske 2016 eq. 3'],
       ['C DAC (binary)', eng(c.P.cdacBalance, 'F'), 'N · C M / (2 · alpha)', 'Chen 2018 eq. 3'],
       ['Q FS', eng(c.d.qFs, 'C'), 'N · C M · V in,max', 'Q+ − Q−, peak to peak'],
       ['Q LSB', eng(c.d.qLsb, 'C'), 'Q FS / 2^B', ''],

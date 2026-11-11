@@ -34,12 +34,12 @@ export const page = {
   side(store) {
     const used = new Set();
     return `<p class="ks pad">Inputs of the charge balance. V REF, C DAC, Q LSB and C u follow from them.</p>` +
-      group('Inputs', knobs(store.values, ['cm', 'vref', 'channels', 'fullScale', 'bits'], used)) +
+      group('Inputs', knobs(store.values, ['cm', 'alpha', 'channels', 'fullScale', 'bits'], used)) +
       group('Array', knobs(store.values, ['lsbPerUnit'], used)) +
       group('Comparator offset, for φ MSB', knobs(store.values, ['vos', 'vosCal'], used));
   },
   main() {
-    return `<section class="card wide"><header><h3>Charge balance: from C M and V REF to alpha, C DAC and Q LSB</h3></header>
+    return `<section class="card wide"><header><h3>Charge balance: from C M and alpha to V REF, C DAC and Q LSB</h3></header>
         <div class="eqgrid"><div id="blEq"></div><div id="blOut"></div></div><p class="cap" id="blCap"></p></section>
       <div id="blFlags"></div>
       <div class="grid2">${card('blCycle', 'Comparator voltage of one LSB in every bit cycle (Rabuske eq. 5)')}${card('blAlpha', 'One LSB at the comparator against alpha')}</div>
@@ -64,7 +64,7 @@ export const page = {
     ].join(''));
     const cuLow = P.cu < 35e-15 - 1e-21;
     fill('blOut', readouts([
-      ['alpha', num(P.alphaIn, 3), 'D: 2 V REF / V in,max; Chen 2018 has 0.40', '', 'vref'],
+      ['V REF', eng(P.vref, 'V'), 'D: alpha · V in,max / 2', '', 'vref'],
       ['C DAC, binary', eng(P.cdacBalance, 'F'), 'D: N C M / (2 alpha)', '', 'cdac'],
       ['Q FS', eng(d.qFs, 'C'), 'D: N C M V in,max, as Q+ − Q−', '', 'qfs'],
       ['Q LSB', eng(d.qLsb, 'C'), `D: Q FS / 2^${B}; ${eng(lsbV, 'V')} at the input`, '', 'qlsb'],

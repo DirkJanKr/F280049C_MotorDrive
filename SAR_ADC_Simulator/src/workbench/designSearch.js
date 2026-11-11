@@ -13,7 +13,8 @@ import { residualParts } from './residual.js';
 
 export const CU_GRID = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 85, 100, 120, 150];
 export const SMALLEST = [1, 0.5];
-export const OUT_BITS = [10, 11, 12];
+// The digital side takes 10 bits, so the search does not offer more (decision of 11 Nov).
+export const OUT_BITS = [10];
 
 function timeOf(d, P, seed) {
   const rng = createRng(seed + 3);

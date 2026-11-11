@@ -21,7 +21,7 @@ export const page = {
     const used = new Set();
     return `<p class="ks pad">The search uses these values. Change them and run again.</p>` +
       group('Target', knobs(store.values, ['enobAim', 'bits'], used)) +
-      group('Charge balance', knobs(store.values, ['vref', 'fullScale', 'lsbPerUnit'], used)) +
+      group('Charge balance', knobs(store.values, ['alpha', 'fullScale', 'lsbPerUnit'], used)) +
       group('Errors to cover', knobs(store.values, ['pairSigma', 'vosCal', 'compNoise', 'calMethod'], used)) +
       group('Timing (illustrative)', knobs(store.values, ['fs', 'tSample', 'tauDac', 'ibias', 'gmId', 'cload', 'tLogic'], used), false);
   },

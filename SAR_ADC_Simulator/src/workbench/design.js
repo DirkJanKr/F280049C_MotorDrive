@@ -27,10 +27,10 @@ export function siOf(values, id) {
 export function modelParams(values) {
   const g = (id) => siOf(values, id);
   const pair = g('pairSigma');
-  // D: V_REF is an input again (11 Nov); alpha = 2 V_REF / V_in,max and C_u follow through the charge balance (Chen 2018 eq. 3)
-  const bal = chargeBalance({ channels: g('channels'), fullScale: g('fullScale'), bits: g('bits'), cm: g('cm'), alpha: (2 * g('vref')) / g('fullScale'), lsbPerUnit: g('lsbPerUnit') });
+  // D: alpha is the input (11 Nov); V_REF = alpha V_in,max / 2 and C_u follow through the charge balance (Chen 2018 eq. 3)
+  const bal = chargeBalance({ channels: g('channels'), fullScale: g('fullScale'), bits: g('bits'), cm: g('cm'), alpha: g('alpha'), lsbPerUnit: g('lsbPerUnit') });
   return {
-    cmIn: g('cm'), alphaIn: (2 * g('vref')) / g('fullScale'), cdacBalance: bal.cdac,
+    cmIn: g('cm'), alphaIn: g('alpha'), cdacBalance: bal.cdac,
     fs: g('fs'), f0: g('f0'), fbw: g('fbw'), fullScale: g('fullScale'), bits: g('bits'), outBits: Math.max(g('bits'), g('outBits') ?? g('bits')), calMethod: g('calMethod'), enobAim: g('enobAim'), rawDecisions: g('rawDecisions'),
     channels: g('channels'), pitch: g('pitch'), steer: g('steer'), focus: g('rxFocus') ?? Infinity, delayStep: g('delayStep'), c: g('c'), memCells: g('memCells'),
     vref: bal.vref, cu: bal.cu, density: g('density'), aC: ((pair / Math.SQRT2) * Math.sqrt(35)) * 100, routing: g('routing'),
