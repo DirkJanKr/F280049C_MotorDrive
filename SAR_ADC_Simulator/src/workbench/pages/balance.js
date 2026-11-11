@@ -42,6 +42,7 @@ export const page = {
     return `<section class="card wide"><header><h3>Charge balance: from C M and alpha to V REF, C DAC and Q LSB</h3></header>
         <div class="eqgrid"><div id="blEq"></div><div id="blOut"></div></div><p class="cap" id="blCap"></p></section>
       <div id="blFlags"></div>
+      <section class="card wide"><header><h3>What alpha means: how much of the signal voltage is left at the comparator</h3></header><div class="cbody" id="blVis"></div><p class="cap" id="blVis-cap"></p></section>
       <div class="grid2">${card('blCycle', 'Comparator voltage of one LSB in every bit cycle (Rabuske eq. 5)')}${card('blAlpha', 'One LSB at the comparator against alpha')}</div>
       <div class="grid2">${card('blPhi', 'Offset error at the first decision, φ MSB, against alpha (Rabuske eq. 7)')}${card('blChen', 'Check: the same equations with the numbers of Chen 2018')}</div>
       ${explain('What alpha does', [
@@ -73,6 +74,7 @@ export const page = {
     ]), `N: channels summed. V in,max: maximum peak-to-peak differential swing per channel. C M: one memory capacitor. C DAC: the CDAC capacitance that carries reference charge. n u = ${P.lsbPerUnit}: LSB per unit capacitor. The factor 4: a capacitor precharged single-ended to V REF and connected between the two summing nodes changes Q+ − Q− by 2 C V REF with either sign, so the whole CDAC spans 4 V REF C DAC peak to peak (Chen 2018, p. 3056). Charge convention: Q = Q+ − Q−; Rabuske eq. 5 uses (C TH / 2) V, half of this, with the same voltages.`);
     flags(ctx);
     cycles(ctx);
+    alphaVisual(ctx);
     alphaPlot(ctx);
     phiPlot(ctx);
     chen();
@@ -162,4 +164,30 @@ function chen() {
     ${row('Q LSB = N C M V in,max / 2^10', eng((c.N * c.cm * c.vin) / 1024, 'C'), 'D', '')}
     ${row('T int', '25 ns', 'S', 'p. 3056: 3/4 of the 33.3 ns period')}
   </tbody></table></div>`, 'The equations of this page reproduce the 160 mV of the paper. The binary array of this model with n u = 8 has 63 bank units, one source unit and 3 empty halving units: 67 units, the number in the paper (7 precharged capacitors: 32, 16, 8, 4, 2, 1, 1; the last one feeds the 3 LSBs by charge redistribution).');
+}
+
+/** Bars to scale: the capacitance that holds the signal against the CDAC that joins it, for three values of alpha. */
+function alphaVisual(ctx) {
+  const { P } = ctx;
+  const w = Math.max(560, widthOf('blVis'));
+  const lsbV = P.fullScale / 2 ** P.bits;
+  const mem = P.channels * P.cmIn;
+  const rows = [[P.alphaIn, 'now'], [0.4, 'Chen 2018'], [1, 'alpha 1']].filter(([a, l], i) => i === 0 || Math.abs(a - P.alphaIn) > 0.005);
+  const L = 120;
+  const R = 300;
+  const maxC = Math.max(...rows.map(([a]) => mem * (1 + 1 / a)));
+  const sx = (c) => (c / maxC) * (w - L - R);
+  const p = [`<svg viewBox="0 0 ${w} ${46 + rows.length * 58}" class="tsvg" role="img" aria-label="Alpha as two capacitances">`];
+  p.push(`<text x="${L}" y="16" class="tiny">capacitance on the node at the last decision, to scale</text><text x="${w - R + 20}" y="16" class="tiny">voltage left</text><text x="${w - R + 150}" y="16" class="tiny">1 LSB at the comparator</text>`);
+  rows.forEach(([a, label], i) => {
+    const y = 28 + i * 58;
+    const dac = mem / a;
+    const keep = a / (1 + a);
+    p.push(`<text x="8" y="${y + 18}" class="lbl" style="font-weight:600">α = ${num(a, 2)}</text><text x="8" y="${y + 34}" class="tiny">${label}</text>`);
+    p.push(`<rect x="${L}" y="${y}" width="${sx(mem)}" height="38" fill="var(--an)"/><text x="${L + sx(mem) / 2}" y="${y + 23}" text-anchor="middle" class="tiny" style="fill:#fff">N·C M ${eng(mem, 'F')}</text>`);
+    p.push(`<rect x="${L + sx(mem)}" y="${y}" width="${sx(dac)}" height="38" fill="var(--ref)" opacity="0.75"/><text x="${L + sx(mem) + sx(dac) / 2}" y="${y + 23}" text-anchor="middle" class="tiny" style="fill:#fff">2·C DAC ${eng(dac, 'F')}</text>`);
+    p.push(`<text x="${w - R + 20}" y="${y + 25}" class="lbl" style="font-weight:600">${num(keep * 100, 0)} %</text><text x="${w - R + 150}" y="${y + 25}" class="lbl" style="font-weight:600">${eng(lsbV * keep, 'V')}</text>`);
+  });
+  p.push('</svg>');
+  fill('blVis', p.join(''), `alpha = N · C M / (2 · C DAC): the capacitance that holds the signal (blue) divided by the CDAC capacitance that joins the node during the conversion (orange). The signal is a charge, so when the node grows the voltage drops: at the last decision alpha / (1 + alpha) of it is left. The comparator noise and offset do not drop with it. Rows use the same memory cell (${eng(P.cmIn, 'F')}); a higher alpha then means a smaller CDAC, charged to a higher V REF = alpha · V in,max / 2. With the unit capacitor fixed at the PDK minimum it is the other way round: the CDAC stays and the memory cell grows with alpha.`);
 }

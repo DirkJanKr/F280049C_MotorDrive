@@ -172,3 +172,29 @@ test('residual split: more combiner output bits remove most of the rounding line
   assert.ok(b.res.round < a.res.round / 2);
   assert.ok(b.budget.enob > a.budget.enob + 0.2);
 });
+
+test('matching: the formula agrees with the Monte Carlo, and the total for 3 sigma is the same for all four arrays', async () => {
+  const { matchingArray, midSigma, requiredCu, matchingMonteCarlo } = await import('../src/zaan/model/matching.js');
+  const { createRng } = await import('../src/model/rng.js');
+  const aC = 0.0499;
+  const totals = [];
+  for (const [polarity, halving, M] of [[true, true, 64], [true, false, 512], [false, true, 128], [false, false, 1024]]) {
+    const a = matchingArray({ bits: 10, halving, polarity });
+    assert.equal(a.M, M);
+    assert.equal(a.list.reduce((s, b) => s + b.W, 0), 1023);
+    const su = aC / Math.sqrt(35);
+    const mc = matchingMonteCarlo(a, su, 1500, createRng(5));
+    const sd = Math.sqrt(mc.mid.reduce((s, v) => s + v * v, 0) / 1500);
+    assert.ok(Math.abs(sd / midSigma(a, su) - 1) < 0.08, `${M}: ${sd} vs ${midSigma(a, su)}`);
+    assert.ok(Math.abs(midSigma(a, su) / ((1024 * su) / Math.sqrt(M)) - 1) < 0.02);
+    totals.push(requiredCu(a, aC).total);
+  }
+  for (const t of totals) assert.ok(Math.abs(t / 94e-12 - 1) < 0.03, `total ${t}`);
+});
+
+test('offset: the present weights repair an offset that binary weights do not', async () => {
+  const { absorbedOffset } = await import('../src/workbench/pages/offset.js');
+  const c = design(createValues(), ui);
+  assert.ok(absorbedOffset(c.d) > 1e-3, 'more than 1 mV');
+  assert.ok(absorbedOffset(c.dBin) < 0.5e-3, 'binary: well below 1 mV');
+});

@@ -20,6 +20,8 @@ import { page as levelsPage } from './pages/levels.js';
 import { page as chenPage } from './pages/chen.js';
 import { page as refPage } from './pages/reference.js';
 import { page as powerPage } from './pages/power.js';
+import { page as matchingPage } from './pages/matching.js';
+import { page as offsetPage } from './pages/offset.js';
 import { page as redPage } from './pages/redundancy.js';
 
 /** Several pages behind one entry of the rail, as tabs. The address of a tab is the id of its page. */
@@ -41,14 +43,15 @@ const PAGES = [
   tabs('g-balance', 'Charge balance', [[balancePage, 'Balance'], [redPage, 'Redundancy cost']]),
   tabs('g-budget', 'Noise and power', [[budgetPage, 'Noise budget'], [powerPage, 'Power estimate']]),
   tabs('g-sar', 'SAR ADC', [[sar, 'Conversion'], [levelsPage, 'Levels and rounding'], [optPage, 'C u optimizer']]),
-  mismatch, beamformer,
+  tabs('g-mismatch', 'Mismatch', [[matchingPage, 'The 3σ rule'], [mismatch, 'Monte Carlo and area']]),
+  offsetPage, beamformer,
   tabs('g-timing', 'Timing', [[chenPage, 'Clock sequence after Chen'], [logic, 'Self-timed logic'], [timing, 'Decision time']]),
   refPage, iqPage, valuesPage,
 ];
 // The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
 const NAV = [
   ['Overview', [['system', []]]],
-  ['Design', [['g-balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['mismatch', []]]],
+  ['Design', [['g-balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['g-mismatch', []], ['offset', []]]],
   ['Blocks', [['beamformer', ['cells']], ['g-timing', ['time']], ['reference', []], ['iq', []]]],
   ['Record', [['values', []]]],
 ];
