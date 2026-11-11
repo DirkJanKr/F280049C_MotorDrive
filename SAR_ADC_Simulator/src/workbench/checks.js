@@ -54,7 +54,7 @@ function toleranceCheck(ctx) {
   return {
     id: 'tol', label: 'Redundancy covers the errors', state: 'bad', value: `${bad.length} decision${bad.length > 1 ? 's' : ''} short`, limit: 'need ≤ tolerance + ½ LSB',
     why: `${list}. A wrong decision there cannot be repaired by the later steps, so codes are lost.`,
-    fix: mis ? 'Mostly mismatch: a smaller radix (more redundancy) or a larger Cu. The optimizer on the SAR ADC page searches this.' : 'Mostly offset: lower the offset left after calibration, or add redundancy.',
+    fix: mis ? 'Mostly mismatch: a smaller radix (more redundancy) or a larger Cu. The search on SAR ADC › Weights finds a list that covers it.' : 'Mostly offset: lower the offset left after calibration, or add redundancy.',
     go: 'sar', f: 'tol',
   };
 }

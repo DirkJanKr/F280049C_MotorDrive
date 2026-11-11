@@ -6,7 +6,8 @@
 // the input full scale: that is overrange, not an error. Tolerance: t_i = sum of later steps
 // + last step - w_i (standard for a redundant search, for example Chang 2013).
 
-import { fill, readouts, explain, eng, num, esc } from '../kit.js';
+import { fill, readouts, explain, eng, num, esc, knobs } from '../kit.js';
+import { PRESETS } from '../weights.js';
 import { designCdac } from '../../zaan/model/cdac.js';
 import { buildSteps } from '../../zaan/model/steps.js';
 import { chargeBudget, toleranceNeeds } from '../budget.js';
@@ -47,14 +48,15 @@ const SETS = [
 
 export const page = {
   id: 'redundancy',
-  title: 'Redundancy',
+  title: 'Weights',
   side() {
     return '';
   },
-  main() {
-    return `<div id="rdRo"></div>
+  main(store) {
+    return `<section class="card wide"><header><h3>The weights in use</h3></header><div class="cbody" id="rdNow"></div></section><div id="rdRo"></div>
+      <section class="card wide"><header><h3>Search for the weight list with the highest ENOB</h3><span class="ctl"><label class="mini-l">at most <select id="rdMax">${[11, 12, 13, 14].map((k) => `<option ${k === (store.ui.rdMax || 13) ? 'selected' : ''}>${k}</option>`).join('')}</select> decisions</label> <button class="mini primary" id="rdRun">▶ search</button></span></header><div class="cbody" id="rdBest"><p class="cap">Press search. It tries first steps from 16 to 36 unit capacitors, radix 1.5 to 2.0, and a last step of 1 or ½ LSB, and keeps the lists whose redundancy covers mismatch and offset.</p></div><p class="cap" id="rdBest-cap"></p></section>
+      <section class="card wide"><header><h3>Or set the weights by hand</h3></header><div class="cbody" id="rdHand">${handControls(store)}</div></section>
       <section class="card wide"><header><h3>Candidate weight lists: what the extra charge costs</h3></header><div class="cbody" id="rdTab"></div><p class="cap" id="rdTab-cap"></p></section>
-      <section class="card wide"><header><h3>Search: the weight list with the highest ENOB at 10 output bits</h3><span class="ctl"><label class="mini-l">at most <select id="rdMax">${[11, 12, 13, 14].map((k) => `<option ${k === 13 ? 'selected' : ''}>${k}</option>`).join('')}</select> decisions</label> <button class="mini primary" id="rdRun">▶ search</button></span></header><div class="cbody" id="rdBest"><p class="cap">Press search. It tries first steps from 16 to 36 unit capacitors, radix 1.5 to 2.0, and a last step of 1 or ½ LSB, and keeps the lists whose redundancy covers mismatch and offset.</p></div><p class="cap" id="rdBest-cap"></p></section>
       ${explain('Why the CDAC holds more than the full scale', [
         'In a binary list every step is exactly as large as all later steps together plus one LSB. Nothing is left over: one wrong decision cannot be repaired. A redundant list makes the early steps smaller than that, so the later steps reach further than needed. Added up, the steps then reach beyond the input range. That surplus is the overrange.',
         'The extra reach is charge that must be on the CDAC. At the same V REF the CDAC needs more capacitance, so alpha drops and one LSB is smaller at the comparator. At the same capacitance V REF must go up instead. Either way redundancy is paid for with reference charge, and with one or two more decisions.',
@@ -63,7 +65,9 @@ export const page = {
   mount(store) {
     document.getElementById('rdRun').onclick = () => {
       const ctx = store.ctx;
-      const best = searchLists(ctx, +document.getElementById('rdMax').value);
+      store.ui.rdMax = +document.getElementById('rdMax').value;
+      store.ui.rdRan = true;
+      const best = searchLists(ctx, store.ui.rdMax);
       const now = ctx.budget.enob;
       const tr = best.map(({ d, enob }, i) => `<tr><td class="num">${d.weights.map((w) => num(w, 2)).join(' ')}</td><td class="num">${d.decisions}</td><td class="num">${num(d.sumW, 1)}</td><td class="num">${num(d.alpha, 3)}</td><td class="num">${num(Math.min(...d.tol.slice(0, -1)), 1)}</td><td class="num"><b>${num(enob, 2)}</b></td><td><button class="mini" data-rduse="${i}">use</button></td></tr>`).join('');
       fill('rdBest', best.length ? `<div class="tablewrap"><table class="tbl"><thead><tr><th>Weights [LSB]</th><th>Decisions</th><th>Σw</th><th>alpha of the list</th><th>Smallest tolerance [LSB]</th><th>ENOB (estimate)</th><th></th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="cap">No list in the family passes. Allow more decisions, or lower the mismatch or the offset.</p>',
@@ -78,8 +82,10 @@ export const page = {
         };
       });
     };
+    if (store.ui.rdRan) document.getElementById('rdRun').click();
   },
   update(store, ctx) {
+    fill('rdNow', `<p style="font:600 16px var(--mono);margin:2px 0 6px">${ctx.d.weights.map((x) => num(x, 2)).join(' &nbsp; ')}</p><p class="cap">In LSB, largest first. ${ctx.d.decisions} decisions; ${store.ui.weightMode === 'custom' ? 'a typed or searched list' : `generated from first step ${ctx.P.topUnits} units and radix ${num(ctx.P.radix, 2)}`}. Budget ENOB with these weights: <b>${num(ctx.budget.enob, 2)}</b>. Every page uses this list.</p>`);
     const { P, d } = ctx;
     const tDecOf = (n) => ((1 / P.fs) * 0.78) / (n + 1);
     const rows = SETS.map(([name, o]) => [name, designCdac(P, P.memCells, buildSteps({ ...o, halvingOn: true }))]);
@@ -100,3 +106,14 @@ export const page = {
       `C DAC is the capacitance that carries reference charge; the halving capacitors start empty. Time per decision: 78 % of the ${eng(1 / P.fs, 's')} period shared by the decisions and the offset-calibration comparison (the rest is charge redistribution and reset, read off Chen Fig. 4(b), an assumption); Chen has 2.4 ns. Red: below 1.5 ns, which is my assumption for what 0.18 µm logic and a comparator can do, not a paper value.`);
   },
 };
+
+/** The manual controls: generate from a rule, or type the list. Handled by the listeners in app.js. */
+function handControls(store) {
+  const ui = store.ui;
+  const used = new Set();
+  const gen = ui.weightMode !== 'custom';
+  return `<div class="grid2 inner"><div><div class="seg"><button class="${gen ? 'on' : ''}" data-mode="generator">from a rule: first step and radix</button><button class="${gen ? '' : 'on'}" data-mode="custom">type the list</button></div>
+    <label class="kl">Start from a preset</label><select id="preset" class="sel"><option value="">choose…</option>${Object.keys(PRESETS).map((p) => `<option>${esc(p)}</option>`).join('')}</select>
+    ${knobs(store.values, ['halvingOn'], used)}</div>
+    <div>${gen ? knobs(store.values, ['topUnits', 'radix', 'halvings'], used) : `<label class="kl" for="wlist">Weights in LSB, largest first</label><textarea id="wlist" class="wl-in" rows="3">${esc(ui.customWeights)}</textarea><p class="ks">Steps of one unit or more are whole capacitors; smaller steps are made by charge halving.</p>`}</div></div>`;
+}

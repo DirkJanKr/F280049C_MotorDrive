@@ -14,7 +14,7 @@ import { page as timing } from './pages/timing.js';
 import { page as logic } from './pages/logic.js';
 import { page as valuesPage } from './pages/values.js';
 import { page as iqPage } from './pages/iq.js';
-import { page as optPage } from './pages/optimizer.js';
+import { designSide } from './designSide.js';
 import { page as balancePage } from './pages/balance.js';
 import { page as levelsPage } from './pages/levels.js';
 import { page as chenPage } from './pages/chen.js';
@@ -28,7 +28,7 @@ import { page as redPage } from './pages/redundancy.js';
 function tabs(id, title, subs) {
   const cur = () => subs.find(([p]) => p.id === store.ui.tab?.[id])?.[0] || subs[0][0];
   return {
-    id, title, subs: subs.map(([p]) => p),
+    id, title, subs: subs.map(([p]) => p), cur,
     side: (s, c) => cur().side(s, c),
     main: (s, c) => `<div class="seg tabs">${subs.map(([p, label]) => `<button class="${p === cur() ? 'on' : ''}" data-tab="${p.id}">${label}</button>`).join('')}</div>${cur().main(s, c)}`,
     mount(s, c) {
@@ -40,9 +40,9 @@ function tabs(id, title, subs) {
 }
 const PAGES = [
   system,
-  tabs('g-balance', 'Charge balance', [[balancePage, 'Balance'], [redPage, 'Redundancy cost']]),
+  balancePage,
   tabs('g-budget', 'Noise and power', [[budgetPage, 'Noise budget'], [powerPage, 'Power estimate']]),
-  tabs('g-sar', 'SAR ADC', [[sar, 'Conversion'], [levelsPage, 'Levels and rounding'], [optPage, 'C u optimizer']]),
+  tabs('g-sar', 'SAR ADC', [[redPage, 'Weights'], [sar, 'Conversion'], [levelsPage, 'Levels and rounding']]),
   tabs('g-mismatch', 'Mismatch', [[matchingPage, 'The 3σ rule'], [mismatch, 'Monte Carlo and area']]),
   offsetPage, beamformer,
   tabs('g-timing', 'Timing', [[chenPage, 'Clock sequence after Chen'], [logic, 'Self-timed logic'], [timing, 'Decision time']]),
@@ -51,7 +51,7 @@ const PAGES = [
 // The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
 const NAV = [
   ['Overview', [['system', []]]],
-  ['Design', [['g-balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['g-mismatch', []], ['offset', []]]],
+  ['Design', [['balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['g-mismatch', []], ['offset', []]]],
   ['Blocks', [['beamformer', ['cells']], ['g-timing', ['time']], ['reference', []], ['iq', []]]],
   ['Record', [['values', []]]],
 ];
@@ -115,11 +115,17 @@ function layout() {
   else document.documentElement.dataset.theme = th;
 }
 
+/** The inspector of the page (or tab) on screen. System and Values keep their own. */
+function sideHtml() {
+  const leaf = current.cur ? current.cur() : current;
+  return ['system', 'values'].includes(leaf.id) ? leaf.side(store, store.ctx) : designSide(store, leaf.id);
+}
+
 function renderPage() {
   current = pageOf(store.ui.page);
   rail();
   layout();
-  $('side').innerHTML = current.side(store, store.ctx);
+  $('side').innerHTML = sideHtml();
   $('main').innerHTML = current.main(store, store.ctx);
   if (current.mount) current.mount(store, store.ctx);
   current.update(store, store.ctx);
@@ -127,8 +133,10 @@ function renderPage() {
 }
 
 function rebuildSide() {
+  // the weight controls live in the page itself on the Weights tab: draw the whole page again there
+  if (current.cur && current.cur().id === 'redundancy') return renderPage();
   const scroll = $('side').scrollTop;
-  $('side').innerHTML = current.side(store, store.ctx);
+  $('side').innerHTML = sideHtml();
   $('side').scrollTop = scroll;
 }
 

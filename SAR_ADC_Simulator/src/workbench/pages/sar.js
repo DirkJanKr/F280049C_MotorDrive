@@ -10,7 +10,6 @@ import { createRng } from '../../model/rng.js';
 import { termify } from '../terms.js';
 import { failBox } from '../checks.js';
 import { offsetLsb, comparatorCharge } from '../budget.js';
-import { optimizerCard, drawOptimizer, mountOptimizer } from './sarOptimizer.js';
 
 export const page = {
   id: 'sar',
@@ -38,7 +37,6 @@ export const page = {
         <div id="sarView"></div><p class="cap" id="sarSay"></p>
         <p class="cap">Left: the charge of the memory cells on the node. Each CDAC step is a capacitor precharged to VREF; after each decision it is connected with the polarity that pulls the charge towards zero (green +, magenta −). In the differential view one capacitor floats between node + and node − (dotted), so the two nodes get opposite charges. The charge is kept; the node capacitance grows with every step, so later steps see a smaller voltage per LSB.</p></section>
       <section class="card wide"><header><h3>What each decision needs from its tolerance</h3></header><div class="cbody" id="sTol"></div><p class="cap" id="sTol-cap"></p></section>
-      ${optimizerCard(store)}
       <div class="grid2">${card('sWalk', 'The search: comparison level per decision')}${card('sTable', 'Charges per decision')}</div>
       <section class="card wide"><header><h3>Compare designs</h3><button class="mini" id="keepA">keep current as A</button></header><div class="cbody" id="sCmp"></div><p class="cap" id="sCmp-cap"></p></section>
       ${explain('Reading this page', [
@@ -87,7 +85,6 @@ export const page = {
       store.ui.compareA = summary(store.ctx, store.ui);
       page.update(store, store.ctx);
     };
-    mountOptimizer(store);
   },
   update(store, ctx) {
     const { d, P, steps } = ctx;
@@ -117,7 +114,6 @@ export const page = {
     tolerance(ctx);
     table(ctx);
     compare(store, ctx);
-    drawOptimizer(store, ctx);
   },
 };
 
