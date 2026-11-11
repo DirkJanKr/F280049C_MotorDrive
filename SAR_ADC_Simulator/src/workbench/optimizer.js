@@ -64,8 +64,7 @@ export function buildFromNeeds(P, cells, opts) {
       bestNeed = { need, tol, mis, off, nz };
     }
     if (best === 0) return { steps: null, log, error: 'Even a single unit capacitor needs more tolerance than the steps below give. Lower the margin or the offset, or use a smaller smallest step.' };
-    // the top step only needs to reach the end of the range
-    if (sum + best * lsbU >= cover) best = Math.min(best, Math.ceil((cover - sum) / lsbU));
+    // the top step is not trimmed: what the list reaches beyond the range is overrange (Item 4)
     caps.push(best);
     log.push({ units: best, weight: best * lsbU, ...bestNeed });
     sum += best * lsbU;

@@ -115,7 +115,7 @@ test('every formula renders for the default design, with no NaN', async () => {
     assert.ok(h, id);
     assert.ok(!/NaN|undefined/.test(h), id);
   }
-  for (const l of c.budget.lines) assert.ok(formulaHtml({ sar: 'b-sar', round: 'b-round', lut: 'b-lut', comp: 'b-comp', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' }[l.id], c), l.id);
+  for (const l of c.budget.lines) assert.ok(formulaHtml({ sar: 'b-sar', round: 'b-round', lut: 'b-lut', comp: 'b-comp', tint: 'b-tint', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' }[l.id], c), l.id);
 });
 
 test('Item 1, charge balance (Chen eq. 3, Rabuske alpha): algebra, Chen numbers, and the defaults', async () => {

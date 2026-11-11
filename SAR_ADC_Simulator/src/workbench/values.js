@@ -47,7 +47,7 @@ export const SEED = [
   num('pitch', 'beamformer', 'Element pitch', 200, 'µm', 1e-6, 'm', [100, 400, 10], 'A', 'tile design'),
   num('steer', 'beamformer', 'Steering angle', 15, '°', Math.PI / 180, 'rad', [-30, 30, 0.5], 'A', 'my MATLAB, 26 Oct', '±15° is the design range'),
   num('memCells', 'beamformer', 'Memory cells per channel', 22, '', 1, '1', [8, 48, 1], 'U', 'Chen 2018 has 8 (p. 3053)'),
-  num('delayStep', 'beamformer', 'Delay step', 12.5, 'ns', 1e-9, 's', [3.125, 25, 3.125], 'A', 'CLK and CLK 180°, 8 Nov', 'the spec of 10 Nov says 25 ns: not resolved yet'),
+  num('delayStep', 'beamformer', 'Delay step', 12.5, 'ns', 1e-9, 's', [3.125, 25, 3.125], 'U', 'my decision, 11 Nov: the inverted clock and its rising edge', 'the spec of 10 Nov says 25 ns'),
   num('c', 'beamformer', 'Speed of sound', 1540, 'm/s', 1, 'm/s', [1450, 1600, 5], 'A', 'soft tissue'),
   num('rxFocus', 'beamformer', 'Receive focus (empty = plane wave)', null, 'mm', 1e-3, 'm', [5, 40, 0.5], 'A', 'not decided'),
 

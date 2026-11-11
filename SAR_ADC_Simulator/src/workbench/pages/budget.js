@@ -7,7 +7,7 @@ import { designCdac, chargeBalance } from '../../zaan/model/cdac.js';
 import { chargeBudget } from '../budget.js';
 import { changed } from '../store.js';
 
-const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
+const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', tint: 'b-tint', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
 const SWEEPS = {
   compNoise: { label: 'Comparator input noise', unit: 'mV rms', si: 1e-3, lo: 0, hi: 0.2 },
   alpha: { label: 'alpha', unit: '', si: 1, lo: 0.1, hi: 3 },
@@ -91,7 +91,7 @@ function powerBar(ctx) {
   const w = Math.max(340, widthOf('bgBar'));
   const top = Math.max(100, b.used) * 1.04;
   const sx = (p) => 12 + (p / top) * (w - 24);
-  const cols = { sar: 'var(--muted)', quant: 'var(--muted)', round: 'var(--cal)', lut: 'var(--warn)', comp: 'var(--ref)', samp: 'var(--an)', pre: 'var(--clk)', jit: 'var(--dig)' };
+  const cols = { sar: 'var(--muted)', quant: 'var(--muted)', round: 'var(--cal)', lut: 'var(--warn)', comp: 'var(--ref)', tint: 'var(--warn)', samp: 'var(--an)', pre: 'var(--clk)', jit: 'var(--dig)' };
   let acc = 0;
   let accA = 0;
   const segs = [];

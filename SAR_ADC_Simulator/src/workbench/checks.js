@@ -24,6 +24,8 @@ function fixFor(line, ctx) {
       return `This charge is √(2kT·N·CM)${budget.arrayGain ? '' : ' × √N (beamformer gain is off)'}. Relative to the signal it shrinks with a larger C M.`;
     case 'pre':
       return `This charge is √(4kT·CDAC) = ${fq(ctx, line.sigma, true)}; a larger alpha (larger V REF, smaller CDAC) lowers it relative to the LSB.`;
+    case 'tint':
+      return `Lower jitter on the precharge pulse (now ${eng(P.jitter, 's')} rms), or a longer T int. Chen 2018 allows about 20 ps.`;
     case 'jit':
       return a > 0 ? `Jitter below ${eng(a / (P.channels * d.cm * 2 * Math.PI * P.f0 * (1 + P.fbw / 2) * (ctx.vrms)), 's')} rms (now ${eng(P.jitter, 's')}).` : 'Even without jitter the other lines exceed the allowance.';
     default:
