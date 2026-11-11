@@ -18,7 +18,7 @@ export const page = {
     ])}
       <section class="card wide"><header><h3>One conversion: synchronous against self-timed</h3><span class="ctl"><button class="mini" id="tmPlay">play</button></span></header><div id="tmBars"></div><p class="cap" id="tmBars-cap"></p></section>
       <div class="grid2">${card('tmRegen', 'Why a small input makes the comparator slow')}${card('tmMeta', 'Decision time against comparator input')}</div>
-      <div class="grid2">${card('tmSettle', 'Why redundancy saves settling time')}${card('tmClk', 'The write clocks and the conversion period')}</div>
+      ${card('tmSettle', 'Why redundancy saves settling time')}
       ${explain('Words used on this page', [
         '<b>Synchronous</b>: an external clock gives every decision the same time slot, long enough for the slowest case. <b>Self-timed (asynchronous)</b>: each decision starts as soon as the previous one reports done, so fast decisions leave time for slow ones.',
         '<b>Metastability</b>: a dynamic comparator amplifies its input exponentially, V(t) = V in · e^(t / τ). A tiny input needs a long time to reach a valid logic level. τ = C load / gm is set by the comparator design.',

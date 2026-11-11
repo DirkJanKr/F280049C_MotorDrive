@@ -69,7 +69,7 @@ export function chargeLines(P, d, { arrayGain = true, res = null, split = true, 
     ...q,
     { id: 'comp', label: 'Comparator noise at the last decision', sigma: comparatorCharge(P, d, d.decisions - 1), perChannel: false },
     { id: 'samp', label: 'kT/C of the memory cells', sigma: arrayGain ? Math.sqrt(N) * cellOne : N * cellOne, perChannel: true },
-    { id: 'pre', label: 'CDAC precharge kT/C', sigma: prechargeCharge(P, d), perChannel: false },
+    { id: 'pre', label: 'CDAC precharge noise (kT/C estimate)', sigma: prechargeCharge(P, d), perChannel: false },
     // Chen 2018 p. 3056: jitter on T int changes the whole reference charge; for a full-scale sine sigma_Q = (sigma_t / T int) Q FS / (2 sqrt 2)
     { id: 'tint', label: 'Jitter on the precharge time T int', sigma: ((P.jitter / (0.75 / P.fs)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
     { id: 'jit', label: 'Sampling clock jitter', sigma: N * d.cm * 2 * Math.PI * fJ * P.jitter * vrms, perChannel: false },

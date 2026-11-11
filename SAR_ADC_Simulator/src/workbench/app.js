@@ -22,12 +22,34 @@ import { page as refPage } from './pages/reference.js';
 import { page as powerPage } from './pages/power.js';
 import { page as redPage } from './pages/redundancy.js';
 
-const PAGES = [system, levelsPage, chenPage, refPage, redPage, powerPage, balancePage, budgetPage, optPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
+/** Several pages behind one entry of the rail, as tabs. The address of a tab is the id of its page. */
+function tabs(id, title, subs) {
+  const cur = () => subs.find(([p]) => p.id === store.ui.tab?.[id])?.[0] || subs[0][0];
+  return {
+    id, title, subs: subs.map(([p]) => p),
+    side: (s, c) => cur().side(s, c),
+    main: (s, c) => `<div class="seg tabs">${subs.map(([p, label]) => `<button class="${p === cur() ? 'on' : ''}" data-tab="${p.id}">${label}</button>`).join('')}</div>${cur().main(s, c)}`,
+    mount(s, c) {
+      document.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { location.hash = b.dataset.tab; }; });
+      if (cur().mount) cur().mount(s, c);
+    },
+    update: (s, c) => cur().update(s, c),
+  };
+}
+const PAGES = [
+  system,
+  tabs('g-balance', 'Charge balance', [[balancePage, 'Balance'], [redPage, 'Redundancy cost']]),
+  tabs('g-budget', 'Noise and power', [[budgetPage, 'Noise budget'], [powerPage, 'Power estimate']]),
+  tabs('g-sar', 'SAR ADC', [[sar, 'Conversion'], [levelsPage, 'Levels and rounding'], [optPage, 'C u optimizer']]),
+  mismatch, beamformer,
+  tabs('g-timing', 'Timing', [[chenPage, 'Clock sequence after Chen'], [logic, 'Self-timed logic'], [timing, 'Decision time']]),
+  refPage, iqPage, valuesPage,
+];
 // The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
 const NAV = [
-  ['Overview', [['system', []], ['levels', []]]],
-  ['Decide', [['balance', []], ['redundancy', []], ['budget', ['enob']], ['power', []], ['optimizer', []]]],
-  ['Blocks, in signal order', [['beamformer', ['cells']], ['sar', ['cover', 'tol', 'small', 'dec']], ['logic', []], ['chen', []], ['timing', ['time']], ['reference', []], ['mismatch', []], ['iq', []]]],
+  ['Overview', [['system', []]]],
+  ['Design', [['g-balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['mismatch', []]]],
+  ['Blocks', [['beamformer', ['cells']], ['g-timing', ['time']], ['reference', []], ['iq', []]]],
   ['Record', [['values', []]]],
 ];
 const TAPEOUT = Date.UTC(2027, 2, 31);
@@ -35,7 +57,12 @@ const $ = (id) => document.getElementById(id);
 let current = null;
 
 function pageOf(id) {
-  return PAGES.find((p) => p.id === id) || system;
+  const top = PAGES.find((p) => p.id === id);
+  if (top) return top;
+  const g = PAGES.find((p) => p.subs?.some((x) => x.id === id));
+  if (!g) return system;
+  store.ui.tab = { ...store.ui.tab, [g.id]: id };
+  return g;
 }
 
 function summary() {

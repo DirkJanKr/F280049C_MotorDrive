@@ -89,7 +89,6 @@ export const page = {
       <section class="card wide"><header><h3>Mismatch moves the levels; rounding moves them again</h3><span class="ctl"><label class="mini-l">look at code <input type="range" id="lvAt" min="6" max="1017" step="1" value="${store.ui.lvAt || 262}"/> <output id="lvAtO"></output></label></span></header>
         <div class="cbody" id="lvView"></div><p class="cap" id="lvView-cap"></p></section>
       <section class="card wide"><header><h3>Test: is rounding back to 10 bit a real loss?</h3><button class="mini primary" id="lvRun">▶ run on 8 chips per list</button></header><div class="cbody" id="lvTest"><p class="cap">Press run. For each weight list, chips with mismatch are calibrated and a sine and a ramp are converted without comparator noise.</p></div><p class="cap" id="lvTest-cap"></p></section>
-      <section class="card wide"><header><h3>Each step of this chip against its design value</h3></header><div class="cbody" id="lvW"></div><p class="cap" id="lvW-cap"></p></section>
       ${explain('How to read it', [
         'Row 1: a perfect chip. Each box is the range of inputs that gives one set of decisions. All boxes are 1 LSB wide and sit exactly on a code.',
         'Row 2: the same weights with mismatch. A capacitor that is slightly too large moves every level that uses it. Calibration knows the true weights, so the tick in each box is at the right place: the converter knows where its levels are. It cannot make more levels.',
