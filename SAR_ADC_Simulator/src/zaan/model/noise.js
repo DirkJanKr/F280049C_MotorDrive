@@ -7,9 +7,12 @@ export function samplingNoise(P, d) {
   return Math.sqrt((2 * K_B * P.temperature) / (P.channels * d.cm));
 }
 
-/** CDAC precharge noise: charge sqrt(2 k T C_DAC), referred to the input through one LSB. */
+/**
+ * CDAC precharge noise for a capacitor switched to a voltage: plate charge variance kT C, which
+ * reaches both summing nodes with opposite sign, so 4 kT C_DAC in Q+ - Q-. Referred to the input through one LSB.
+ */
 export function prechargeNoise(P, d) {
-  const q = Math.sqrt(2 * K_B * P.temperature * d.cdac);
+  const q = Math.sqrt(4 * K_B * P.temperature * d.cdac);
   const lsbV = P.fullScale / d.codes;
   return { charge: q, lsb: q / d.qLsb, volts: (q / d.qLsb) * lsbV };
 }

@@ -21,9 +21,9 @@ function fixFor(line, ctx) {
         ? `Comparator noise below ${eng(a / lastC, 'V')} rms (now ${eng(P.compNoise, 'V')}), or a smaller node capacitance at the last decision (now ${eng(lastC, 'F')}): the same voltage noise is less charge on a smaller node.`
         : 'Even without comparator noise the other lines exceed the allowance.';
     case 'samp':
-      return `This charge is √(2kT·N·CM)${budget.arrayGain ? '' : ' × √N (beamformer gain is off)'}. Relative to the signal it shrinks with a larger CM, which follows from VREF and Cu through the charge balance.`;
+      return `This charge is √(2kT·N·CM)${budget.arrayGain ? '' : ' × √N (beamformer gain is off)'}. Relative to the signal it shrinks with a larger C M.`;
     case 'pre':
-      return `This charge is √(4kT·CDAC) = ${fq(ctx, line.sigma, true)}; one LSB is 2·VREF·Cu / ${P.lsbPerUnit}. A larger VREF makes the LSB larger at the same CDAC.`;
+      return `This charge is √(4kT·CDAC) = ${fq(ctx, line.sigma, true)}; a larger alpha (larger V REF, smaller CDAC) lowers it relative to the LSB.`;
     case 'jit':
       return a > 0 ? `Jitter below ${eng(a / (P.channels * d.cm * 2 * Math.PI * P.f0 * (1 + P.fbw / 2) * (ctx.vrms)), 's')} rms (now ${eng(P.jitter, 's')}).` : 'Even without jitter the other lines exceed the allowance.';
     default:

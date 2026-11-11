@@ -24,7 +24,7 @@ export const page = {
     const genKnobs = knobs(store.values, ['radix', 'topUnits', 'halvings'], used);
     const list = `<label class="kl" for="wlist">${termify('Weights in LSB, largest first', used)}</label><textarea id="wlist" class="wl-in" rows="3">${esc(ui.customWeights)}</textarea><p class="ks">Steps of one unit or more are whole capacitors; smaller steps follow the choice below.</p>`;
     return group('Weights', mode + presets + (gen ? genKnobs : list) + knobs(store.values, ['halvingOn', 'lsbPerUnit'], used)) +
-      group('CDAC and reference', knobs(store.values, ['cu', 'vref', 'fullScale', 'bits', 'rawDecisions'], used)) +
+      group('Charge balance', knobs(store.values, ['cm', 'alpha', 'fullScale', 'bits', 'rawDecisions'], used)) +
       group('Comparator', knobs(store.values, ['vos', 'vosCal', 'compNoise'], used)) +
       group('In the bucket view', `<label class="chk"><input type="checkbox" id="useOff" ${ui.useOff ? 'checked' : ''}/> include the offset before calibration</label><label class="chk"><input type="checkbox" id="useNoise" ${ui.useNoise ? 'checked' : ''}/> include comparator noise</label><label class="chk"><input type="checkbox" id="useChip" ${ui.useChip ? 'checked' : ''}/> use the simulated chip (mismatch)</label>`, false);
   },

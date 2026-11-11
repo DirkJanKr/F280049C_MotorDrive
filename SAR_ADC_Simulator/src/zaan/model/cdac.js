@@ -1,21 +1,49 @@
-// Charge-sharing CDAC sizing from the charge balance (review slide 15).
-// One unit step delivers the differential charge q unit = 2 VREF Cu (assumption,
-// consistent with slides 11, 15 and 36); one step LSB is q unit / (LSB per unit).
+// Charge-sharing CDAC sizing from the charge balance of Chen 2018, eq. 3, p. 3056:
+//
+//   N * V_in,max * C_M = 4 * V_REF * C_DAC
+//
+//   N         number of channels summed                                   [1]
+//   V_in,max  maximum peak-to-peak differential swing per channel         [V]
+//   C_M       one memory capacitor                                        [F]
+//   V_REF     voltage the CDAC is precharged to                           [V]
+//   C_DAC     CDAC capacitance that carries reference charge              [F]
+//   The factor 4: a capacitor C precharged single-ended to V_REF and connected
+//   between the two summing nodes changes Q+ - Q- by 2 C V_REF, with either sign,
+//   so the peak-to-peak range of the whole CDAC is 4 V_REF C_DAC.
+//
+// Rabuske and Fernandes 2016, eq. 3, p. 1411 (as given in the spec; PDF not in the repo):
+//
+//   alpha = C_TH / (2 * C_DAC),  C_TH = N * C_M
+//
+// Combined (D, binary CDAC):
+//   alpha = 2 * V_REF / V_in,max        V_REF = alpha * V_in,max / 2
+//   C_DAC = N * C_M / (2 * alpha)
+//   Q_FS  = N * C_M * V_in,max          Q_LSB = Q_FS / 2^B
+//
+// Charge convention in this code: Q = Q+ - Q-, the difference of the charges on the
+// two summing nodes, each on its own capacitance N * C_M. Rabuske eq. 5 uses the
+// differential-mode charge (C_TH / 2) * V, which is half of this; voltages are the same.
+//
+// The unit capacitor follows from the LSB (D): one unit delivers 2 V_REF C_u = n_u Q_LSB,
+// so C_u = n_u * Q_LSB / (2 * V_REF) = n_u * N * C_M / (2^B * alpha), n_u = LSB per unit.
 
 import { buildSteps, areaUnits, tolerances, coverage } from './steps.js';
 
-/**
- * Charge balance, P.balance:
- *  'range' (default): the input full scale equals 2^N step LSB: N CM V FS = 2^N Q step
- *  'total': the input full scale equals the total step charge, both directions: N CM V FS = 2 Σw Q step
- *  'slide': as on the review slides, with the total CDAC capacitance: N CM V FS = 4 VREF C DAC
- * One input LSB is Q LSB = N CM V FS / 2^N; weights are expressed in input LSB.
- */
-export function balanceOf(P) {
-  const b = String(P.balance || 'range');
-  return b.startsWith('total') ? 'total' : b.startsWith('slide') ? 'slide' : 'range';
+/** Chen eq. 3 with Rabuske's alpha: from C_M and alpha to V_REF, C_DAC, Q_FS, Q_LSB and C_u. */
+export function chargeBalance({ channels, fullScale, bits, cm, alpha, lsbPerUnit }) {
+  const vref = (alpha * fullScale) / 2;
+  const cdac = (channels * cm) / (2 * alpha);
+  const qFs = channels * cm * fullScale;
+  const qLsb = qFs / 2 ** bits;
+  const cu = (lsbPerUnit * qLsb) / (2 * vref);
+  return { vref, cdac, qFs, qLsb, cu };
 }
 
+/**
+ * The CDAC for a list of steps. P.vref and P.cu are the physical values (from chargeBalance).
+ * One input LSB is Q_LSB = N C_M V_in,max / 2^B = 2 V_REF C_u / n_u. Weights are in input LSB
+ * and every step is added or subtracted, so a step of weight w changes the code by 2 w.
+ */
 export function designCdac(P, cells = 22, givenSteps = null) {
   const steps = givenSteps || buildSteps(P);
   const stepW = steps.map((s) => s.units * P.lsbPerUnit);
@@ -25,14 +53,13 @@ export function designCdac(P, cells = 22, givenSteps = null) {
   const qUnit = 2 * P.vref * P.cu;
   const qStep = qUnit / P.lsbPerUnit;
   const sumW = stepW.reduce((a, w) => a + w, 0);
-  const mode = balanceOf(P);
-  const cm = mode === 'total' ? (2 * sumW * qStep) / (P.channels * P.fullScale) : mode === 'slide' ? (4 * P.vref * cdac) / (P.channels * P.fullScale) : (codes * qStep) / (P.channels * P.fullScale);
-  const qLsb = (P.channels * cm * P.fullScale) / codes;
-  const weights = stepW.map((w) => (w * qStep) / qLsb);
+  const cm = (codes * qStep) / (P.channels * P.fullScale);
+  const qLsb = qStep;
+  const weights = stepW;
   const qFs = codes * qLsb;
-  const cmRange = (codes * qStep) / (P.channels * P.fullScale);
+  // capacitance that carries reference charge: the halving capacitors start empty and are not counted
+  const cdacEff = (sumW / P.lsbPerUnit) * P.cu;
   const cmSlide = (4 * P.vref * cdac) / (P.channels * P.fullScale);
-  const cmTotal = (2 * sumW * qStep) / (P.channels * P.fullScale);
   // Node capacitance before each decision: memory cells, then 2 x C of every shared step.
   const cAdd = steps.map((s) => 2 * (s.kind === 'cap' || s.kind === 'small' ? s.units : 1) * P.cu);
   const cNode = [P.channels * cm];
@@ -40,15 +67,25 @@ export function designCdac(P, cells = 22, givenSteps = null) {
   const memCaps = cells * P.channels * 2;
   const plates = (cdac + memCaps * cm) / P.density;
   return {
-    steps, weights, stepW, decisions: steps.length + 1, codes, units, cdac, qUnit, qStep, qLsb, qFs, cm, cmRange, cmSlide, cmTotal, balance: mode, cAdd, cNode,
+    steps, weights, stepW, sumW, decisions: steps.length + 1, codes, units, cdac, cdacEff, qUnit, qStep, qLsb, qFs, cm, cmSlide, cAdd, cNode,
+    alpha: (P.channels * cm) / (2 * cdacEff), alphaPhysical: (P.channels * cm) / (2 * cdac),
     tol: tolerances(weights), cover: coverage(weights, P.bits), memCaps, plateArea: plates, area: plates * P.routing,
   };
 }
 
-/** Unit capacitor that binary matching needs for 3 sigma DNL < 0.5 LSB at mid-code (slide 16, hand estimate). */
+/** Binary steps for B bits with n_u LSB per unit: 2^(B-2)/n_u units down to 1, then halvings down to 1 LSB. */
+export function binarySteps(bits, lsbPerUnit) {
+  return buildSteps({ topUnits: 2 ** (bits - 2) / lsbPerUnit, radix: 2, halvings: Math.round(Math.log2(lsbPerUnit)), halvingOn: true });
+}
+
+/**
+ * Unit capacitor that binary matching needs for 3 sigma DNL < 0.5 LSB at mid-code (hand estimate).
+ * At the mid-scale transition every step changes sign, so the code step is off by
+ * 2 (dw_1 - sum of dw_rest): sigma = 2 * n_u * sigma_u * sqrt(units of the first step + units of the rest)
+ * = 2 * n_u * sigma_u * sqrt(2 * topUnits) LSB. Checked against 4000 simulated chips (1.14 against 1.13 LSB).
+ */
 export function binaryMatchingCu(P) {
-  // Mid-code: the first step (topUnits) against the rest (about the same) -> sigma = sigma_u x sqrt(2 x topUnits) units.
-  const sigmaU = 0.5 / (3 * P.lsbPerUnit * Math.sqrt(2 * P.topUnits));
+  const sigmaU = 0.5 / (3 * 2 * P.lsbPerUnit * Math.sqrt(2 * P.topUnits));
   const cuF = (P.aC / 100 / sigmaU) ** 2 * 1e-15;
   return { sigmaU, cu: cuF };
 }

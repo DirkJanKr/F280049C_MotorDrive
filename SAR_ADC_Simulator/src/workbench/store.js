@@ -3,12 +3,12 @@
 import { createValues, SEED } from './values.js';
 import { design } from './design.js';
 
-const KEY = 'zaan-workbench-v4';
-const VKEY = 'zaan-workbench-versions-v2';
+const KEY = 'zaan-workbench-v5';
+const VKEY = 'zaan-workbench-versions-v3';
 
 export const store = {
   values: createValues(),
-  ui: { page: 'system', showTop: true, showSide: true, weightMode: 'generator', customWeights: '256, 136, 72, 40, 24, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'soft', vin: 0.217, qUnit: 'fC', arrayGain: true, alloc: {}, sarMode: 'diff', optGoal: 'enob', optRes: true, sweep: 'compNoise', bfDelays: true },
+  ui: { page: 'system', showTop: true, showSide: true, weightMode: 'generator', customWeights: '256, 136, 72, 40, 24, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'auto', vin: 0.217, qUnit: 'fC', arrayGain: true, alloc: {}, sarMode: 'diff', optGoal: 'enob', optRes: true, sweep: 'compNoise', bfDelays: true },
   versions: [],
   ctx: null,
   listeners: [],
@@ -61,7 +61,7 @@ export function setUi(patch, reason = 'ui') {
 
 function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ values: store.values.map(({ id, value, source }) => ({ id, value, source })), ui: store.ui }));
+    localStorage.setItem(KEY, JSON.stringify({ values: store.values.map(({ id, value, source, status }) => ({ id, value, source, status })), ui: store.ui }));
   } catch {
     /* storage unavailable */
   }
@@ -73,7 +73,7 @@ export function load() {
     if (s) {
       for (const sv of s.values || []) {
         const v = store.values.find((x) => x.id === sv.id);
-        if (v) Object.assign(v, { value: sv.value, source: sv.source ?? v.source });
+        if (v) Object.assign(v, { value: sv.value, source: sv.source ?? v.source, status: sv.status ?? v.status });
       }
       Object.assign(store.ui, s.ui || {});
     }
@@ -87,7 +87,7 @@ export function load() {
 }
 
 function snapshot(name) {
-  return { name, date: new Date().toISOString(), values: store.values.map(({ id, value, source }) => ({ id, value, source })), ui: { weightMode: store.ui.weightMode, customWeights: store.ui.customWeights, arrayGain: store.ui.arrayGain, alloc: store.ui.alloc } };
+  return { name, date: new Date().toISOString(), values: store.values.map(({ id, value, source, status }) => ({ id, value, source, status })), ui: { weightMode: store.ui.weightMode, customWeights: store.ui.customWeights, arrayGain: store.ui.arrayGain, alloc: store.ui.alloc } };
 }
 function saveVersions() {
   try {

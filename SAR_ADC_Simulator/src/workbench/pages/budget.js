@@ -3,15 +3,15 @@
 // it, and the ENOB against one value at a time.
 
 import { group, knobs, card, fill, widthOf, plot, explain, eng, num, esc, COL, fv } from '../kit.js';
-import { designCdac } from '../../zaan/model/cdac.js';
+import { designCdac, chargeBalance } from '../../zaan/model/cdac.js';
 import { chargeBudget } from '../budget.js';
 import { changed } from '../store.js';
 
 const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
 const SWEEPS = {
   compNoise: { label: 'Comparator input noise', unit: 'mV rms', si: 1e-3, lo: 0, hi: 0.2 },
-  vref: { label: 'VREF', unit: 'mV', si: 1e-3, lo: 50, hi: 500 },
-  cu: { label: 'Unit capacitor Cu', unit: 'fF', si: 1e-15, lo: 20, hi: 150 },
+  alpha: { label: 'alpha', unit: '', si: 1, lo: 0.1, hi: 3 },
+  cm: { label: 'Memory capacitor C M', unit: 'fF', si: 1e-15, lo: 30, hi: 400 },
   jitter: { label: 'Sampling clock jitter', unit: 'ps rms', si: 1e-12, lo: 0, hi: 10 },
   temperature: { label: 'Temperature', unit: 'K', si: 1, lo: 250, hi: 360 },
 };
@@ -22,9 +22,9 @@ export const page = {
   side(store) {
     const used = new Set();
     return group('Target', knobs(store.values, ['enobAim', 'bits', 'outBits', 'fullScale'], used)) +
-      group('Calibration and balance', knobs(store.values, ['calMethod', 'balance'], used)) +
+      group('Calibration', knobs(store.values, ['calMethod'], used)) +
       group('Noise sources', knobs(store.values, ['compNoise', 'vosCal', 'temperature', 'jitter'], used)) +
-      group('Set the charge per LSB', knobs(store.values, ['vref', 'cu', 'lsbPerUnit'], used), false);
+      group('Charge balance', knobs(store.values, ['cm', 'alpha', 'lsbPerUnit'], used), false);
   },
   main(store) {
     const on = store.ui.arrayGain !== false;
@@ -120,14 +120,19 @@ function sweep(store, ctx) {
   const pts = [];
   for (let k = 0; k <= 60; k++) {
     const x = s.lo + ((s.hi - s.lo) * k) / 60;
-    const Pk = { ...P, [id]: x * s.si };
-    const dk = id === 'vref' || id === 'cu' ? designCdac(Pk, P.memCells, ctx.steps) : d;
+    let Pk = { ...P, [id]: x * s.si };
+    if (id === 'alpha' || id === 'cm') {
+      // the balance sets V_REF and C_u: recompute them, then the CDAC
+      const bal = chargeBalance({ channels: P.channels, fullScale: P.fullScale, bits: P.bits, cm: id === 'cm' ? x * s.si : P.cmIn, alpha: id === 'alpha' ? x : P.alphaIn, lsbPerUnit: P.lsbPerUnit });
+      Pk = { ...P, vref: bal.vref, cu: bal.cu };
+    }
+    const dk = id === 'alpha' || id === 'cm' ? designCdac(Pk, P.memCells, ctx.steps) : d;
     pts.push([x, chargeBudget(Pk, dk, { arrayGain: budget.arrayGain, res }).enob]);
   }
   const ys = pts.map((p) => p[1]);
-  const now = P[id] / s.si;
+  const now = (id === 'alpha' ? P.alphaIn : id === 'cm' ? P.cmIn : P[id]) / s.si;
   fill('bgSweep', plot({ height: 250, x: { min: s.lo, max: s.hi, label: `${s.label} [${s.unit}]` }, y: { min: Math.min(...ys, P.enobAim) - 0.1, max: Math.max(...ys, P.enobAim) + 0.1, label: 'ENOB [bit]' }, series: [{ points: pts, color: COL.an, width: 2.2 }], hlines: [{ y: P.enobAim, color: COL.ref, dash: '6 3' }], vlines: [{ x: now, color: COL.ink, label: 'now' }] }, widthOf('bgSweep')),
-    `Charge budget with everything else as it is now; quantisation, rounding and LUT error are kept at their simulated values in LSB (${num(res.sar, 3)}, ${num(res.round, 3)}, ${num(res.lut, 3)}). ${id === 'vref' || id === 'cu' ? `VREF and Cu set the charge per LSB, and with it CM: CM ∝ VREF · Cu (now ${eng(d.cm, 'F')}). The full trade-off with mismatch is on the Optimizer page.` : ''}`);
+    `Charge budget with everything else as it is now; quantisation, rounding and LUT error are kept at their simulated values in LSB (${num(res.sar, 3)}, ${num(res.round, 3)}, ${num(res.lut, 3)}). ${id === 'alpha' ? `alpha sets V REF = alpha · V in,max / 2 and C DAC = N C M / (2 alpha): a larger alpha means a smaller CDAC, so less attenuation at the comparator.` : id === 'cm' ? 'C M scales every capacitor and the charge per LSB together; kT/C noise in LSB falls as 1 / √C M.' : ''}`);
 }
 
 function perDecision(ctx) {

@@ -15,8 +15,17 @@ import { page as logic } from './pages/logic.js';
 import { page as valuesPage } from './pages/values.js';
 import { page as iqPage } from './pages/iq.js';
 import { page as optPage } from './pages/optimizer.js';
+import { page as balancePage } from './pages/balance.js';
 
-const PAGES = [system, budgetPage, optPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
+const PAGES = [system, balancePage, budgetPage, optPage, beamformer, sar, mismatch, timing, logic, iqPage, valuesPage];
+// The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
+const NAV = [
+  ['Overview', [['system', []]]],
+  ['Decide', [['balance', []], ['budget', ['enob']], ['optimizer', []]]],
+  ['Blocks, in signal order', [['beamformer', ['cells']], ['sar', ['cover', 'tol', 'small', 'dec']], ['logic', []], ['timing', ['time']], ['mismatch', []], ['iq', []]]],
+  ['Record', [['values', []]]],
+];
+const TAPEOUT = Date.UTC(2027, 2, 31);
 const $ = (id) => document.getElementById(id);
 let current = null;
 
@@ -45,19 +54,35 @@ function summary() {
   $('summary').innerHTML = items.map(([k, v, go, cls]) => `<a class="sm ${cls || ''}" href="#${go}" title="${esc(cls === 'bad' || cls === 'warn' ? (c.checks.find((x) => x.go === go && x.state !== 'ok')?.why || '').replace(/<[^>]+>/g, '') : '')}"><span>${esc(k)}</span><b>${esc(v)}</b></a>`).join('');
 }
 
+function rail() {
+  const state = (ids) => {
+    const c = store.ctx.checks.filter((k) => ids.includes(k.id));
+    return c.some((k) => k.state === 'bad') ? 'bad' : c.some((k) => k.state === 'warn') ? 'warn' : '';
+  };
+  $('pages').innerHTML = NAV.map(([title, items]) => `<span class="rg">${esc(title)}</span>` + items.map(([id, ids]) => {
+    const p = pageOf(id);
+    const st = state(ids);
+    return `<a href="#${id}" class="${id === current.id ? 'on' : ''}" ${id === current.id ? 'aria-current="page"' : ''}>${esc(p.title)}${st ? `<i class="nd ${st}" title="a check on this page ${st === 'bad' ? 'fails' : 'asks for a look'}"></i>` : ''}</a>`;
+  }).join('')).join('');
+  const days = Math.ceil((TAPEOUT - Date.now()) / 864e5);
+  $('tapeout').innerHTML = days >= 0 ? `tape-out 31 March 2027 · <b>${days} days</b>` : 'tape-out 31 March 2027';
+}
+
 function layout() {
   document.body.classList.toggle('no-top', !store.ui.showTop);
   document.body.classList.toggle('no-side', !store.ui.showSide || current?.id === 'values');
   $('togTop').classList.toggle('on', store.ui.showTop);
   $('togSide').classList.toggle('on', store.ui.showSide);
   $('togUnit').textContent = store.ui.qUnit === 'V' ? 'show in µV' : 'show in fC';
-  $('togTheme').textContent = `theme: ${store.ui.theme || 'soft'}`;
-  document.documentElement.dataset.theme = store.ui.theme;
+  const th = ['light', 'dark'].includes(store.ui.theme) ? store.ui.theme : 'auto';
+  $('togTheme').textContent = { auto: 'theme: device', light: 'theme: day', dark: 'theme: night' }[th];
+  if (th === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = th;
 }
 
 function renderPage() {
   current = pageOf(store.ui.page);
-  $('pages').innerHTML = PAGES.map((p) => `<a href="#${p.id}" class="${p.id === current.id ? 'on' : ''}" ${p.id === current.id ? 'aria-current="page"' : ''}>${esc(p.title)}</a>`).join('');
+  rail();
   layout();
   $('side').innerHTML = current.side(store, store.ctx);
   $('main').innerHTML = current.main(store, store.ctx);
@@ -76,6 +101,7 @@ subscribe((reason) => {
   if (reason === 'values') {
     current.update(store, store.ctx);
     summary();
+    rail();
   } else if (reason === 'layout') {
     layout();
     setTimeout(() => current.update(store, store.ctx), 50);
@@ -134,7 +160,11 @@ document.addEventListener('change', (e) => {
     store.ui[t.id] = t.checked;
     changed('values');
   } else if (t.dataset.choicesel) setValue(t.dataset.choicesel, t.value);
-  else if (t.dataset.srcv) {
+  else if (t.dataset.statv) {
+    store.values.find((v) => v.id === t.dataset.statv).status = t.value;
+    changed('meta');
+    setTimeout(() => changed('page'), 0);
+  } else if (t.dataset.srcv) {
     store.values.find((v) => v.id === t.dataset.srcv).source = t.value;
     changed('meta');
   } else if (t.id === 'jsonFile' && t.files[0]) {
@@ -230,7 +260,7 @@ document.addEventListener('click', (e) => {
     setTimeout(() => changed('side'), 0);
   } else if (b.id === 'togTop') setUi({ showTop: !store.ui.showTop }, 'layout');
   else if (b.id === 'togSide') setUi({ showSide: !store.ui.showSide }, 'layout');
-  else if (b.id === 'togTheme') setUi({ theme: { soft: 'dark', dark: 'light', light: 'soft' }[store.ui.theme] || 'soft' }, 'layout');
+  else if (b.id === 'togTheme') setUi({ theme: { auto: 'light', light: 'dark', dark: 'auto' }[store.ui.theme] || 'light' }, 'layout');
   else if (b.id === 'togUnit') {
     store.ui.qUnit = store.ui.qUnit === 'V' ? 'fC' : 'V';
     changed('values');

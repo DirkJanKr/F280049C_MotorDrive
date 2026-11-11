@@ -2,7 +2,7 @@
 // The weights are built from the smallest step upward. For every new step the
 // largest whole number of unit capacitors is taken whose tolerance still covers
 // what that decision needs:
-//   t i = (sum of the steps below) + 1 − w i
+//   t i = (sum of the steps below) + w last − w i
 //   need i = k σ · sqrt(σ w,i² + sum below σ w,j²)            DAC mismatch
 //          + |v os| · (C node,last − C node,i) / Q LSB          offset after calibration
 //          (+ k σ · C node,i · v n / Q LSB                     comparator noise, if chosen)
@@ -38,7 +38,7 @@ function bottomSteps(P, smallest) {
 export function buildFromNeeds(P, cells, opts) {
   const { sigmaU, k = 3, margin = 0, noise = false, smallest = 1 } = opts;
   const lsbU = P.lsbPerUnit;
-  const cover = 2 ** (P.bits - 1) - 1;
+  const cover = 2 ** (P.bits - 1) - smallest;
   const cm = (2 ** P.bits * (2 * P.vref * P.cu) / lsbU) / (P.channels * P.fullScale);
   const qLsb = (2 * P.vref * P.cu) / lsbU;
   const below = bottomSteps(P, smallest).reverse(); // smallest first
@@ -58,7 +58,7 @@ export function buildFromNeeds(P, cells, opts) {
       const cNode = opts.cNodeLast ? opts.cNodeLast - capBelow - 2 * u * P.cu : P.channels * cm;
       const nz = noise ? (k * Math.max(cNode, P.channels * cm) * P.compNoise) / qLsb : 0;
       const need = mis + off + nz + margin;
-      const tol = sum + 1 - w;
+      const tol = sum + smallest - w;
       if (need > tol + 0.5) break;
       best = u;
       bestNeed = { need, tol, mis, off, nz };

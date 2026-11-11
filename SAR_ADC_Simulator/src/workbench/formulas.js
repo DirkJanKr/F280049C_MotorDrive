@@ -26,27 +26,39 @@ function budgetRow(c, id) {
 export const FORMULAS = {
   qlsb: (c) => ({
     title: 'Charge of one LSB',
-    rows: [[`${QL} = ${frac(`2 ${VREF} ${CU}`, v('n', 'u'))}`, `${frac(`2 × ${eng(c.P.vref, 'V')} × ${eng(c.P.cu, 'F')}`, `${c.P.lsbPerUnit}`)}`]],
+    rows: [[`${QL} = ${frac(`${NCH} ${CM} ${v('V', 'in,max')}`, sup('2', v('B')))}`, frac(`${c.P.channels} × ${eng(c.d.cm, 'F')} × ${eng(c.P.fullScale, 'V')}`, sup('2', c.P.bits))]],
     res: `${eng(c.d.qLsb, 'C')}, which is ${eng(c.d.qLsb / c.d.cNode[0], 'V')} at the input`,
-    note: `One unit capacitor precharged to VREF and shared differentially moves 2 VREF Cu (assumption, consistent with the review). n u = ${c.P.lsbPerUnit} LSB per unit capacitor. Charge and input voltage are tied by Q in = N ch CM V in.`,
+    note: `D, from the charge balance of Chen 2018, eq. 3 (p. 3056). Charge is Q+ − Q−, the difference between the two summing nodes. It equals 2 V REF C u / n u = 2 × ${eng(c.P.vref, 'V')} × ${eng(c.P.cu, 'F')} / ${c.P.lsbPerUnit}.`,
   }),
   qfs: (c) => ({
     title: 'Charge of the full scale',
-    rows: [[`${v('Q', 'FS')} = ${sup('2', v('N'))} ${QL} = ${NCH} ${CM} ${v('V', 'FS')}`, `${sup('2', c.P.bits)} × ${eng(c.d.qLsb, 'C')}`]],
+    rows: [[`${v('Q', 'FS')} = ${NCH} ${CM} ${v('V', 'in,max')}`, `${c.P.channels} × ${eng(c.d.cm, 'F')} × ${eng(c.P.fullScale, 'V')}`]],
     res: eng(c.d.qFs, 'C'),
-    note: 'The input charge on the node is Q in = N ch · CM · V in, so all noise is referred to this charge.',
+    note: 'D. Peak-to-peak differential input charge, Q+ − Q−. Every noise source is referred to this charge. Rabuske eq. 5 uses half of it, (C TH / 2) V.',
   }),
   cm: (c) => ({
-    title: 'Memory cell CM from the charge balance',
-    rows: [[`${CM} = ${frac(`${sup('2', v('N'))} ${QL}`, `${NCH} ${v('V', 'FS')}`)}`, frac(`${sup('2', c.P.bits)} × ${eng(c.d.qLsb, 'C')}`, `${c.P.channels} × ${eng(c.P.fullScale, 'V')}`)]],
-    res: eng(c.d.cm, 'F'),
-    note: `Half-range charge balance: the full-scale input charge equals 2^N LSB of step charge. The slide method with the total CDAC gives 4 VREF CDAC / (N ch V FS) = ${eng(c.d.cmSlide, 'F')}; which one holds with redundancy is an open item.`,
+    title: 'Memory capacitor C M',
+    rows: [[`${NCH} ${v('V', 'in,max')} ${CM} = 4 ${VREF} ${v('C', 'DAC')}`, `${c.P.channels} × ${eng(c.P.fullScale, 'V')} × ${eng(c.d.cm, 'F')} = 4 × ${eng(c.P.vref, 'V')} × ${eng(c.P.cdacBalance, 'F')}`]],
+    res: `${eng(c.d.cm, 'F')} (input, status A)`,
+    note: 'C M is an input of the charge balance (Chen 2018, eq. 3, p. 3056); V REF and C DAC follow from it and from alpha. Chen uses 133 fF; that is not a Zaan value.',
+  }),
+  vref: (c) => ({
+    title: 'Reference voltage V REF',
+    rows: [[`${VREF} = ${frac(`${v('α')} ${v('V', 'in,max')}`, '2')}`, frac(`${num(c.P.alphaIn, 3)} × ${eng(c.P.fullScale, 'V')}`, '2')]],
+    res: eng(c.P.vref, 'V'),
+    note: 'D, from Chen eq. 3 with alpha = C TH / (2 C DAC) (Rabuske 2016, eq. 3): alpha = 2 V REF / V in,max.',
+  }),
+  cu: (c) => ({
+    title: 'Unit capacitor C u',
+    rows: [[`${CU} = ${frac(`${v('n', 'u')} ${QL}`, `2 ${VREF}`)} = ${frac(`${v('n', 'u')} ${NCH} ${CM}`, `${sup('2', v('B'))} ${v('α')}`)}`, frac(`${c.P.lsbPerUnit} × ${c.P.channels} × ${eng(c.d.cm, 'F')}`, `${sup('2', c.P.bits)} × ${num(c.P.alphaIn, 3)}`)]],
+    res: eng(c.P.cu, 'F'),
+    note: 'D. One unit capacitor precharged to V REF moves 2 V REF C u, which is n u LSB. The PDK minimum for the MIM device is 35 fF.',
   }),
   cdac: (c) => ({
-    title: 'Total CDAC capacitance',
-    rows: [[`${v('C', 'DAC')} = ${v('n', 'units')} ${CU}`, `${num(c.d.units, 2)} × ${eng(c.P.cu, 'F')}`]],
-    res: eng(c.d.cdac, 'F'),
-    note: 'Whole-unit steps plus the charge-halving chain (one source capacitor and one per halving). One side of the differential pair.',
+    title: 'CDAC capacitance',
+    rows: [[`${v('C', 'DAC')} = ${frac(`${NCH} ${CM}`, `2 ${v('α')}`)}`, frac(`${c.P.channels} × ${eng(c.d.cm, 'F')}`, `2 × ${num(c.P.alphaIn, 3)}`)]],
+    res: `${eng(c.P.cdacBalance, 'F')} for a binary array`,
+    note: `D, Chen eq. 3. The present weights carry reference charge on ${eng(c.d.cdacEff, 'F')} (${num(c.d.sumW / c.P.lsbPerUnit, 2)} units) and use ${eng(c.d.cdac, 'F')} of capacitors (${num(c.d.units, 2)} units, including the halving capacitors, which start empty).`,
   }),
   cnode: (c) => {
     const n = c.d.decisions;
@@ -102,15 +114,14 @@ export const FORMULAS = {
   },
   'b-comp': (c) => {
     const cl = c.d.cNode[c.d.decisions - 1];
-    const simL = (c.sim.compSimV * c.d.cNode[0]) / c.d.qLsb;
-    return { title: 'Comparator noise as charge', rows: [[`${v('σ', 'Q,cmp')} = ${v('C', 'node,last')} ${v('v', 'n')}`, `${eng(cl, 'F')} × ${eng(c.P.compNoise, 'V')}`]], res: budgetRow(c, 'comp'), note: `A voltage noise v n at the comparator is the charge C node · v n on the node. Earlier decisions see it on a smaller node and are repaired by redundancy; the last decisions are not, so the largest node counts. This is a first-order upper estimate: the simulated chip with and without comparator noise gives ${num(simL, 3)} LSB against ${num(cl * c.P.compNoise / c.d.qLsb, 3)} LSB here, because a noisy last decision only changes the code when the residue is within the noise.` };
+    return { title: 'Comparator noise as charge', rows: [[`${v('σ', 'Q,cmp')} = ${v('C', 'node,last')} ${v('v', 'n')}`, `${eng(cl, 'F')} × ${eng(c.P.compNoise, 'V')}`]], res: budgetRow(c, 'comp'), note: 'A voltage noise v n at the comparator is the charge C node · v n on the node. A noisy decision that the later steps cannot repair adds half of that power, σ² / 2. With a repeated last step the last two decisions both have no repair, which gives σ² in total. Checked by direct simulation (400 000 conversions): 0.197 LSB against 0.197 LSB for the default weights, within 11 % for a ½ LSB last step. The parasitic capacitance of the summing node is not in C node yet; it would add to it.' };
   },
   'b-jit': (c) => {
     const f = c.P.f0 * (1 + c.P.fbw / 2);
     return { title: 'Sampling clock jitter as charge', rows: [[`${v('σ', 'Q,j')} = ${NCH} ${CM} · 2π ${v('f', 'max')} ${v('σ', 't')} ${v('V', 'rms')}`, `${eng(c.P.channels * c.d.cm, 'F')} × 2π × ${eng(f, 'Hz')} × ${eng(c.P.jitter, 's')} × ${eng(c.vrms, 'V')}`]], res: budgetRow(c, 'jit'), note: 'A full-scale sine at the band edge f0 (1 + bw / 2) changes fastest; a timing error σt gives a voltage error 2π f σt V rms. Counted as if all channels jitter together (worst case: the 16 errors add like the signal).' };
   },
   gain: (c) => ({ title: 'Beamformer gain on channel noise', rows: [[`${v('G')} = 10 log<sub>10</sub> ${NCH}`, `10 log<sub>10</sub> ${c.P.channels}`]], res: `${num(c.budget.arrayGainDb, 2)} dB`, note: 'Signal from N aligned channels adds as N, independent noise as √N. Only noise that is independent per channel gets this; here that is the kT/C of the memory cells.' }),
-  tol: (c) => ({ title: 'Tolerance of decision 1', rows: [[`${v('t', 'i')} = ${t('Σ')}<sub>j&gt;i</sub> ${v('w', 'j')} + 1 − ${v('w', 'i')}`, `${num(c.d.weights.slice(1).reduce((a, w) => a + w, 0), 2)} + 1 − ${num(c.d.weights[0], 2)}`]], res: `${num(c.d.tol[0], 2)} LSB`, note: 'How far the level after this decision may be wrong and still be reached by the later steps.' }),
+  tol: (c) => ({ title: 'Tolerance of decision 1', rows: [[`${v('t', 'i')} = ${t('Σ')}<sub>j&gt;i</sub> ${v('w', 'j')} + ${v('w', 'last')} − ${v('w', 'i')}`, `${num(c.d.weights.slice(1).reduce((a, w) => a + w, 0), 2)} + ${num(c.d.weights[c.d.weights.length - 1], 2)} − ${num(c.d.weights[0], 2)}`]], res: `${num(c.d.tol[0], 2)} LSB`, note: 'How far the level after this decision may be wrong and still be reached by the later steps. After the last step the residue must lie within ± w last.' }),
   need: (c) => {
     const r = c.tolNeed[0];
     return {
@@ -124,7 +135,7 @@ export const FORMULAS = {
       note: 'The common part of the offset shifts every code equally; only the difference from the last decision uses tolerance.',
     };
   },
-  cover: (c) => ({ title: 'Coverage of the range', rows: [[`${t('Σ')} ${v('w', 'i')} ≥ ${sup('2', `${v('N')} − 1`)} − 1`, `${num(c.d.cover.sum, 1)} ≥ ${c.d.cover.need}`]], res: c.d.cover.ok ? 'met' : 'not met', note: 'From mid-scale the steps must reach either end.' }),
+  cover: (c) => ({ title: 'Coverage of the range', rows: [[`${t('Σ')} ${v('w', 'i')} + ${v('w', 'last')} ≥ ${sup('2', `${v('B')} − 1`)}`, `${num(c.d.cover.sum, 1)} + ${num(c.d.weights[c.d.weights.length - 1], 2)} ≥ ${2 ** (c.P.bits - 1)}`]], res: c.d.cover.ok ? `met, overrange ${num(c.d.cover.overrange * 100, 1)} %` : 'not met', note: 'From mid-scale the steps must reach either end of the input range. What they reach beyond it is overrange, which redundancy brings by itself.' }),
   decisions: (c) => ({ title: 'Number of decisions', rows: [[`${v('n')} = ${v('n', 'steps')} + 1`, `${c.d.weights.length} + 1`]], res: `${c.d.decisions}`, note: 'One decision before each step and one after the last step.' }),
   cells: (c) => ({
     title: 'Memory cells per channel',

@@ -11,7 +11,7 @@ const LINE = { '1-10': [COL.muted, ''], '1-11': [COL.an, '4 3'], '1-12': [COL.an
 
 function keyOf(ctx) {
   const P = ctx.P;
-  return JSON.stringify([P.vref, P.aC, P.compNoise, P.vosCal, P.temperature, P.jitter, P.enobAim, P.balance, P.calMethod, P.lsbPerUnit, P.fs, P.tSample, P.tauDac, P.tLogic, P.ibias, P.gmId, P.cload, P.vfinal, P.seed, ctx.budget.arrayGain]);
+  return JSON.stringify([P.vref, P.aC, P.compNoise, P.vosCal, P.temperature, P.jitter, P.enobAim, P.calMethod, P.lsbPerUnit, P.fs, P.tSample, P.tauDac, P.tLogic, P.ibias, P.gmId, P.cload, P.vfinal, P.seed, ctx.budget.arrayGain]);
 }
 
 export const page = {
@@ -21,7 +21,7 @@ export const page = {
     const used = new Set();
     return `<p class="ks pad">The search uses these values. Change them and run again.</p>` +
       group('Target', knobs(store.values, ['enobAim', 'bits'], used)) +
-      group('Charge per LSB', knobs(store.values, ['vref', 'lsbPerUnit', 'balance'], used)) +
+      group('Charge balance', knobs(store.values, ['alpha', 'fullScale', 'lsbPerUnit'], used)) +
       group('Errors to cover', knobs(store.values, ['pairSigma', 'vosCal', 'compNoise', 'calMethod'], used)) +
       group('Timing (illustrative)', knobs(store.values, ['fs', 'tSample', 'tauDac', 'ibias', 'gmId', 'cload', 'tLogic'], used), false);
   },
@@ -57,7 +57,7 @@ export const page = {
       const row = R.rows.find((r) => r.cu === cu && r.smallest === s && r.outBits === ob);
       if (!row) return;
       const set = (id, v) => (store.values.find((x) => x.id === id).value = v);
-      set('cu', cu);
+      set('cm', +(row.cm * 1e15).toFixed(2));
       set('outBits', ob);
       set('halvingOn', 'charge halving');
       store.ui.weightMode = 'custom';

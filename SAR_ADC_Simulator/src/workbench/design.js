@@ -1,7 +1,7 @@
 // Everything the pages show, computed once from the current values.
 // The physics comes from src/zaan/model; nothing is re-implemented here.
 
-import { designCdac, binaryMatchingCu } from '../zaan/model/cdac.js';
+import { designCdac, binaryMatchingCu, chargeBalance, binarySteps } from '../zaan/model/cdac.js';
 import { receiveDelays, cellsNeeded, worstPhaseError, quantise } from '../zaan/model/beamformer.js';
 import { quantNoise } from '../zaan/model/noise.js';
 import { chargeBudget, toleranceNeeds } from './budget.js';
@@ -27,10 +27,13 @@ export function siOf(values, id) {
 export function modelParams(values) {
   const g = (id) => siOf(values, id);
   const pair = g('pairSigma');
+  // D: V_REF and C_u follow from C_M and alpha through the charge balance (Chen 2018 eq. 3)
+  const bal = chargeBalance({ channels: g('channels'), fullScale: g('fullScale'), bits: g('bits'), cm: g('cm'), alpha: g('alpha'), lsbPerUnit: g('lsbPerUnit') });
   return {
-    fs: g('fs'), f0: g('f0'), fbw: g('fbw'), fullScale: g('fullScale'), bits: g('bits'), outBits: Math.max(g('bits'), g('outBits') ?? g('bits')), balance: g('balance'), calMethod: g('calMethod'), enobAim: g('enobAim'), rawDecisions: g('rawDecisions'),
+    cmIn: g('cm'), alphaIn: g('alpha'), cdacBalance: bal.cdac,
+    fs: g('fs'), f0: g('f0'), fbw: g('fbw'), fullScale: g('fullScale'), bits: g('bits'), outBits: Math.max(g('bits'), g('outBits') ?? g('bits')), calMethod: g('calMethod'), enobAim: g('enobAim'), rawDecisions: g('rawDecisions'),
     channels: g('channels'), pitch: g('pitch'), steer: g('steer'), focus: g('rxFocus') ?? Infinity, delayStep: g('delayStep'), c: g('c'), memCells: g('memCells'),
-    vref: g('vref'), cu: g('cu'), density: g('density'), aC: ((pair / Math.SQRT2) * Math.sqrt(35)) * 100, routing: g('routing'),
+    vref: bal.vref, cu: bal.cu, density: g('density'), aC: ((pair / Math.SQRT2) * Math.sqrt(35)) * 100, routing: g('routing'),
     radix: g('radix'), topUnits: g('topUnits'), lsbPerUnit: g('lsbPerUnit'), halvings: g('halvings'), halvingOn: g('halvingOn'),
     vos: g('vos'), vosCal: g('vosCal'), compNoise: g('compNoise'), ibias: g('ibias'), gmId: g('gmId'), cload: g('cload'), vfinal: g('vfinal'),
     iqTaps: g('iqTaps'), iqDecim: g('iqDecim'), iqCut: g('iqCut'), iqTest: g('iqTest'), tSample: g('tSample'), tauDac: g('tauDac'), tLogic: g('tLogic'), temperature: g('temperature'), jitter: g('jitter'), chips: g('chips'), seed: g('seed'),
@@ -69,7 +72,7 @@ export function design(values, ui) {
   const qd = quantise(delays.tau, P.delayStep);
   const halfSteps = qd.map((x) => Math.round(x / (tw / 2)) % 2);
   // one simulated chip: calibration and the error left after it
-  const key = JSON.stringify([d.weights, steps.map((x) => x.kind), P.cu, P.aC, P.seed, P.vosCal, P.vref, P.bits, P.fullScale, P.compNoise, P.balance]);
+  const key = JSON.stringify([d.weights, steps.map((x) => x.kind), P.cu, P.aC, P.seed, P.vosCal, P.vref, P.bits, P.fullScale, P.compNoise]);
   const vrms = P.fullScale / 2 / Math.SQRT2;
   const q = quantNoise(P);
   // rms error of a sine at -0.5 dBFS from its SNDR, in volts at the input
@@ -81,8 +84,7 @@ export function design(values, ui) {
     const r0 = testChip(chip, d, { ...P, compNoise: 0 }, createRng(P.seed + 9), { samplesPerCode: 2 });
     // static linearity of this chip: dense ramp, no comparator noise, so the histogram itself does not scatter
     const lin = linearity(chip, d, P, r.cal);
-    const compSimV = Math.sqrt(Math.max(errV(r.sCal.sndr) ** 2 - errV(r0.sCal.sndr) ** 2, 0));
-    return { chip, cal: r.cal, sRaw: r.sRaw, sCal: r.sCal, linRaw: lin.raw, linCal: lin.cal, sCal0: r0.sCal, compSimV };
+    return { chip, cal: r.cal, sRaw: r.sRaw, sCal: r.sCal, linRaw: lin.raw, linCal: lin.cal, sCal0: r0.sCal };
   });
   // what is left after calibration, split into its parts, averaged over a few chips
   const resKey = JSON.stringify([key, P.outBits, P.calMethod, ui.lmsMu || 7]);
@@ -110,6 +112,8 @@ export function design(values, ui) {
     tauC: comparatorTau(P), settle: settlingTimes(d, P.tauDac), phaseErr: worstPhaseError(P.f0, P.delayStep),
     memArea, cdacArea, areaTotal: memArea + cdacArea, smallest, binCu: binaryMatchingCu(P).cu,
     sigmaU, lambda: P.c / P.f0, ui,
+    // the binary CDAC of the charge balance, for the Charge balance page
+    dBin: designCdac(P, P.memCells, binarySteps(P.bits, P.lsbPerUnit)),
   };
   ctx.checks = runChecks(ctx);
   return ctx;

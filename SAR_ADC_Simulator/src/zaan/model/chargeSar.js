@@ -70,7 +70,9 @@ export function convert(chip, d, x, { vos = 0, noise = 0, rng = null, trace = fa
 
 /** Design (or calibrated) weights in the form used by the combiner: offset c and one weight per decision. */
 export function designWeights(d) {
-  return { c: d.codes / 2 - 0.5, w: [...d.weights, 0.5] };
+  // the last decision splits the residue left by the last step, so its weight is half that step
+  const last = d.weights[d.weights.length - 1] ?? 1;
+  return { c: d.codes / 2 - 0.5, w: [...d.weights, last / 2] };
 }
 
 /**

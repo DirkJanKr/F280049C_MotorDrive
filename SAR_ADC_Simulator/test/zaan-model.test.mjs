@@ -23,11 +23,12 @@ test('slide 24 example array: 256, 136, 72 ... LSB, 12 decisions, 73 units, CDAC
   near(d.cmSlide * 1e15, 127.75, 0.01, 'CM with total CDAC (slide 25: 128 fF)');
 });
 
-test('slide 16 binary array: 67 units, unit about 364 fF', () => {
+test('slide 16 binary array: 67 units, unit about 1.46 pF', () => {
   const b = designCdac({ ...P, radix: 2 });
   assert.equal(b.units, 67);
   assert.equal(b.decisions, 10);
-  near(binaryMatchingCu(P).cu * 1e15, 364, 6, 'binary unit fF');
+  // at the mid-scale transition every step flips, so the step error is 2 (dw1 - sum dw_rest): 4 x the earlier 364 fF
+  near(binaryMatchingCu(P).cu * 1e15, 1456, 24, 'binary unit fF');
 });
 
 test('slide 22 tolerance example: 9, 5, 3, 2, 1, 1 gives 4, 3, 2, 1, 1, 0, 0', () => {

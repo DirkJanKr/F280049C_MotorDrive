@@ -1,28 +1,37 @@
 <!doctype html>
-<html lang="en" data-theme="soft">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Zaan Workbench</title>
+  <meta name="claude:viewport-fit-sides" content="cover" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=STIX+Two+Text:ital@0;1&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=STIX+Two+Text:ital@0;1&display=swap" />
   <link rel="stylesheet" href="css/workbench.css" />
 </head>
 <body>
   <header class="top">
-    <a class="brand" href="#system"><span class="mark">Z</span><span><b>Zaan</b> workbench</span></a>
-    <nav class="pages" id="pages" aria-label="Pages"></nav>
-    <div class="toggles">
-      <button class="tog" id="togTop" title="Show or hide the summary bar">summary</button>
-      <button class="tog" id="togSide" title="Show or hide the side panel">side panel</button>
-      <button class="tog on" id="togUnit" title="Show noise and charge as charge in fC, or as the voltage it means at the input">show in fC</button>
-      <button class="tog" id="togTheme" title="Soft, dark or light">theme</button>
+    <div class="top-in">
+      <a class="brand" href="#system" aria-label="Zaan workbench, system page">
+        <svg viewBox="0 0 34 34" aria-hidden="true"><path class="hs" d="M17 3 L31 14 V31 H3 V14 Z"/><path class="hw" d="M17 8.5 L26.5 16 V27 H7.5 V16 Z"/><path class="hs" d="M14 27 V20 H20 V27 Z M10.5 17.5 H13.5 V20.5 H10.5 Z M20.5 17.5 H23.5 V20.5 H20.5 Z"/></svg>
+        <span class="bname"><b>Zaan</b><small>charge-sharing SAR with beamformer</small></span>
+      </a>
+      <span class="tapeout" id="tapeout"></span>
+      <div class="toggles">
+        <button class="tog" id="togTop" title="Show or hide the status strip">status</button>
+        <button class="tog" id="togSide" title="Show or hide the values of this page">values</button>
+        <button class="tog on" id="togUnit" title="Show noise and charge as charge in fC, or as the voltage it means at the input">show in fC</button>
+        <button class="tog" id="togTheme" title="Theme: follow the device, day or night">theme</button>
+      </div>
     </div>
   </header>
-  <div class="summary" id="summary"></div>
-  <div class="body" id="body">
+  <div class="shell" id="body">
+    <nav class="rail" id="pages" aria-label="Pages"></nav>
+    <div class="center">
+      <div class="summary" id="summary"></div>
+      <main class="main" id="main"></main>
+    </div>
     <aside class="side" id="side"></aside>
-    <main class="main" id="main"></main>
   </div>
   <script type="module" src="src/workbench/app.js"></script>
 </body>

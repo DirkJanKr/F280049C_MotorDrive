@@ -118,18 +118,49 @@ test('every formula renders for the default design, with no NaN', async () => {
   for (const l of c.budget.lines) assert.ok(formulaHtml({ sar: 'b-sar', round: 'b-round', lut: 'b-lut', comp: 'b-comp', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' }[l.id], c), l.id);
 });
 
-test('charge balance: total step charge makes CM larger and still covers the range; the slide formula does not reach full scale', () => {
-  const v = createValues();
-  const a = design(v, ui);
-  v.find((x) => x.id === 'balance').value = 'total step charge: 2 Σw';
-  const b = design(v, ui);
-  assert.ok(b.d.cm > a.d.cm);
-  assert.ok(Math.abs(b.d.cm / a.d.cm - 560 / 512) < 1e-9);
-  assert.ok(b.d.cover.ok);
-  v.find((x) => x.id === 'balance').value = 'slide: 4 VREF CDAC';
-  const s = design(v, ui);
-  assert.ok(Math.abs(s.d.cm - s.d.cmSlide) < 1e-21);
-  assert.equal(s.d.cover.ok, false);
+test('Item 1, charge balance (Chen eq. 3, Rabuske alpha): algebra, Chen numbers, and the defaults', async () => {
+  const { chargeBalance } = await import('../src/zaan/model/cdac.js');
+  // Chen 2018: N = 9, V in,max = 0.8 V, C M = 133 fF, C DAC about 1.5 pF -> alpha 0.399, V REF about 160 mV
+  const alphaChen = (9 * 133e-15) / (2 * 1.5e-12);
+  const chen = chargeBalance({ channels: 9, fullScale: 0.8, bits: 10, cm: 133e-15, alpha: alphaChen, lsbPerUnit: 8 });
+  assert.ok(Math.abs(alphaChen - 0.399) < 1e-3);
+  assert.ok(Math.abs(chen.vref - 0.1596) < 1e-4, 'V REF 159.6 mV, paper: approximately 160 mV');
+  assert.ok(Math.abs(chen.cdac - 1.5e-12) < 1e-18);
+  assert.ok(Math.abs(9 * 0.8 * 133e-15 - 4 * chen.vref * chen.cdac) < 1e-24, 'eq. 3 holds');
+  // defaults: C M 112 fF and alpha 0.40 give the earlier working figures
+  const c = design(createValues(), ui);
+  assert.ok(Math.abs(c.P.vref - 0.2) < 1e-12);
+  assert.ok(Math.abs(c.P.cu - 35e-15) < 1e-21);
+  assert.ok(Math.abs(c.d.cm - 112e-15) < 1e-21, 'the model returns the C M that was put in');
+  assert.ok(Math.abs(c.d.qLsb - 1.75e-15) < 1e-21);
+  assert.ok(Math.abs(c.d.qFs - 16 * 112e-15 * 1) < 1e-21, 'Q FS = N C M V in,max, as Q+ - Q-');
+});
+
+test('Item 1: eq. 3 in the charge model. A binary array spans 2^B - 2 LSB; redundant weights span 2 sum(w)', () => {
+  const c = design(createValues(), ui);
+  const { P, d, dBin } = c;
+  assert.equal(dBin.units, 67, 'binary array: 67 physical units, as in Chen 2018');
+  assert.ok(Math.abs(4 * P.vref * dBin.cdacEff - d.qFs * (1024 - 2) / 1024) < 1e-21);
+  assert.ok(Math.abs(4 * P.vref * d.cdacEff - d.qFs * (2 * d.sumW) / 1024) < 1e-21, '4 V REF C DAC = Q FS x 2 sum(w) / 2^B');
+  assert.ok(Math.abs(d.alpha - (2 * P.vref / P.fullScale) * (1024 / (2 * d.sumW))) < 1e-12);
+  // Rabuske eq. 5 for one LSB and eq. 7: the node grows by 2 C DAC, so phi_MSB = V os / (alpha V LSB)
+  const lsbV = P.fullScale / 1024;
+  const phiModel = (P.vosCal * (dBin.cNode[dBin.decisions - 1] - dBin.cNode[0])) / dBin.qLsb;
+  assert.ok(Math.abs(phiModel - P.vosCal / (P.alphaIn * lsbV)) / phiModel < 0.06, 'within the 3 empty halving capacitors');
+});
+
+test('audit fixes: tolerance and last-decision weight follow the last step; overrange is reported', async () => {
+  const { tolerances, coverage } = await import('../src/zaan/model/steps.js');
+  const { designWeights } = await import('../src/zaan/model/chargeSar.js');
+  assert.deepEqual(tolerances([2, 1, 0.5, 0.5]), [0.5, 0.5, 0.5, 0, 0]);
+  assert.deepEqual(tolerances([2, 1, 1]), [1, 1, 0, 0]);
+  assert.equal(designWeights({ codes: 1024, weights: [2, 1, 0.5, 0.5] }).w[4], 0.25);
+  const cov = coverage([256, 136, 72, 40, 24, 16, 8, 4, 2, 1, 1], 10);
+  assert.ok(cov.ok && Math.abs(cov.overrange - (561 / 512 - 1)) < 1e-12);
+});
+
+test('every value has a status S, D, A or U', () => {
+  for (const v of createValues()) assert.ok(['S', 'D', 'A', 'U'].includes(v.status), v.id);
 });
 
 test('residual split: more combiner output bits remove most of the rounding line; an exact LUT has no weight error', () => {

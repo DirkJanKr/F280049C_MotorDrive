@@ -32,23 +32,30 @@ export function areaUnits(steps, halvings) {
 }
 
 /**
- * Tolerance of each decision, in LSB: t_i = (sum of later step weights) + 1 - w_i.
- * The final decision (no step after it) has tolerance 0.
+ * Tolerance of each decision, in LSB: t_i = (sum of later step weights) + w_last - w_i.
+ * After the last step the residue must lie within +-w_last for the final decision to place it
+ * within half of that; so the later steps can still bring back an error of t_i (standard result
+ * for redundant search, for example Chang 2013, where w_last = 1 LSB). The final decision has tolerance 0.
  */
 export function tolerances(weights) {
+  const last = weights[weights.length - 1] ?? 1;
   const t = [];
   for (let i = 0; i < weights.length; i++) {
     let later = 0;
     for (let j = i + 1; j < weights.length; j++) later += weights[j];
-    t.push(later + 1 - weights[i]);
+    t.push(later + last - weights[i]);
   }
   t.push(0);
   return t;
 }
 
-/** The steps must be able to move the level over half the codes: sum w >= 2^(N-1) - 1. */
+/**
+ * Range the steps reach from mid-scale: sum w + w_last (in LSB, each side). The input full
+ * scale needs 2^(B-1). Anything above that is overrange, which redundancy brings by itself.
+ */
 export function coverage(weights, bits) {
   const sum = weights.reduce((a, w) => a + w, 0);
-  const need = 2 ** (bits - 1) - 1;
-  return { sum, need, ok: sum >= need };
+  const last = weights[weights.length - 1] ?? 1;
+  const need = 2 ** (bits - 1) - last;
+  return { sum, need, ok: sum >= need - 1e-9, reach: sum + last, overrange: (sum + last) / 2 ** (bits - 1) - 1 };
 }
