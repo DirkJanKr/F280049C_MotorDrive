@@ -24,7 +24,7 @@ export const page = {
     const genKnobs = knobs(store.values, ['radix', 'topUnits', 'halvings'], used);
     const list = `<label class="kl" for="wlist">${termify('Weights in LSB, largest first', used)}</label><textarea id="wlist" class="wl-in" rows="3">${esc(ui.customWeights)}</textarea><p class="ks">Steps of one unit or more are whole capacitors; smaller steps follow the choice below.</p>`;
     return group('Weights', mode + presets + (gen ? genKnobs : list) + knobs(store.values, ['halvingOn', 'lsbPerUnit'], used)) +
-      group('Charge balance', knobs(store.values, ['cm', 'alpha', 'fullScale', 'bits', 'rawDecisions'], used)) +
+      group('Charge balance', knobs(store.values, ['cm', 'vref', 'fullScale', 'bits', 'rawDecisions'], used)) +
       group('Comparator', knobs(store.values, ['vos', 'vosCal', 'compNoise'], used)) +
       group('In the bucket view', `<label class="chk"><input type="checkbox" id="useOff" ${ui.useOff ? 'checked' : ''}/> include the offset before calibration</label><label class="chk"><input type="checkbox" id="useNoise" ${ui.useNoise ? 'checked' : ''}/> include comparator noise</label><label class="chk"><input type="checkbox" id="useChip" ${ui.useChip ? 'checked' : ''}/> use the simulated chip (mismatch)</label>`, false);
   },
@@ -188,7 +188,7 @@ function tolerance(ctx) {
       else if (!r.ok) p.push(`<text x="${w - R + 6}" y="${y + 15}" class="tiny bad">short</text>`);
     } else p.push(`<text x="${w - R + 6}" y="${y + 15}" class="tiny">no repair</text>`);
   });
-  p.push(`<g class="tleg"><rect x="${L}" y="8" width="12" height="12" class="tn-mis"/><text x="${L + 16}" y="18" class="tiny">DAC mismatch 3σ</text><rect x="${L + 150}" y="8" width="12" height="12" class="tn-off"/><text x="${L + 166}" y="18" class="tiny">offset after calibration</text><rect x="${L + 360}" y="8" width="12" height="12" class="tn-noise"/><text x="${L + 376}" y="18" class="tiny">comparator noise 3σ</text></g>`);
+  p.push(`<g class="tleg"><rect x="${L}" y="8" width="12" height="12" class="tn-mis"/><text x="${L + 16}" y="18" class="tiny">DAC mismatch 3σ</text><rect x="${L + 150}" y="8" width="12" height="12" class="tn-off"/><text x="${L + 166}" y="18" class="tiny">offset: difference to the last decision</text><rect x="${L + 360}" y="8" width="12" height="12" class="tn-noise"/><text x="${L + 376}" y="18" class="tiny">comparator noise 3σ</text></g>`);
   p.push('</svg>');
   const P = ctx.P;
   const d = ctx.d;

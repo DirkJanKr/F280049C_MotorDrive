@@ -28,7 +28,7 @@ function testList(P, o, chips) {
   const M = 2048;
   const J = coherentCycles(M, 0.1);
   const A = (d.codes / 2) * 10 ** (-0.5 / 20);
-  const acc = { a: 0, b: 0, c1: 0, c2: 0, dnl: 0, miss: 0, gap: 0 };
+  const acc = { sndr: 0, inl: 0, a: 0, b: 0, c1: 0, c2: 0, dnl: 0, miss: 0, gap: 0 };
   for (let k = 0; k < chips; k++) {
     const chip = drawChip(d, P, createRng(P.seed + 17 * (k + 1)));
     const xs = [];
@@ -44,6 +44,8 @@ function testList(P, o, chips) {
     acc.c2 += enob(2);
     const lin = rampLinearity(decR.map((q) => combine(q, cw, d.codes)), d.codes);
     acc.dnl += lin.peakDnl;
+    acc.inl += lin.peakInl;
+    acc.sndr += sineMetrics(decS.map((q) => combine(q, cw, d.codes, 0)), J, P.bits).sndr;
     acc.miss += lin.missing;
     // largest gap between neighbouring reachable values, away from the ends
     const ys = [...new Set(decR.slice(16 * 16, -16 * 16).map((q) => Math.round(combine(q, cw, d.codes, 12) * 4096) / 4096))].sort((p, q) => p - q);
@@ -52,7 +54,7 @@ function testList(P, o, chips) {
     acc.gap = Math.max(acc.gap, g);
   }
   const m = (x) => x / chips;
-  return { d, a: m(acc.a), b: m(acc.b), c1: m(acc.c1), c2: m(acc.c2), dnl: m(acc.dnl), miss: m(acc.miss), gap: acc.gap };
+  return { d, a: m(acc.a), b: m(acc.b), c1: m(acc.c1), c2: m(acc.c2), sndr: m(acc.sndr), inl: m(acc.inl), dnl: m(acc.dnl), miss: m(acc.miss), gap: acc.gap };
 }
 
 
@@ -177,9 +179,9 @@ function runTest(ctx, btn) {
     } else btn.textContent = '▶ run again';
   };
   const show = () => {
-    const tr = out.map(([name, r]) => `<tr><td>${esc(name)}</td><td class="num">${r.d.weights.slice(-4).map((w) => num(w, 2)).join(' ')}</td><td class="num">${num(r.a, 2)}</td><td class="num">${num(r.b, 2)}</td><td class="num">${num(r.c1, 2)}</td><td class="num">${num(r.c2, 2)}</td><td class="num">${num(r.a - r.b, 2)}</td><td class="num">${num(r.dnl, 2)}</td><td class="num">${num(r.miss, 1)}</td><td class="num">${num(r.gap, 2)}</td></tr>`).join('');
-    fill('lvTest', `<div class="tablewrap"><table class="tbl"><thead><tr><th>Weight list</th><th>Last steps [LSB]</th><th>(a) ENOB real-valued</th><th>(b) 10 bit</th><th>(c) 11 bit</th><th>(c) 12 bit</th><th>Lost by (b)</th><th>Peak DNL of (b)</th><th>Missing codes of (b)</th><th>Largest level gap of (a) [LSB]</th></tr></thead><tbody>${tr}</tbody></table></div>`,
-      out.length < TEST.length ? `Running ${out.length} of ${TEST.length}…` : `(d) An ideal 10-bit quantizer gives ENOB ${num(ideal, 2)} on this sine (−0.5 dBFS). Mismatch from the PDK expression, weights calibrated by least squares on a noise-free ramp, mean of 8 chips. <b>Claim 1, rounding adds noise:</b> yes. With a last step of 1 LSB it costs ${num(out[1][1].a - out[1][1].b, 2)} bit; with ½ LSB the real-valued output is finer, so the difference grows to ${num(out[3][1].a - out[3][1].b, 2)} bit, while the 10-bit result itself rises from ${num(out[1][1].b, 2)} to ${num(out[3][1].b, 2)}. Keeping 2 more bits recovers almost all of it. <b>Claim 2, DNL above 0.5 with missing codes proves too little redundancy:</b> no. Every list here has enough redundancy for its mismatch, and the largest gap between reachable levels stays near the last step (${num(out[1][1].gap, 2)} LSB for 12 decisions), yet the rounded output shows DNL near ${num(out[1][1].dnl, 1)} and missing codes. The DNL of the rounded output measures the rounding. Too little redundancy shows as a level gap clearly larger than the last step. <b>Fix:</b> a last step of ½ LSB or less, or keep the extra bits until after the IQ demodulator.`);
+    const tr = out.map(([name, r]) => `<tr><td>${esc(name)}</td><td class="num">${r.d.weights.slice(-4).map((w) => num(w, 2)).join(' ')}</td><td class="num">${num(r.a, 2)}</td><td class="num">${num(r.b, 2)}</td><td class="num">${num(r.c1, 2)}</td><td class="num">${num(r.c2, 2)}</td><td class="num">${num(r.a - r.b, 2)}</td><td class="num">${num(r.sndr, 1)}</td><td class="num">${num(r.dnl, 2)}</td><td class="num">${num(r.inl, 2)}</td><td class="num">${num(r.miss, 1)}</td><td class="num">${num(r.gap, 2)}</td></tr>`).join('');
+    fill('lvTest', `<div class="tablewrap"><table class="tbl"><thead><tr><th>Weight list</th><th>Last steps [LSB]</th><th>(a) ENOB real-valued</th><th>(b) 10 bit</th><th>(c) 11 bit</th><th>(c) 12 bit</th><th>Lost by (b)</th><th>SNDR of (b) [dB]</th><th>Peak DNL of (b)</th><th>Peak INL of (b)</th><th>Missing codes of (b)</th><th>Largest level gap of (a) [LSB]</th></tr></thead><tbody>${tr}</tbody></table></div>`,
+      out.length < TEST.length ? `Running ${out.length} of ${TEST.length}…` : `(d) An ideal 10-bit quantizer gives ENOB ${num(ideal, 2)} on this sine (−0.5 dBFS). Mismatch from the PDK expression, weights calibrated by least squares on a noise-free ramp, mean of 8 chips. <b>Claim 1, rounding adds noise:</b> yes. With a last step of 1 LSB it costs ${num(out[1][1].a - out[1][1].b, 2)} bit; with ½ LSB the real-valued output is finer, so the difference grows to ${num(out[3][1].a - out[3][1].b, 2)} bit, while the 10-bit result itself rises from ${num(out[1][1].b, 2)} to ${num(out[3][1].b, 2)}. Keeping 2 more bits recovers almost all of it. <b>Claim 2, DNL above 0.5 with missing codes proves too little redundancy:</b> no. Every list here has enough redundancy for its mismatch, and the largest gap between reachable levels stays near the last step (${num(out[1][1].gap, 2)} LSB for 12 decisions), yet the rounded output shows DNL near ${num(out[1][1].dnl, 1)} and missing codes. The DNL of the rounded output measures the rounding. Too little redundancy shows as a level gap clearly larger than the last step. <b>Fix with a 10-bit output:</b> a last step of ½ LSB (one more decision). A ¼ LSB step gains little more.`);
   };
   setTimeout(step, 0);
 }

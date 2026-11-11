@@ -54,7 +54,7 @@ export const SEED = [
   // Charge balance inputs. V_REF, C_DAC, Q_LSB and C_u follow from these (D).
   num('fullScale', 'balance', 'V in,max: peak-to-peak differential swing per channel', 1, 'V', 1, 'V', [0.4, 2, 0.05], 'A', 'working figure; Chen 2018 has 800 mV (p. 3056)'),
   num('cm', 'balance', 'Memory capacitor C M', 112, 'fF', 1e-15, 'F', [20, 400, 1], 'A', 'placeholder: gives C u = 35 fF at alpha 0.40; Chen 2018 has 133 fF (p. 3055)'),
-  num('alpha', 'balance', 'alpha = C TH / (2 C DAC)', 0.4, '', 1, '1', [0.1, 4, 0.01], 'A', 'placeholder: the earlier V REF = 200 mV; Chen 2018 gives 0.40; Rabuske 2016 simulates 0.5 to 3'),
+  num('vref', 'balance', 'Reference voltage V REF', 200, 'mV', 1e-3, 'V', [50, 1000, 5], 'A', 'my earlier value, not decided; Chen 2018 has approximately 160 mV (p. 3056)'),
 
   num('pairSigma', 'cdac', 'Pair mismatch σ(ΔC/C) at 35 fF', 1.193, '%', 0.01, '1', [0.1, 5, 0.001], 'S', 'PDK mim5_2: 0.0499 µm / √(W L), W L = 35 fF / 2 fF/µm²'),
   num('density', 'cdac', 'Capacitor density', 2, 'fF/µm²', 1e-3, 'F/m²', [0.5, 10, 0.1], 'S', 'PDK mim5_2'),
@@ -67,8 +67,8 @@ export const SEED = [
   choice('halvingOn', 'cdac', 'Steps below one unit made by', 'charge halving', ['charge halving', 'small capacitors'], 'A', 'Chen 2018 p. 3056, after Malki 2014'),
 
   num('vos', 'comparator', 'Offset before calibration (example)', 1, 'mV', 1e-3, 'V', [0, 10, 0.1], 'A', 'example'),
-  num('vosCal', 'comparator', 'Offset left after trimming the comparator', 0.1, 'mV', 1e-3, 'V', [0, 2, 0.01], 'A', 'estimate', 'offset calibration by trimming the input gates'),
-  num('compNoise', 'comparator', 'Comparator input noise', 0.05, 'mV rms', 1e-3, 'V', [0, 0.5, 0.005], 'A', 'estimate'),
+  num('vosCal', 'comparator', 'Offset left after calibration', 0.15, 'mV', 1e-3, 'V', [0, 2, 0.01], 'S', 'Malki 2014, p. 1174: calibrated to within 0.15 mV', 'Chen 2018 (p. 3058) calibrates in the background but gives no value'),
+  num('compNoise', 'comparator', 'Comparator input noise', 0.05, 'mV rms', 1e-3, 'V', [0, 0.5, 0.005], 'A', 'estimate; Chen 2018 gives no value; Malki 2014 (p. 1181, 40 nm) simulates 0.11 mV for the low-noise comparator'),
 
   num('tSample', 'timing', 'Sampling (read and share) time', 5, 'ns', 1e-9, 's', [0.5, 15, 0.1], 'A', 'illustrative'),
   num('tauDac', 'timing', 'DAC settling time constant', 0.1, 'ns', 1e-9, 's', [0.01, 1, 0.01], 'A', 'illustrative'),

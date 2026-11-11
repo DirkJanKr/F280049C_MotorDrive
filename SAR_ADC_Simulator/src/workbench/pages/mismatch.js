@@ -18,7 +18,7 @@ export const page = {
   title: 'Mismatch and area',
   side(store) {
     const used = new Set();
-    return group('Capacitors', knobs(store.values, ['cm', 'alpha', 'pairSigma', 'density', 'routing'], used)) + group('Simulation', knobs(store.values, ['chips', 'seed', 'bits'], used)) + `<p class="ks pad">The weights come from the SAR ADC page.</p>`;
+    return group('Capacitors', knobs(store.values, ['cm', 'vref', 'pairSigma', 'density', 'routing'], used)) + group('Simulation', knobs(store.values, ['chips', 'seed', 'bits'], used)) + `<p class="ks pad">The weights come from the SAR ADC page.</p>`;
   },
   main(store) {
     return `<div id="mmro"></div>
