@@ -50,6 +50,7 @@ export const page = {
       <div class="grid2"><section class="card"><header><h3>The offset seen at each decision</h3></header><div class="cbody" id="osCurve"></div><p class="cap" id="osCurve-cap"></p></section>
       <section class="card"><header><h3>Error of each decision against what can be repaired</h3></header><div class="cbody" id="osTol"></div><p class="cap" id="osTol-cap"></p></section></div>
       <section class="card wide"><header><h3>What is left in the result, over the whole input range (shift removed)</h3></header><div class="cbody" id="osErr"></div><p class="cap" id="osErr-cap"></p></section>
+      <section class="card wide"><header><h3>Rabuske's formulas for a binary search, against the simulation</h3></header><div class="cbody" id="osRab"></div><p class="cap" id="osRab-cap"></p></section>
       <section class="card wide"><header><h3>Feasibility: which offset calibration does this converter need?</h3></header><div class="cbody" id="osFeas"></div><p class="cap" id="osFeas-cap"></p></section>
       ${explain('Why the offset can still be handled', [
         'The comparator offset is a fixed voltage. The signal is a charge on a node that grows with every CDAC capacitor, so the same offset is worth more LSB at every decision. It rises quickly while the big capacitors join and hardly at the end.',
@@ -100,6 +101,14 @@ export const page = {
     fill('osErr', plot({ height: 250, x: { min: 0, max: d.codes, label: 'input [code]' }, y: { min: -em, max: em, label: 'error [LSB]' },
       series: [{ points: b.pts, color: COL.ref, width: 1.4, label: 'binary weights' }, { points: a.pts, color: COL.an, width: 1.8, label: 'present weights' }], bands: [{ y0: -0.5, y1: 0.5, color: 'color-mix(in srgb, var(--cal) 14%, transparent)' }] }, widthOf('osErr')),
       `Ramp with ideal capacitors and ${eng(vos, 'V')} offset; the mean shift (${num(a.shift, 1)} LSB) is taken out. Binary shows spikes of up to ${num(b.worst, 1)} LSB where the big steps change, at mid-scale and at the quarter points. With the present weights ${a.worst < 0.75 ? 'nothing but the quantisation is left' : `errors of ${num(a.worst, 1)} LSB remain: this offset is more than the redundancy repairs`}.`);
+    const aB = dBin.alpha;
+    const lsbV = P.fullScale / 2 ** P.bits;
+    const rr = (x, f, v, sim) => `<tr><td>${x}</td><td>${f}</td><td class="num">${v}</td><td class="num">${sim}</td></tr>`;
+    fill('osRab', `<div class="tablewrap"><table class="tbl"><thead><tr><th>Quantity</th><th>Formula (Rabuske 2017)</th><th>Formula gives</th><th>Simulation, binary weights</th></tr></thead><tbody>
+      ${rr('Shift of the result', '(1 + 1/α) · V<sub>OS</sub> / V<sub>LSB</sub> &nbsp; (eq. 4.63)', `${num(((1 + 1 / aB) * vos) / lsbV, 2)} LSB`, `${num(b.shift, 2)} LSB`)}
+      ${rr('Worst error at the first-step transition', '|V<sub>OS</sub>| / (α · V<sub>LSB</sub>) &nbsp; (eq. 4.59, 4.67)', `${num(vos / (aB * lsbV), 2)} LSB`, `${num(b.worst, 2)} LSB`)}
+      ${rr('Largest offset without missing codes', 'α · V<sub>LSB</sub> &nbsp; (eq. 4.60)', eng(aB * lsbV, 'V'), vos < aB * lsbV ? 'offset is below it' : 'offset is above it: codes missing')}
+    </tbody></table></div>`, `Binary array: α = ${num(aB, 3)}, V LSB = ${eng(lsbV, 'V')}. The simulated worst error also contains up to ½ LSB of quantisation, and the simulated shift is the mean over the ramp. These formulas are for a binary search; with redundancy the first-step error is repaired as long as it stays inside the tolerance (plot above).`);
     // feasibility
     const raw3 = 3 * raw;
     const rangeLoss = (v) => ((v * perV) / d.codes) * 100;
@@ -109,8 +118,8 @@ export const page = {
     const row = (x, y, z) => `<tr><td>${x}</td><td>${y}</td><td>${z}</td></tr>`;
     fill('osFeas', `<div class="tablewrap"><table class="tbl"><thead><tr><th>Question</th><th>Numbers for this design</th><th>Conclusion</th></tr></thead><tbody>
       ${row('Can it run without any offset calibration?', `untrimmed 3σ = ${eng(raw3, 'V')}: shift ${num(raw3 * perV, 0)} LSB (${num(rangeLoss(raw3), 0)} % of the range); first decision off by ${num((raw3 * (last - d.cNode[0])) / d.qLsb, 0)} LSB against a tolerance of ${num(d.tol[0], 0)}`, raw3 > vmax || rangeLoss(raw3) > 3 ? '<b>No.</b> The offset must be trimmed, but only coarsely.' : 'Yes, the redundancy covers it.')}
-      ${row('How well must it be trimmed?', `redundancy repairs up to ${eng(vmax, 'V')}; 1 % of the range is ${eng((0.01 * d.codes) / perV, 'V')}`, `to about ±${eng(target, 'V')}. Binary (Malki 2014) needs about 0.15 mV.`)}
-      ${row('Chen 2018: background loop, one extra comparison per sample, charge pump on an auxiliary input pair', `time per comparison ${eng(tDec(n), 's')} without, ${eng(tDec(n + 1), 's')} with the extra one; Chen has 2.4 ns`, 'Works and tracks drift, but it costs one more comparison in a period that is already tight, and the auxiliary pair adds comparator noise.')}
+      ${row('How well must it be trimmed?', `redundancy repairs up to ${eng(vmax, 'V')}; 1 % of the range is ${eng((0.01 * d.codes) / perV, 'V')}`, `to about ±${eng(target, 'V')}. A binary search needs |V OS| below α · V LSB = ${eng(dBin.alpha * (P.fullScale / 2 ** P.bits), 'V')} to have no missing codes (Rabuske 2017, eq. 4.60).`)}
+      ${row('Chen 2018: background loop, one extra comparison per sample, charge pump on an auxiliary input pair', `time per comparison ${eng(tDec(n), 's')} without, ${eng(tDec(n + 1), 's')} with the extra one; Chen has 2.4 ns`, 'Works and tracks drift, but it costs one more comparison in a period that is already tight (Rabuske 2017, section 6.4, measures up to 11 % more conversion time for his loop), and the auxiliary pair adds comparator noise.')}
       ${row('Alternative: trim once at start-up with a small DAC at the comparator (as Malki 2014: 5-bit capacitor bank)', `range ±${eng(raw3, 'V')}, step ${eng(target, 'V')}: ${bitsTrim} bits`, 'Enough for linearity. No extra comparison. Drift of a few mV afterwards is repaired by the redundancy.')}
       ${row('Digital only: subtract the shift after the converter', `shift ${num(perV * 1e-3, 1)} LSB per mV, a constant`, 'Removes the shift (the IQ demodulator does this anyway), but cannot give back the lost range or repair a first decision beyond its tolerance. Useful on top of a coarse trim, not instead of it.')}
     </tbody></table></div>`,

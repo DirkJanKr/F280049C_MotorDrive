@@ -1,7 +1,7 @@
 // Matching of a binary CDAC and the 3 sigma rule, for four ways to build the same 10 bits.
 //   polarity: every capacitor is connected parallel or antiparallel (charge sharing), so one
 //             capacitor covers twice the codes of a capacitor that is only switched on or off.
-//   halving:  the last 3 bits come from charge halving (Malki 2014), not from more capacitors.
+//   halving:  the last 3 bits come from charge halving (multi-step LSB precharge, Rabuske 2017 p. 41), not from more capacitors.
 // The array is written as bits with code weights W_i = 2^(B-i). A bit made of u unit capacitors
 // has a relative error sigma_u / sqrt(u); a halving bit sigma_u / sqrt(2); the last comparison
 // of the polarity scheme has no capacitor and no error.

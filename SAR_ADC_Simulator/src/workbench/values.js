@@ -54,6 +54,7 @@ export const SEED = [
   // Charge balance inputs. V_REF, C_DAC, Q_LSB and C_u follow from these (D).
   num('fullScale', 'balance', 'V in,max: peak-to-peak differential swing per channel', 1, 'V', 1, 'V', [0.4, 2, 0.05], 'A', 'working figure; Chen 2018 has 800 mV (p. 3056)'),
   num('cm', 'balance', 'Memory capacitor C M', 112, 'fF', 1e-15, 'F', [20, 400, 1], 'A', 'placeholder: gives C u = 35 fF at alpha 0.40; Chen 2018 has 133 fF (p. 3055)'),
+  num('cpar', 'balance', 'Parasitic capacitance on the summing node', 0, 'fF', 1e-15, 'F', [0, 3000, 10], 'A', 'unknown until extracted: switches and routing of all memory cells. Dilutes the signal like a lower alpha (Rabuske 2017, eq. 4.13)'),
   num('alpha', 'balance', 'alpha = C TH / (2 C DAC)', 0.4, '', 1, '1', [0.1, 4, 0.01], 'A', 'placeholder: gives V REF = 200 mV; Chen 2018 has 0.40 (p. 3056); Rabuske 2016 simulates 0.5 to 3'),
 
   num('pairSigma', 'cdac', 'Pair mismatch σ(ΔC/C) at 35 fF', 1.193, '%', 0.01, '1', [0.1, 5, 0.001], 'S', 'PDK mim5_2: 0.0499 µm / √(W L), W L = 35 fF / 2 fF/µm²'),
@@ -63,8 +64,9 @@ export const SEED = [
   num('topUnits', 'cdac', 'First step', 32, 'units', 1, '1', [8, 64, 1], 'A', '29 Oct example array'),
   num('radix', 'cdac', 'Radix of the upper steps', 1.9, '', 1, '1', [1.5, 2, 0.01], 'A', 'sub-radix-2 is decided (U); the value is not'),
   num('halvings', 'cdac', 'Steps below one unit', 3, '', 1, '1', [0, 5, 1], 'A', '29 Oct example array; Chen 2018 has 3 (p. 3056)'),
+  choice('slotCal', 'cdac', 'Gain of each read slot', 'calibrated', ['calibrated', 'not calibrated'], 'A', 'assumption: one digital gain per read slot. Not decided', 'each read slot uses another set of memory cells (Rabuske 2017, eq. 4.42)'),
   choice('calMethod', 'cdac', 'Weights in the LUT from', 'measured externally (ideal)', ['measured externally (ideal)', 'on-chip least squares, ramp', 'on-chip LMS'], 'A', 'not decided'),
-  choice('halvingOn', 'cdac', 'Steps below one unit made by', 'charge halving', ['charge halving', 'small capacitors'], 'A', 'Chen 2018 p. 3056, after Malki 2014'),
+  choice('halvingOn', 'cdac', 'Steps below one unit made by', 'charge halving', ['charge halving', 'small capacitors'], 'A', 'Multi-step LSB precharge: Craninckx 2007, in Rabuske 2017 p. 41; Chen 2018 p. 3056, after Malki 2014'),
 
   num('vos', 'comparator', 'Offset before calibration (example)', 1, 'mV', 1e-3, 'V', [0, 10, 0.1], 'A', 'example'),
   num('vosCal', 'comparator', 'Offset left after calibration', 0.15, 'mV', 1e-3, 'V', [0, 2, 0.01], 'S', 'Malki 2014, p. 1174: calibrated to within 0.15 mV', 'Chen 2018 (p. 3058) calibrates in the background but gives no value'),

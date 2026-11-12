@@ -62,12 +62,14 @@ export function designCdac(P, cells = 22, givenSteps = null) {
   const cmSlide = (4 * P.vref * cdac) / (P.channels * P.fullScale);
   // Node capacitance before each decision: memory cells, then 2 x C of every shared step.
   const cAdd = steps.map((s) => 2 * (s.kind === 'cap' || s.kind === 'small' ? s.units : 1) * P.cu);
-  const cNode = [P.channels * cm];
+  // Rabuske 2017, eq. 4.21: the node starts as the sampling capacitance C_TH = N C_M; a parasitic on the node adds to it (eq. 4.13)
+  const cTh = P.channels * cm;
+  const cNode = [cTh + (P.cpar || 0)];
   for (const c of cAdd) cNode.push(cNode[cNode.length - 1] + c);
   const memCaps = cells * P.channels * 2;
   const plates = (cdac + memCaps * cm) / P.density;
   return {
-    steps, weights, stepW, sumW, decisions: steps.length + 1, codes, units, cdac, cdacEff, qUnit, qStep, qLsb, qFs, cm, cmSlide, cAdd, cNode,
+    steps, weights, stepW, sumW, decisions: steps.length + 1, codes, units, cdac, cdacEff, qUnit, qStep, qLsb, qFs, cm, cmSlide, cAdd, cNode, cTh,
     alpha: (P.channels * cm) / (2 * cdacEff), alphaPhysical: (P.channels * cm) / (2 * cdac),
     tol: tolerances(weights), cover: coverage(weights, P.bits), memCaps, plateArea: plates, area: plates * P.routing,
   };

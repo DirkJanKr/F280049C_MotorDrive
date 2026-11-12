@@ -6,8 +6,8 @@ import { group, knobs, num } from './kit.js';
 
 const GROUPS = [
   ['target', 'Target', ['enobAim', 'bits', 'fs', 'fullScale']],
-  ['balance', 'Charge balance', ['cm', 'alpha', 'lsbPerUnit']],
-  ['caps', 'Capacitors', ['pairSigma', 'density', 'routing']],
+  ['balance', 'Charge balance', ['cm', 'alpha', 'lsbPerUnit', 'cpar']],
+  ['caps', 'Capacitors', ['pairSigma', 'density', 'routing', 'slotCal']],
   ['comparator', 'Comparator', ['compNoise', 'vosCal', 'vos']],
   ['beam', 'Beamformer', ['channels', 'pitch', 'steer', 'delayStep', 'memCells']],
   ['sim', 'Simulation', ['seed', 'chips']],

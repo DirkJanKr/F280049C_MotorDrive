@@ -72,6 +72,8 @@ export function chargeLines(P, d, { arrayGain = true, res = null, split = true, 
     { id: 'pre', label: 'CDAC precharge noise (kT/C estimate)', sigma: prechargeCharge(P, d), perChannel: false },
     // Chen 2018 p. 3056: jitter on T int changes the whole reference charge; for a full-scale sine sigma_Q = (sigma_t / T int) Q FS / (2 sqrt 2)
     { id: 'tint', label: 'Jitter on the precharge time T int', sigma: ((P.jitter / (0.75 / P.fs)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
+    // Rabuske 2017, eq. 4.42 with the PDK matching: gain differs per read slot; zero when calibrated per slot
+    { id: 'slot', label: `Read-slot gain variation${P.slotCal ? ' (calibrated)' : ', at full scale'}`, sigma: P.slotCal ? 0 : ((P.aC / 100 / Math.sqrt(d.cm * 1e15) / Math.sqrt(N)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
     { id: 'jit', label: 'Sampling clock jitter', sigma: N * d.cm * 2 * Math.PI * fJ * P.jitter * vrms, perChannel: false },
   ];
 }

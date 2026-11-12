@@ -1,5 +1,5 @@
 // CDAC step weights. Upper steps are capacitors of whole units, shrinking by the
-// radix (2.00 = binary). Below one unit, steps are made by charge halving (Malki):
+// radix (2.00 = binary). Below one unit, steps are made by charge halving (multi-step LSB precharge, Craninckx 2007; Rabuske 2017 Fig. 3.10; used by Malki 2014 and Chen 2018):
 // one unit capacitor shares its charge with an empty unit capacitor, again and again.
 
 /**

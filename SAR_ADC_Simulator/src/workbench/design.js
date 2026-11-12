@@ -30,7 +30,7 @@ export function modelParams(values) {
   // D: alpha is the input (11 Nov); V_REF = alpha V_in,max / 2 and C_u follow through the charge balance (Chen 2018 eq. 3)
   const bal = chargeBalance({ channels: g('channels'), fullScale: g('fullScale'), bits: g('bits'), cm: g('cm'), alpha: g('alpha'), lsbPerUnit: g('lsbPerUnit') });
   return {
-    cmIn: g('cm'), alphaIn: g('alpha'), cdacBalance: bal.cdac,
+    cmIn: g('cm'), alphaIn: g('alpha'), cdacBalance: bal.cdac, cpar: g('cpar') || 0, slotCal: g('slotCal') !== 'not calibrated',
     fs: g('fs'), f0: g('f0'), fbw: g('fbw'), fullScale: g('fullScale'), bits: g('bits'), outBits: Math.max(g('bits'), g('outBits') ?? g('bits')), calMethod: g('calMethod'), enobAim: g('enobAim'), rawDecisions: g('rawDecisions'),
     channels: g('channels'), pitch: g('pitch'), steer: g('steer'), focus: g('rxFocus') ?? Infinity, delayStep: g('delayStep'), c: g('c'), memCells: g('memCells'),
     vref: bal.vref, cu: bal.cu, density: g('density'), aC: ((pair / Math.SQRT2) * Math.sqrt(35)) * 100, routing: g('routing'),

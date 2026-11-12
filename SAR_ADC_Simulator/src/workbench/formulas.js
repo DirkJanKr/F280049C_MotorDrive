@@ -19,7 +19,7 @@ function line(name, ctx) {
 
 function budgetRow(c, id) {
   const l = line(id, c);
-  const other = c.ui && c.ui.qUnit === 'V' ? eng(l.sigma, 'C') : `${eng(l.sigma / c.d.cNode[0], 'V')} at the input`;
+  const other = c.ui && c.ui.qUnit === 'V' ? eng(l.sigma, 'C') : `${eng(l.sigma / c.d.cTh, 'V')} at the input`;
   return `${fq(c, l.sigma, true)} = ${num(l.lsb, 3)} LSB (${other}); ${num(l.share, 1)} % of the allowed noise power`;
 }
 
@@ -27,7 +27,7 @@ export const FORMULAS = {
   qlsb: (c) => ({
     title: 'Charge of one LSB',
     rows: [[`${QL} = ${frac(`${NCH} ${CM} ${v('V', 'in,max')}`, sup('2', v('B')))}`, frac(`${c.P.channels} × ${eng(c.d.cm, 'F')} × ${eng(c.P.fullScale, 'V')}`, sup('2', c.P.bits))]],
-    res: `${eng(c.d.qLsb, 'C')}, which is ${eng(c.d.qLsb / c.d.cNode[0], 'V')} at the input`,
+    res: `${eng(c.d.qLsb, 'C')}, which is ${eng(c.d.qLsb / c.d.cTh, 'V')} at the input`,
     note: `D, from the charge balance of Chen 2018, eq. 3 (p. 3056). Charge is Q+ − Q−, the difference between the two summing nodes. It equals 2 V REF C u / n u = 2 × ${eng(c.P.vref, 'V')} × ${eng(c.P.cu, 'F')} / ${c.P.lsbPerUnit}.`,
   }),
   qfs: (c) => ({
@@ -116,6 +116,7 @@ export const FORMULAS = {
     const cl = c.d.cNode[c.d.decisions - 1];
     return { title: 'Comparator noise as charge', rows: [[`${v('σ', 'Q,cmp')} = ${v('C', 'node,last')} ${v('v', 'n')}`, `${eng(cl, 'F')} × ${eng(c.P.compNoise, 'V')}`]], res: budgetRow(c, 'comp'), note: 'A voltage noise v n at the comparator is the charge C node · v n on the node. A noisy decision that the later steps cannot repair adds half of that power, σ² / 2. With a repeated last step the last two decisions both have no repair, which gives σ² in total. Checked by direct simulation (400 000 conversions): 0.197 LSB against 0.197 LSB for the default weights, within 11 % for a ½ LSB last step. The parasitic capacitance of the summing node is not in C node yet; it would add to it.' };
   },
+  'b-slot': (c) => ({ title: 'Read-slot gain variation', rows: [[`${v('σ', 'G')} = ${frac(`σ(${v('C', 'M')})`, sqrt('N'))}`, `${num(c.P.aC / Math.sqrt(c.d.cm * 1e15), 2)} % / √${c.P.channels} = ${num(c.P.aC / Math.sqrt(c.d.cm * 1e15) / Math.sqrt(c.P.channels), 3)} %`], [`${v('σ', 'Q')} = ${v('σ', 'G')} · ${frac(v('Q', 'FS'), `2${sqrt('2')}`)}`, 'for a full-scale sine']], res: budgetRow(c, 'slot'), note: 'Each read slot adds another set of N memory cells, so the sampling capacitance, and with it the gain, differs a little from sample to sample (Rabuske 2017, eq. 4.42: gain error = ΔC / (C TH + ΔC)). It repeats every 22 samples, is proportional to the signal, and can be removed with one digital gain per slot. Counted as zero while "Gain of each read slot" is set to calibrated.' }),
   'b-tint': (c) => ({ title: 'Jitter on the precharge time', rows: [[`${v('σ', 'Q')} = ${frac(v('σ', 't'), v('T', 'int'))} · ${frac(v('Q', 'FS'), `2${sqrt('2')}`)}`, `${frac(eng(c.P.jitter, 's'), eng(0.75 / c.P.fs, 's'))} × ${eng(c.d.qFs / 2 / Math.SQRT2, 'C')}`]], res: budgetRow(c, 'tint'), note: 'Chen 2018, p. 3056: the CDAC is charged by a current for T int, so a timing error scales the whole reference charge. The error is proportional to the signal; the value is for a full-scale sine. T int is 3/4 of the clock period, as in Chen. The same clock jitter value as for sampling is used (assumption).' }),
   'b-jit': (c) => {
     const f = c.P.f0 * (1 + c.P.fbw / 2);

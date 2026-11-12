@@ -7,7 +7,7 @@ import { designCdac, chargeBalance } from '../../zaan/model/cdac.js';
 import { chargeBudget } from '../budget.js';
 import { changed } from '../store.js';
 
-const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', tint: 'b-tint', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
+const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', tint: 'b-tint', slot: 'b-slot', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
 const SWEEPS = {
   compNoise: { label: 'Comparator input noise', unit: 'mV rms', si: 1e-3, lo: 0, hi: 0.2 },
   alpha: { label: 'alpha', unit: '', si: 1, lo: 0.1, hi: 3 },
@@ -72,7 +72,7 @@ function verdict(ctx) {
 function table(ctx) {
   const { budget: b, d } = ctx;
   const V = ctx.ui.qUnit === 'V';
-  const val = (q) => (V ? num((q / d.cNode[0]) * 1e6, 1) : num(q * 1e15, 3));
+  const val = (q) => (V ? num((q / d.cTh) * 1e6, 1) : num(q * 1e15, 3));
   const bar = (l) => `<span class="shb"><span class="shf ${l.ok ? '' : 'over'}" style="width:${Math.min(100, l.share)}%"></span><span class="sha" style="left:${Math.min(100, l.alloc)}%"></span></span>`;
   const rows = b.lines.map((l) => `<tr class="${l.ok ? '' : 'over'}"><td>${fv(FID[l.id], esc(l.label))}${l.perChannel ? ` <span class="tag">${b.arrayGain ? 'with beamformer gain' : 'no beamformer gain'}</span>` : ''}${l.simulated ? ` <span class="tag">simulated, ${ctx.res.enob.length} chips</span>` : ''}</td>
     <td class="num">${val(l.sigma)}</td><td class="num">${num(l.lsb, 3)}</td>
@@ -91,7 +91,7 @@ function powerBar(ctx) {
   const w = Math.max(340, widthOf('bgBar'));
   const top = Math.max(100, b.used) * 1.04;
   const sx = (p) => 12 + (p / top) * (w - 24);
-  const cols = { sar: 'var(--muted)', quant: 'var(--muted)', round: 'var(--cal)', lut: 'var(--warn)', comp: 'var(--ref)', tint: 'var(--warn)', samp: 'var(--an)', pre: 'var(--clk)', jit: 'var(--dig)' };
+  const cols = { sar: 'var(--muted)', quant: 'var(--muted)', round: 'var(--cal)', lut: 'var(--warn)', comp: 'var(--ref)', tint: 'var(--warn)', slot: 'var(--cal)', samp: 'var(--an)', pre: 'var(--clk)', jit: 'var(--dig)' };
   let acc = 0;
   let accA = 0;
   const segs = [];
