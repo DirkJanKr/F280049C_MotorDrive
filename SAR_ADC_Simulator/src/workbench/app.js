@@ -15,6 +15,7 @@ import { page as logic } from './pages/logic.js';
 import { page as valuesPage } from './pages/values.js';
 import { page as iqPage } from './pages/iq.js';
 import { designSide } from './designSide.js';
+import { leadHtml } from './leads.js';
 import { page as balancePage } from './pages/balance.js';
 import { page as levelsPage } from './pages/levels.js';
 import { page as chenPage } from './pages/chen.js';
@@ -131,6 +132,20 @@ function renderPage() {
   if (current.mount) current.mount(store, store.ctx);
   current.update(store, store.ctx);
   summary();
+  lead();
+}
+
+/** The question of the page on screen and the number that answers it, above the page. */
+function lead() {
+  let el = $('lead');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'lead';
+    el.className = 'lead';
+    $('main').before(el);
+  }
+  const leaf = current.cur ? current.cur() : current;
+  el.innerHTML = leadHtml(leaf.id, store.ctx, store);
 }
 
 function rebuildSide() {
@@ -145,6 +160,7 @@ subscribe((reason) => {
   if (reason === 'values') {
     current.update(store, store.ctx);
     summary();
+    lead();
     rail();
   } else if (reason === 'layout') {
     layout();
@@ -154,6 +170,7 @@ subscribe((reason) => {
     rebuildSide();
     current.update(store, store.ctx);
     summary();
+    lead();
   }
 });
 

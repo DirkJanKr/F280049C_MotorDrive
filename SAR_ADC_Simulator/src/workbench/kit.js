@@ -64,7 +64,17 @@ export function fill(id, html, cap = null) {
   if (el) el.innerHTML = html;
   if (cap !== null) {
     const c = document.getElementById(`${id}-cap`);
-    if (c) c.innerHTML = cap;
+    if (c) {
+      c.innerHTML = cap;
+      // long captions fold to two lines; a click opens or closes them
+      const long = c.textContent.length > 260;
+      c.classList.toggle('clamp', long && !c.classList.contains('open'));
+      if (long) c.title = 'click to show or hide the full text';
+      if (long && !c.dataset.fold) {
+        c.dataset.fold = '1';
+        c.addEventListener('click', () => { c.classList.toggle('open'); c.classList.toggle('clamp', !c.classList.contains('open')); });
+      }
+    }
   }
 }
 

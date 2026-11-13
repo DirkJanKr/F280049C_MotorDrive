@@ -39,6 +39,7 @@ export const page = {
       <section class="card wide"><header><h3>What each decision needs from its tolerance</h3></header><div class="cbody" id="sTol"></div><p class="cap" id="sTol-cap"></p></section>
       <div class="grid2">${card('sWalk', 'The search: comparison level per decision')}${card('sTable', 'Charges per decision')}</div>
       <section class="card wide"><header><h3>Compare designs</h3><button class="mini" id="keepA">keep current as A</button></header><div class="cbody" id="sCmp"></div><p class="cap" id="sCmp-cap"></p></section>
+      <section class="card wide"><header><h3>Circuit level: ngspice against Rabuske eq. 4.21</h3></header><div class="cbody" id="spiceCmp"><p class="cap">Loading the ngspice run…</p></div><p class="cap" id="spiceCmp-cap"></p></section>
       ${explain('Reading this page', [
         'The weights are the charges of the CDAC steps, in LSB. With radix 2 they halve every step (binary); with a smaller radix they shrink slower, so the later steps together reach further than one step: that surplus is the tolerance, which repairs a wrong early decision.',
         'Below one unit capacitor a step can be made by charge halving (a unit capacitor shares its charge with an empty unit capacitor, again and again) or by a physically smaller capacitor. Halving keeps every capacitor at the PDK minimum; small capacitors save area but go below 35 fF and match worse.',
@@ -46,6 +47,7 @@ export const page = {
       ])}`;
   },
   mount(store) {
+    spicePanel();
     const P = store.ctx.P;
     const vin = document.getElementById('sVin');
     vin.min = String(-P.fullScale / 2);
@@ -222,4 +224,26 @@ function compare(store, ctx) {
     ${row('smallest capacitor', eng(A.smallest, 'F'), eng(C.smallest, 'F'))}${row('capacitor area [mm²]', num(A.area * 1e6, 4), num(C.area * 1e6, 4))}
     ${row('ENOB from the charge budget', num(A.enob ?? NaN, 2), num(C.enob, 2))}${row('ENOB one chip, calibrated, no kT/C', num(A.enobCal, 2), num(C.enobCal, 2))}
   </tbody></table></div>`, 'Same chip seed for both; for many chips use the Mismatch page.');
+}
+
+/** Circuit-level panel: the ngspice transient of the charge-sharing steps (spice/export.mjs) and eq. 4.21. */
+async function spicePanel() {
+  let data;
+  try {
+    data = await (await fetch('src/workbench/data/spice-charge.json')).json();
+  } catch {
+    fill('spiceCmp', '<p class="cap">No ngspice run found. Run node spice/export.mjs with ngspice installed.</p>');
+    return;
+  }
+  const ns = (t) => t * 1e9;
+  const sim = data.t.map((t, i) => [ns(t), data.vpn[i] * 1e3]);
+  const eq = [];
+  data.steps.forEach((st, i) => { eq.push([ns(i * data.tStep), st.eq * 1e3], [ns((i + 1) * data.tStep), st.eq * 1e3]); });
+  const ys = data.vpn.map((v) => v * 1e3);
+  const pad = (Math.max(...ys) - Math.min(...ys)) * 0.08;
+  const rows = data.steps.map((st, i) => `<tr><td>${i === 0 ? 'sampled' : `after step ${i}`}</td><td class="num">${num(st.spice * 1e3, 4)} mV</td><td class="num">${num(st.eq * 1e3, 4)} mV</td><td class="num">${num((st.spice - st.eq) * 1e6, 2)} µV</td></tr>`).join('');
+  fill('spiceCmp', plot({ height: 240, legend: true, x: { min: 0, max: ns(data.t[data.t.length - 1]), label: 'time [ns]' }, y: { min: Math.min(...ys) - pad, max: Math.max(...ys) + pad, label: 'V P − V N [mV]' },
+    series: [{ points: eq, color: COL.ref, width: 2.5, dash: '6 4', label: 'eq. 4.21' }, { points: sim, color: COL.an, width: 1.6, label: 'ngspice' }] }, widthOf('spiceCmp'))
+    + `<div class="tablewrap"><table class="tbl"><thead><tr><th>Moment</th><th>ngspice</th><th>eq. 4.21</th><th>difference</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+  `Circuit: two sampling capacitors C TH = ${eng(data.config.cTh, 'F')} holding ${num((data.config.vinP - data.config.vinN) * 1e3, 0)} mV, and three precharged DAC capacitors (${data.config.steps.map((s) => eng(s.c, 'F')).join(', ')}, V PC = ${eng(data.config.vpc, 'V')}) connected one after another, ${data.config.steps.map((s) => (s.sign > 0 ? 'parallel' : 'antiparallel')).join(', ')}. Ideal switches of ${data.ron} Ω; each value read just before the next switch closes. Example values, not the design. Transistor switches need the PDK models. ngspice ${esc(data.ngspice)}, run on ${data.generated} by spice/export.mjs; the test suite checks that this run still agrees.`);
 }

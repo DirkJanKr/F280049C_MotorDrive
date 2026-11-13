@@ -29,7 +29,10 @@ function defaultFormat(v, ticks) {
 export function linePlot(o) {
   const W = o.width ?? 640;
   const H = o.height ?? 200;
-  const m = { l: 56, r: 14, t: 12, b: 30, ...(o.margin || {}) };
+  // lines with a label are named at their right end instead of in a legend
+  const named = o.legend ? (o.series || []).filter((q) => q.label && q.points && q.points.length) : [];
+  const labW = named.length ? Math.min(170, 14 + Math.max(...named.map((q) => q.label.length)) * 6.3) : 0;
+  const m = { l: 56, r: 14 + labW, t: 12, b: 32, ...(o.margin || {}) };
   const pw = W - m.l - m.r;
   const ph = H - m.t - m.b;
   const { x, y } = o;
@@ -53,10 +56,10 @@ export function linePlot(o) {
   for (const v of xt) parts.push(`<line x1="${sx(v)}" x2="${sx(v)}" y1="${m.t}" y2="${m.t + ph}" stroke="var(--grid)"/>`);
   for (const v of yt) parts.push(`<line x1="${m.l}" x2="${m.l + pw}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--grid)"/>`);
   parts.push(`<rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="none" stroke="var(--border)"/>`);
-  for (const v of xt) parts.push(`<text x="${sx(v)}" y="${m.t + ph + 14}" text-anchor="middle" font-size="10" class="muted mono">${xf(v)}</text>`);
-  for (const v of yt) parts.push(`<text x="${m.l - 6}" y="${sy(v) + 3.5}" text-anchor="end" font-size="10" class="muted mono">${yf(v)}</text>`);
-  if (x.label) parts.push(`<text x="${m.l + pw / 2}" y="${H - 3}" text-anchor="middle" font-size="10.5" class="muted">${esc(x.label)}</text>`);
-  if (y.label) parts.push(`<text transform="translate(12 ${m.t + ph / 2}) rotate(-90)" text-anchor="middle" font-size="10.5" class="muted">${esc(y.label)}</text>`);
+  for (const v of xt) parts.push(`<text x="${sx(v)}" y="${m.t + ph + 14}" text-anchor="middle" font-size="10.5" class="muted mono">${xf(v)}</text>`);
+  for (const v of yt) parts.push(`<text x="${m.l - 6}" y="${sy(v) + 3.5}" text-anchor="end" font-size="10.5" class="muted mono">${yf(v)}</text>`);
+  if (x.label) parts.push(`<text x="${m.l + pw / 2}" y="${H - 3}" text-anchor="middle" font-size="11.5" class="muted">${esc(x.label)}</text>`);
+  if (y.label) parts.push(`<text transform="translate(12 ${m.t + ph / 2}) rotate(-90)" text-anchor="middle" font-size="11.5" class="muted">${esc(y.label)}</text>`);
   parts.push(`<g clip-path="url(#${(o.id ?? 'p') + '-clip'})">`);
   for (const h of o.hlines || []) {
     parts.push(`<line x1="${m.l}" x2="${m.l + pw}" y1="${sy(h.y)}" y2="${sy(h.y)}" stroke="${h.color}" stroke-dasharray="${h.dash ?? '4 3'}" stroke-width="${h.width ?? 1}"/>`);
@@ -91,13 +94,19 @@ export function linePlot(o) {
     parts.push(`<line x1="${sx(o.cursor)}" x2="${sx(o.cursor)}" y1="${m.t}" y2="${m.t + ph}" stroke="var(--accent)" stroke-width="1.5"/>`);
   }
   if (o.overlay) parts.push(o.overlay(sx, sy, { m, pw, ph }));
-  if (o.legend) {
-    let lx = m.l + 8;
-    const ly = m.t + 12;
-    for (const s of o.series.filter((q) => q.label)) {
-      parts.push(`<line x1="${lx}" x2="${lx + 14}" y1="${ly - 3.5}" y2="${ly - 3.5}" stroke="${s.color}" stroke-width="2" stroke-dasharray="${s.dash ?? ''}"/>`);
-      parts.push(`<text x="${lx + 18}" y="${ly}" font-size="10.5">${esc(s.label)}</text>`);
-      lx += 30 + s.label.length * 6.1;
+  if (named.length) {
+    // label each line where it ends, nudged apart so labels do not overlap
+    const tags = named.map((s) => {
+      const inside = s.points.filter((q) => q[0] >= x.min && q[0] <= x.max && Number.isFinite(q[1]));
+      const last = inside.length ? inside[inside.length - 1] : s.points[s.points.length - 1];
+      return { s, y: clampY(last[1]) };
+    }).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < tags.length; i++) if (tags[i].y - tags[i - 1].y < 12) tags[i].y = tags[i - 1].y + 12;
+    const over = tags.length ? tags[tags.length - 1].y - (m.t + ph) : 0;
+    if (over > 0) for (const t of tags) t.y -= over;
+    for (const t of tags) {
+      parts.push(`<line x1="${m.l + pw + 2}" x2="${m.l + pw + 10}" y1="${t.y}" y2="${t.y}" stroke="${t.s.color}" stroke-width="2" stroke-dasharray="${t.s.dash ?? ''}"/>`);
+      parts.push(`<text x="${m.l + pw + 13}" y="${t.y + 3.5}" font-size="10.5" fill="${t.s.color}">${esc(t.s.label)}</text>`);
     }
   }
   parts.push('</svg>');

@@ -5,7 +5,7 @@
 // A: so the whole 1.58 mW is treated as switching power, P = k * cycles * f_s * V_DD^2.
 // D: the reference charge is added separately, P_ref = V_DD * Q_REF * f_s, Q_REF = C_DAC * V_REF.
 
-import { fill, readouts, explain, eng, num } from '../kit.js';
+import { fill, readouts, explain, eng, num, statusChip } from '../kit.js';
 
 const CHEN = { p: 1.58e-3, fs: 30e6, cycles: 11, vdd: 1.8, n: 9, qref: 1.5e-12 * 0.16 };
 
@@ -42,7 +42,8 @@ export const page = {
       ['Energy per conversion', eng(total / P.fs, 'J'), 'P / f s'],
       ['Walden figure of merit', eng(fom, 'J'), `P / (2^ENOB · f s), ENOB ${num(budget.enob, 2)} from the budget`],
     ]));
-    const row = (a, b, c, s) => `<tr><td>${a}</td><td class="num">${b}</td><td class="num">${c}</td><td>${s}</td></tr>`;
+    const st = (s) => s.replace(/^([SDAU])(;|,)?\s*/, (m0, k) => `${statusChip(k)} `);
+    const row = (a, b, c, s) => `<tr><td>${a}</td><td class="num">${b}</td><td class="num">${c}</td><td>${st(s)}</td></tr>`;
     fill('pwTab', `<div class="tablewrap"><table class="tbl"><thead><tr><th>Step</th><th>Chen 2018</th><th>This design</th><th>Status</th></tr></thead><tbody>
       ${row('ADC with delay programming logic', eng(CHEN.p, 'W'), '', 'S, p. 3059')}
       ${row('Sample rate f s', eng(CHEN.fs, 'Hz'), `${eng(P.fs, 'Hz')} (× ${num(fFs, 2)})`, 'S, p. 3053; mine')}

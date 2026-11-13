@@ -11,7 +11,7 @@ const memo = {};
 const frac = (a, b) => `<span class="frac"><span class="fn">${a}</span><span class="fd">${b}</span></span>`;
 const sq = (x) => `√<span style="border-top:1px solid currentColor;padding:0 3px">${x}</span>`;
 const sub = (a, b) => `${a}<sub>${b}</sub>`;
-const big = (html) => `<div style="font-size:19px;font-weight:600;color:var(--ink);padding:6px 0">${html}</div>`;
+const big = (html) => `<div class="eq">${html}</div>`;
 
 function arrayView(arr, w) {
   const n = arr.list.length;
@@ -22,7 +22,7 @@ function arrayView(arr, w) {
   arr.list.forEach((b, i) => {
     const x = L + i * bw;
     p.push(`<rect x="${x + 1.5}" y="4" width="${bw - 3}" height="24" rx="3" fill="${colOf[b.kind]}" opacity="0.9"/><text x="${x + bw / 2}" y="20" text-anchor="middle" class="tiny" style="fill:#fff">${b.W}</text>`);
-    p.push(`<text x="${x + bw / 2}" y="42" text-anchor="middle" class="tiny">${b.kind === 'cap' ? `${b.units}u` : b.kind === 'half' ? '½' : '–'}</text>`);
+    p.push(`<text x="${x + bw / 2}" y="42" text-anchor="middle" class="tiny">${b.kind === 'cap' ? `${b.units}u` : b.kind === 'half' ? '½' : 'none'}</text>`);
   });
   p.push(`<text x="4" y="20" class="tiny">code weight</text><text x="4" y="42" class="tiny">units</text>`);
   [['below mid', (i) => i !== 0], ['above mid', (i) => i === 0]].forEach(([label, on], r) => {
@@ -31,7 +31,7 @@ function arrayView(arr, w) {
     arr.list.forEach((b, i) => {
       const a = on(i);
       const txt = arr.polarity ? (a ? '+' : '−') : a ? 'on' : 'off';
-      const fillc = arr.polarity ? (a ? 'var(--an)' : 'var(--cal)') : a ? 'var(--an)' : 'var(--panel2)';
+      const fillc = arr.polarity ? (a ? 'var(--an)' : 'var(--ref)') : a ? 'var(--an)' : 'var(--panel2)';
       p.push(`<rect x="${L + i * bw + 1.5}" y="${y}" width="${bw - 3}" height="24" rx="3" fill="${fillc}" stroke="var(--line)"/><text x="${L + i * bw + bw / 2}" y="${y + 16}" text-anchor="middle" class="tiny" style="fill:${arr.polarity || a ? '#fff' : 'var(--ink)'}">${txt}</text>`);
     });
   });

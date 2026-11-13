@@ -23,3 +23,14 @@ test('ngspice: charge sharing settles to Rabuske eq. 4.21 after every step', { s
   const last = r.t.length - 1;
   assert.ok(Math.abs((r['v(p)'][last] + r['v(n)'][last]) / 2 - 0.5) < 1e-4);
 });
+
+test('the ngspice data shown on the Conversion page matches the circuit and eq. 4.21', async () => {
+  const { readFileSync } = await import('node:fs');
+  const data = JSON.parse(readFileSync(new URL('../src/workbench/data/spice-charge.json', import.meta.url)));
+  assert.ok(data.ngspice, 'records the ngspice version');
+  data.steps.forEach((st, i) => {
+    assert.ok(Math.abs(st.eq - rabuske421(data.config, i)) < 1e-12, `eq. 4.21 at step ${i}`);
+    assert.ok(Math.abs(st.spice - st.eq) < 1e-5, `ngspice settles to eq. 4.21 at step ${i}`);
+  });
+  assert.ok(data.t.length === data.vpn.length && data.t.length > 100);
+});
