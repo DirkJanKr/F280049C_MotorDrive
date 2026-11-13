@@ -157,3 +157,32 @@ noise formula is an upper estimate (the simulation gives less, see its formula).
 
 The summary bar and the side panel can be shown or hidden. Code: `src/workbench/` (values, store,
 design, budget, checks, formulas, optimizer, iq, weights, kit, pages, animations); the physics is in `src/zaan/model/`.
+
+## Circuit level (ngspice)
+
+`spice/` connects the behavioural model to ngspice, without extra packages:
+
+- `spice/ngspice.mjs` runs a netlist in batch mode and reads the traces written with `wrdata`.
+- `spice/chargeShare.mjs` builds the charge-sharing steps (sampling capacitors, precharged DAC
+  capacitors, switches with an on-resistance) and gives Rabuske 2017, eq. 4.21 for comparison.
+- `test/spice.test.mjs` checks that ngspice settles to eq. 4.21 after every step. It is skipped when
+  ngspice is not installed.
+
+Install: `apt-get install ngspice` (Ubuntu; ngspice 42 is used). The cloud environment installs it in
+its setup script.
+
+Transistor-level switches and the comparator need the SilTerra 180 nm BCD models. They are under NDA:
+put them in `local-data/` (git-ignored) and include them from a netlist there. Nothing in this
+repository contains PDK data.
+
+## Claude Code skills in this repository
+
+Installed with `npx skills add` into `.agents/skills`, linked from `.claude/skills`, pinned in
+`skills-lock.json` at the repository root:
+
+| Skill | Source | Use it for |
+|---|---|---|
+| playwright-skill | lackeyjb/playwright-skill | browser checks of the workbench pages; use the preinstalled Playwright, do not run its `npm run setup` |
+| test-driven-development | obra/superpowers | new model features: write the hand-calculation test first |
+| systematic-debugging | obra/superpowers | a result that disagrees with literature, ngspice or MATLAB |
+| verification-before-completion | obra/superpowers | before claiming a model or page is correct |
