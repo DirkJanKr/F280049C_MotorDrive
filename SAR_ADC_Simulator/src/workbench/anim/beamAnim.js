@@ -8,7 +8,8 @@
 
 import { receiveDelays, quantise } from '../../zaan/model/beamformer.js';
 
-const A = { raf: 0, playing: true, speed: 1, sweep: false, angle: 0, slot: 0, store: null, on: [], off: [], geom: null, P: null };
+// starts paused when the viewer asked the system for reduced motion
+const A = { raf: 0, playing: !(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches), speed: 1, sweep: false, angle: 0, slot: 0, store: null, on: [], off: [], geom: null, P: null };
 
 function css(n) {
   return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || '#888';

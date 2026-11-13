@@ -61,5 +61,5 @@ export function leadHtml(id, ctx, store) {
   } catch {
     a = null;
   }
-  return `<span class="lq">${esc(L.q)}</span>${a ? `<span class="la">${esc(a[0])}</span><span class="ln">${esc(a[1])}</span>` : ''}`;
+  return `<h2 class="lq">${esc(L.q)}</h2>${a ? `<span class="la">${esc(a[0])}</span><span class="ln">${esc(a[1])}</span>` : ''}`;
 }

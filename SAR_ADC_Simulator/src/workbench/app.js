@@ -142,6 +142,7 @@ function lead() {
     el = document.createElement('div');
     el.id = 'lead';
     el.className = 'lead';
+    el.setAttribute('aria-live', 'polite');
     $('main').before(el);
   }
   const leaf = current.cur ? current.cur() : current;

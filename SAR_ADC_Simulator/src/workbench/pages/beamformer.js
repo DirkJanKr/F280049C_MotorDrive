@@ -29,6 +29,7 @@ export const page = {
   mount(store, ctx) {
     restart(store);
     const c = beamControls();
+    document.getElementById('bfPlay').textContent = c.state.playing ? 'pause' : 'play';
     document.getElementById('bfPlay').onclick = (e) => {
       c.setPlaying(!c.state.playing);
       e.target.textContent = c.state.playing ? 'pause' : 'play';

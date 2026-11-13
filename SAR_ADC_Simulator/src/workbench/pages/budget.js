@@ -77,7 +77,7 @@ function table(ctx) {
   const rows = b.lines.map((l) => `<tr class="${l.ok ? '' : 'over'}"><td>${fv(FID[l.id], esc(l.label))}${l.perChannel ? ` <span class="tag">${b.arrayGain ? 'with beamformer gain' : 'no beamformer gain'}</span>` : ''}${l.simulated ? ` <span class="tag">simulated, ${ctx.res.enob.length} chips</span>` : ''}</td>
     <td class="num">${val(l.sigma)}</td><td class="num">${num(l.lsb, 3)}</td>
     <td class="shc">${bar(l)}<span class="num">${num(l.share, 1)} %</span></td>
-    <td class="num">${l.fixed ? `${num(l.alloc, 1)}` : `<input type="number" class="alloc" data-alloc="${l.id}" value="${+l.alloc.toFixed(1)}" step="1" min="0" max="100"/>`} %</td>
+    <td class="num">${l.fixed ? `${num(l.alloc, 1)}` : `<input type="number" class="alloc" data-alloc="${l.id}" aria-label="allocation for ${esc(l.label)} in %" value="${+l.alloc.toFixed(1)}" step="1" min="0" max="100"/>`} %</td>
     <td class="num">${num(l.enobWithout, 2)}</td><td>${l.ok ? '<span class="okc">within</span>' : '<span class="badc">over</span>'}</td></tr>`).join('');
   const allocSum = b.lines.reduce((a, l) => a + l.alloc, 0);
   fill('bgTable', `<div class="tablewrap"><table class="tbl budget"><thead><tr><th>Line (click for the formula)</th><th>σ [${V ? 'µV rms at the input' : 'fC rms'}]</th><th>LSB</th><th>share of the allowed power</th><th>allocation</th><th>ENOB without it</th><th></th></tr></thead><tbody>${rows}

@@ -70,9 +70,16 @@ export function fill(id, html, cap = null) {
       const long = c.textContent.length > 260;
       c.classList.toggle('clamp', long && !c.classList.contains('open'));
       if (long) c.title = 'click to show or hide the full text';
+      if (long) {
+        c.tabIndex = 0;
+        c.setAttribute('role', 'button');
+        c.setAttribute('aria-expanded', String(c.classList.contains('open')));
+      }
       if (long && !c.dataset.fold) {
         c.dataset.fold = '1';
-        c.addEventListener('click', () => { c.classList.toggle('open'); c.classList.toggle('clamp', !c.classList.contains('open')); });
+        const flip = () => { c.classList.toggle('open'); c.classList.toggle('clamp', !c.classList.contains('open')); c.setAttribute('aria-expanded', String(c.classList.contains('open'))); };
+        c.addEventListener('click', flip);
+        c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
       }
     }
   }

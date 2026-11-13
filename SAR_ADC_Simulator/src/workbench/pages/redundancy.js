@@ -55,6 +55,7 @@ export const page = {
   main(store) {
     return `<section class="card wide"><header><h3>The weights in use</h3></header><div class="cbody" id="rdNow"></div></section><div id="rdRo"></div>
       <section class="card wide"><header><h3>Search for the weight list with the highest ENOB</h3><span class="ctl"><label class="mini-l">at most <select id="rdMax">${[11, 12, 13, 14].map((k) => `<option ${k === (store.ui.rdMax || 13) ? 'selected' : ''}>${k}</option>`).join('')}</select> decisions</label> <button class="mini primary" id="rdRun">▶ search</button></span></header><div class="cbody" id="rdBest"><p class="cap">Press search. It tries first steps from 16 to 36 unit capacitors, radix 1.5 to 2.0, and a last step of 1 or ½ LSB, and keeps the lists whose redundancy covers mismatch and offset.</p></div><p class="cap" id="rdBest-cap"></p></section>
+      <section class="card wide"><header><h3>How the steps below one unit are made: charge halving in the precharge</h3><span class="ctl"><button class="mini" id="hvBack">◀ step</button><button class="mini primary" id="hvNext">step ▶</button></span></header><div class="cbody" id="hvView"></div><p class="cap" id="hvView-cap"></p></section>
       <section class="card wide"><header><h3>Or set the weights by hand</h3></header><div class="cbody" id="rdHand">${handControls(store)}</div></section>
       <section class="card wide"><header><h3>Candidate weight lists: what the extra charge costs</h3></header><div class="cbody" id="rdTab"></div><p class="cap" id="rdTab-cap"></p></section>
       ${explain('Why the CDAC holds more than the full scale', [
@@ -63,6 +64,9 @@ export const page = {
       ])}`;
   },
   mount(store) {
+    halving(store, 0);
+    document.getElementById('hvNext').onclick = () => halving(store, (store.ui.hvStep || 0) + 1);
+    document.getElementById('hvBack').onclick = () => halving(store, (store.ui.hvStep || 0) - 1);
     document.getElementById('rdRun').onclick = () => {
       const ctx = store.ctx;
       store.ui.rdMax = +document.getElementById('rdMax').value;
@@ -116,4 +120,48 @@ function handControls(store) {
     <label class="kl">Start from a preset</label><select id="preset" class="sel"><option value="">choose…</option>${Object.keys(PRESETS).map((p) => `<option>${esc(p)}</option>`).join('')}</select>
     ${knobs(store.values, ['halvingOn'], used)}</div>
     <div>${gen ? knobs(store.values, ['topUnits', 'radix', 'halvings'], used) : `<label class="kl" for="wlist">Weights in LSB, largest first</label><textarea id="wlist" class="wl-in" rows="3">${esc(ui.customWeights)}</textarea><p class="ks">Steps of one unit or more are whole capacitors; smaller steps are made by charge halving.</p>`}</div></div>`;
+}
+
+// Charge halving in the precharge (multi-step LSB precharge, Craninckx 2007; Rabuske 2017, p. 41 and Fig. 3.10).
+// The principle as a sequence of precharge steps; the exact switching order of Rabuske Fig. 3.10 is still to be checked.
+// Level = voltage as a fraction of V PC. Caps: A, B, C (unit capacitors) and X (the equal auxiliary capacitor).
+const HV = [
+  { lv: [0, 0, 0, 0], on: [], t: 'Start of the precharge: the three unit capacitors A, B, C and an equal auxiliary capacitor X are empty.' },
+  { lv: [1, 1, 1, 0], on: [0, 1, 2], t: 'A, B and C are charged to V PC, like every other CDAC capacitor.' },
+  { lv: [0.5, 1, 1, 0.5], on: [0, 3], t: 'A is connected to the empty X: the charge divides equally, so A keeps half.' },
+  { lv: [0.5, 0.25, 1, 0.25], on: [1, 3], t: 'X is emptied and B shares with it twice: B keeps a quarter.' },
+  { lv: [0.5, 0.25, 0.125, 0.125], on: [2, 3], t: 'X is emptied and C shares with it three times: C keeps an eighth.' },
+  { lv: [0.5, 0.25, 0.125, 0], on: [], t: 'Precharge done. A, B and C now carry a half, a quarter and an eighth of a unit charge: the three smallest steps of the search, without any capacitor smaller than the unit. During the conversion they are used like every other step.' },
+];
+function halving(store, k) {
+  const step = Math.max(0, Math.min(HV.length - 1, k));
+  store.ui.hvStep = step;
+  const { d, P } = store.ctx;
+  const unitLsb = P.lsbPerUnit;
+  const st = HV[step];
+  const w = 720;
+  const H = 230;
+  const tank = 70;
+  const th = 120;
+  const y0 = 40;
+  const names = ['A', 'B', 'C', 'X'];
+  const xs = [80, 220, 360, 560];
+  const p = [`<svg viewBox="0 0 ${w} ${H}" class="dsvg hv" role="img" aria-label="Charge halving, step ${step + 1} of ${HV.length}">`];
+  p.push(`<line x1="40" x2="${w - 40}" y1="${y0 + th + 34}" y2="${y0 + th + 34}" stroke="var(--line)"/>`);
+  st.on.forEach((i) => { if (st.on.length === 2) p.push(`<path d="M${xs[st.on[0]] + tank / 2} ${y0 - 8} H${xs[st.on[1]] + tank / 2}" stroke="var(--ref)" stroke-width="3" fill="none"/>`); });
+  names.forEach((n, i) => {
+    const lv = st.lv[i];
+    const x = xs[i];
+    p.push(`<rect x="${x}" y="${y0}" width="${tank}" height="${th}" rx="4" fill="var(--panel2)" stroke="${st.on.includes(i) ? 'var(--ref)' : 'var(--border)'}" stroke-width="${st.on.includes(i) ? 3 : 1.5}"/>`);
+    p.push(`<rect class="hvf" x="${x + 3}" y="${y0 + 3}" width="${tank - 6}" height="${th - 6}" rx="2" fill="${i === 3 ? 'var(--muted)' : 'var(--ref)'}" style="transform: scaleY(${lv}); transform-origin: ${x + tank / 2}px ${y0 + th - 3}px"/>`);
+    p.push(`<text x="${x + tank / 2}" y="${y0 + th + 22}" text-anchor="middle" class="lbl" style="font-weight:600">${n}</text>`);
+    const lsb = lv * unitLsb;
+    if (i < 3) p.push(`<text x="${x + tank / 2}" y="${y0 + th + 54}" text-anchor="middle" class="tiny">${lv ? `${num(lsb, 2)} LSB = ${eng(lsb * d.qLsb, 'C')}` : 'empty'}</text>`);
+    else p.push(`<text x="${x + tank / 2}" y="${y0 + th + 54}" text-anchor="middle" class="tiny">auxiliary</text>`);
+    p.push(`<text x="${x + tank / 2}" y="${y0 - 16}" text-anchor="middle" class="tiny">${lv ? `${lv === 1 ? '' : `${num(lv * 100, 1)} % of `}V PC` : ''}</text>`);
+  });
+  p.push(`<text x="${w - 40}" y="22" text-anchor="end" class="tiny">step ${step + 1} of ${HV.length}</text></svg>`);
+  fill('hvView', p.join(''), `${st.t} One unit capacitor is worth ${unitLsb} LSB here, so the three steps are ${unitLsb / 2}, ${unitLsb / 4} and ${unitLsb / 8} LSB. The principle of multi-step LSB precharge (Craninckx 2007; Rabuske 2017, p. 41, Fig. 3.10); the exact switching order of that figure is still to be checked. Charges with the present design: one LSB = ${eng(d.qLsb, 'C')}.`);
+  document.getElementById('hvBack').disabled = step === 0;
+  document.getElementById('hvNext').disabled = step === HV.length - 1;
 }
