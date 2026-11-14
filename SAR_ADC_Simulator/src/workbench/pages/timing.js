@@ -1,113 +1,132 @@
-// Timing page: for understanding. Nothing here is decided; the sliders are illustrative.
+// Timing budget page: how one period is spent and what is left for the comparator and the logic.
+// No comparator or logic delay is assumed. The switch resistance is not set, so it is swept.
 
-import { group, knobs, card, fill, widthOf, plot, explain, eng, num, COL } from '../kit.js';
-import { failBox } from '../checks.js';
+import { card, fill, widthOf, plot, explain, eng, num, esc, COL } from '../kit.js';
+import { timingCase, timingCases, stepCaps, stepSettling, PRIOR, cycleOf, MARGINAL } from '../../zaan/model/timingBudget.js';
 
-const T = { raf: 0, t: 0 };
+// ngspice run of the settling (spice/settling.mjs); loaded like the data of the Conversion page
+let spice = null;
+let last = null;
+const loaded = (async () => {
+  try {
+    spice = await (await fetch('src/workbench/data/spice-settling.json')).json();
+  } catch {
+    spice = null;
+  }
+  if (last && document.getElementById('tbSteps')) drawSteps(last);
+})();
+
+const SWEEP = [0, 250, 500, 1000, 2000];
+const WORD = { fits: 'fits with margin', marginal: 'marginal', 'not shown': 'does not fit as shown so far' };
+const CLS = { fits: 'ok', marginal: 'warn', 'not shown': 'bad' };
+const GUO = cycleOf(PRIOR.guo);
+const CHEN = cycleOf(PRIOR.chen);
+
+/** The case the summary bar and the lead show: the present weights, ping-pong reference, no offset comparison. */
+export function mainCase(ctx) {
+  return timingCase(ctx.d, ctx.P, { ron: ctx.P.ron || 0, scheme: 'pingpong', extraHalf: false, offsetCmp: false, mode: ctx.P.swMode });
+}
+
+const caseName = (k) => `${k.decisions} decisions${k.offsetCmp ? ' + offset comparison' : ''}`;
+const refName = (k) => (k.scheme === 'pingpong' ? 'two CDACs' : 'reservoir');
+const ns = (t) => `${num(t * 1e9, 2)} ns`;
+const table = (head, rows) => `<div class="tablewrap"><table class="tbl"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((x) => `<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 
 export const page = {
   id: 'timing',
-  title: 'Timing',
-  side(store) {
-    const used = new Set();
-    return `<p class="ks pad">No timing value is decided yet. Move these to see what each one does.</p>` + group('Illustrative values', knobs(store.values, ['fs', 'tSample', 'tauDac', 'ibias', 'gmId', 'cload', 'vfinal', 'tLogic'], used));
-  },
+  title: 'Timing budget',
   main() {
-    return `<div id="tmFails"></div>${explain('One conversion has to fit in one sample period', [
-      'At 40 MS/s a new sample comes every 25 ns. In that time the converter must take the sample (connect the selected memory cells), and then for every decision let the DAC settle, let the comparator decide, and let the logic set the next switch.',
-    ])}
-      <section class="card wide"><header><h3>One conversion: synchronous against self-timed</h3><span class="ctl"><button class="mini" id="tmPlay">play</button></span></header><div id="tmBars"></div><p class="cap" id="tmBars-cap"></p></section>
-      <div class="grid2">${card('tmRegen', 'Why a small input makes the comparator slow')}${card('tmMeta', 'Decision time against comparator input')}</div>
-      ${card('tmSettle', 'Why redundancy saves settling time')}
-      ${explain('Words used on this page', [
-        '<b>Synchronous</b>: an external clock gives every decision the same time slot, long enough for the slowest case. <b>Self-timed (asynchronous)</b>: each decision starts as soon as the previous one reports done, so fast decisions leave time for slow ones.',
-        '<b>Metastability</b>: a dynamic comparator amplifies its input exponentially, V(t) = V in · e^(t / τ). A tiny input needs a long time to reach a valid logic level. τ = C load / gm is set by the comparator design.',
-        '<b>Settling</b>: after a step is shared, the node needs a few time constants to reach its new value. Without redundancy it must settle to half an LSB; with redundancy only to within the tolerance of the next decision.',
+    return `${card('tbBars', 'How the 25 ns are spent, per case', '', 'wide')}
+      ${card('tbVerdict', 'Time left per decision for comparator plus logic, and the verdict', '', 'wide')}
+      <div class="grid2">${card('tbSweep', 'Time left per decision against switch resistance')}${card('tbPrior', 'What Chen and Guo measured in 180 nm')}</div>
+      ${card('tbParts', 'The intervals of one period', '', 'wide')}
+      ${card('tbSteps', 'Settling of every CDAC step', '', 'wide')}
+      ${explain('How to read this page', [
+        'One period is 1 / fs. Part of it goes to things that can be calculated from capacitors and switch resistance: the read, the settling of every CDAC step, the node short for the offset comparison, the CDAC reset. What remains is divided over the decisions. That remainder is what the comparator and the logic together may take, per decision, on average.',
+        'The comparator and logic delay are <b>not set</b>, because they need the PDK. The verdict therefore compares the time left with what was measured in the same node: Guo 2024 fits 11 comparison cycles in 25 ns, Chen 2018 fits 11 in 33.3 ns. Those numbers are upper limits of a whole cycle, including their own DAC settling.',
+        '<b>Fits with margin</b>: the time left is at least the cycle Guo measured. <b>Marginal</b>: shorter, but by no more than Guo is shorter than Chen (25 %). <b>Does not fit as shown so far</b>: shorter than that; it needs a faster comparator and logic than either paper shows. The 25 % line is my choice (A).',
       ])}`;
   },
-  mount(store) {
-    document.getElementById('tmPlay').onclick = () => {
-      cancelAnimationFrame(T.raf);
-      T.t = 0;
-      const t0 = performance.now();
-      const tick = (now) => {
-        T.t = ((now - t0) / 1000) * 4e-9;
-        drawBars(store.ctx);
-        if (T.t < store.ctx.tw * 1.1 && document.getElementById('tmBars')) T.raf = requestAnimationFrame(tick);
-      };
-      T.raf = requestAnimationFrame(tick);
-    };
-  },
   update(store, ctx) {
-    fill('tmFails', failBox(ctx, ['time']));
-    T.t = ctx.tw * 2;
-    drawBars(ctx);
-    const { P, d, tauC } = ctx;
-    const w = widthOf('tmRegen');
-    const vins = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5];
-    const tmax = tauC * Math.log(P.vfinal / 1e-5) * 1.1;
-    const cols = [COL.dig, COL.an, COL.ref, COL.clk, COL.bad];
-    fill('tmRegen', plot({ x: { min: 0, max: tmax * 1e9, label: 'time after the comparator starts [ns]' }, y: { min: 0, max: P.vfinal * 1.1, label: 'comparator output [V]' }, series: vins.map((vi, i) => ({ points: Array.from({ length: 80 }, (_, k) => { const t = (k / 79) * tmax; return [t * 1e9, Math.min(P.vfinal * 1.05, vi * Math.exp(t / tauC))]; }), color: cols[i], width: 2, label: `${eng(vi, 'V')} in` })), hlines: [{ y: P.vfinal, color: COL.muted }], legend: true }, w), `Each tenfold smaller input costs another τ · ln 10 = ${eng(tauC * Math.log(10), 's')} (τ = ${eng(tauC, 's')}, illustrative).`);
-    const pts = [];
-    for (let e = -7; e <= -1; e += 0.1) pts.push([e, tauC * Math.log(P.vfinal / 10 ** e) * 1e9]);
-    const lsbEnd = d.qLsb / d.cNode[d.decisions - 1];
-    fill('tmMeta', plot({ x: { min: -7, max: -1, label: 'comparator input [V]', ticks: [-7, -6, -5, -4, -3, -2, -1], format: (v) => `10^${v}` }, y: { min: 0, max: pts[0][1] * 1.05, label: 'decision time [ns]' }, series: [{ points: pts, color: COL.an, width: 2.2 }], vlines: [{ x: Math.log10(lsbEnd), color: COL.ref, label: '1 LSB at the last decision' }] }, w), `t = τ ln(V final / V in). At the last decision one LSB is only ${eng(lsbEnd, 'V')} at the comparator, because the node capacitance has grown.`);
-    const w1 = d.weights[0];
-    const tNext = d.tol[1];
-    const tau = P.tauDac;
-    const tEnd = tau * Math.log(w1 / 0.25) * 1.1;
-    const curve = Array.from({ length: 100 }, (_, k) => { const t = (k / 99) * tEnd; return [t * 1e9, w1 * Math.exp(-t / tau)]; });
-    const tb = tau * Math.log(w1 / 0.5);
-    const tr = tau * Math.log(w1 / Math.max(0.5, tNext));
-    fill('tmSettle', plot({ x: { min: 0, max: tEnd * 1e9, label: 'time after the first share [ns]' }, y: { min: 0, max: w1, label: 'error left [LSB]' }, series: [{ points: curve, color: COL.an, width: 2.2 }], hlines: [{ y: 0.5, color: COL.bad, dash: '4 3' }, { y: Math.max(0.5, tNext), color: COL.dig, dash: '6 3' }], vlines: [{ x: tb * 1e9, color: COL.bad, label: 'binary' }, { x: tr * 1e9, color: COL.dig, label: 'redundant' }] }, w), `Step 1 (${num(w1, 0)} LSB) settles exponentially with τ DAC = ${eng(tau, 's')}. Binary waits until ${num(0.5, 1)} LSB is left: ${eng(tb, 's')}. With the next tolerance of ${num(tNext, 0)} LSB it may go on after ${eng(tr, 's')}.`);
-    fill('tmClk', clockView(ctx, w), `Write slots of ${eng(ctx.tw, 's')}; CLK 180° is ${eng(ctx.tw / 2, 's')} later. One conversion must finish within one slot, so that the next read can start.`);
+    const { d, P } = ctx;
+    const mode = P.swMode;
+    const ron = P.ron || 0;
+    const unset = !P.ron;
+    const swText = mode === 'unit' ? 'one switch pair per unit capacitor' : 'the same switch for every capacitor';
+    const cases = timingCases(d, P, ron, mode);
+
+    // 1. bars
+    const w = widthOf('tbBars', 1000);
+    const x0 = 250;
+    const sx = (t) => x0 + (t / 25e-9) * (w - x0 - 150) * (25e-9 * P.fs);
+    const rowH = 30;
+    const segCls = { read: 'ph-s', settle: 'ph-d', short: 'ph-l', rst: 'tb-rst' };
+    const rows = cases.map((k, i) => {
+      const y = 8 + i * rowH + (i >= 4 ? 10 : 0);
+      let t = 0;
+      let g = `<text x="8" y="${y + 16}" class="lbl">${esc(caseName(k))}</text>`;
+      for (const p of k.parts) {
+        if (p.t > 0) g += `<rect x="${sx(t)}" y="${y}" width="${Math.max(1, sx(t + p.t) - sx(t))}" height="22" class="${segCls[p.id]}"><title>${esc(p.label)}: ${ns(p.t)}</title></rect>`;
+        t += p.t;
+      }
+      if (k.perCycle > 0) for (let c = 0; c < k.cycles; c++) g += `<rect x="${sx(t + c * k.perCycle)}" y="${y}" width="${Math.max(1, sx(t + (c + 1) * k.perCycle) - sx(t + c * k.perCycle) - 1)}" height="22" class="${c % 2 ? 'ph-c2' : 'ph-c'}"/>`;
+      g += `<text x="${sx(k.period) + 8}" y="${y + 16}" class="tiny ${CLS[k.verdict] === 'bad' ? 'bad' : ''}">${k.perCycle > 0 ? `${k.cycles} × ${ns(k.perCycle)}` : 'no time left'}</text>`;
+      return g;
+    });
+    const hBars = 8 + 8 * rowH + 34;
+    const ticks = [0, 5, 10, 15, 20, 25].filter((t) => t * 1e-9 <= 1 / P.fs + 1e-12).map((t) => `<line x1="${sx(t * 1e-9)}" x2="${sx(t * 1e-9)}" y1="${hBars - 24}" y2="${hBars - 18}" class="tick"/><text x="${sx(t * 1e-9)}" y="${hBars - 4}" class="tiny" text-anchor="middle">${t} ns</text>`).join('');
+    const groupLbl = `<text x="${x0 - 8}" y="${8 + 2 * rowH + 2}" class="tiny" text-anchor="end">two CDACs</text><text x="${x0 - 8}" y="${18 + 6 * rowH + 2}" class="tiny" text-anchor="end">reservoir</text>`;
+    fill('tbBars', `<svg viewBox="0 0 ${w} ${hBars}" class="tsvg" role="img" aria-label="Timing budget per case">${rows.join('')}${groupLbl}${ticks}</svg>`,
+      `${unset ? 'The switch resistance is not set, so these bars are for ideal switches: the upper limit of the time left. Set a value in the side panel to see the settling.' : `Switches of ${num(ron, 0)} Ω, ${swText}.`} Amber: CDAC settling. Violet: node short for the offset comparison. Grey: CDAC reset (reservoir only). Blue blocks: what is left, one block per comparison cycle, for comparator plus logic. Upper four rows: two CDACs that take turns, as in Chen 2018. Lower four: one CDAC that takes its charge from a reservoir, as in Guo 2024.`);
+
+    // 2. verdict matrix over the sweep
+    const cols = unset ? SWEEP : [...new Set([...SWEEP, ron])].sort((a, b) => a - b);
+    const perR = cols.map((r) => timingCases(d, P, r, mode));
+    fill('tbVerdict', table(['Reference', 'Case', 'Cycles', ...cols.map((r) => (r === 0 ? 'ideal switches' : `${num(r, 0)} Ω${r === ron && !unset ? ' (set)' : ''}`))],
+      cases.map((k, i) => [refName(k), caseName(k), `${k.cycles}`, ...perR.map((list) => { const q = list[i]; return `<span class="tbv ${CLS[q.verdict]}" title="${WORD[q.verdict]}"><b>${q.perCycle > 0 ? ns(q.perCycle) : 'none'}</b></span>`; })])),
+      `Green: fits with margin. Amber: marginal. Red: does not fit as shown so far. Time left per decision = (1 / fs − read − CDAC settling − node short − CDAC reset) / cycles. Compared with the cycle Guo 2024 measured, at most ${ns(GUO)} (25 ns / 11), and Chen 2018, at most ${ns(CHEN)} (33.3 ns / 11). Switches: ${swText} (side panel). The sweep is not a choice of value. The two reference schemes differ only by the CDAC reset, because Guo's reservoir charges the CDAC during the first comparison, which needs no DAC (Guo 2024, p. 2607 and 2610).`);
+
+    // 3. sweep plot
+    const wp = widthOf('tbSweep');
+    const pick = [0, 1, 2, 3];
+    const colours = [COL.dig, COL.an, COL.ref, COL.bad];
+    const line = (i) => [0, 2000].map((r) => [r, timingCases(d, P, r, mode)[i].perCycle * 1e9]);
+    fill('tbSweep', plot({ x: { min: 0, max: 2000, label: 'switch on-resistance [Ω]' }, y: { min: 0, max: 3.2, label: 'time left per decision [ns]' }, series: pick.map((i, n) => ({ points: line(i).map(([r, t]) => [r, Math.max(0, t)]), color: colours[n], width: 2, label: caseName(cases[i]) })), hlines: [{ y: GUO * 1e9, color: COL.muted, dash: '6 3', label: 'Guo 2024' }, { y: CHEN * 1e9, color: COL.muted, dash: '2 3', label: 'Chen 2018' }, { y: GUO * (1 - MARGINAL) * 1e9, color: COL.bad, dash: '4 3' }], legend: true }, wp),
+      `Two CDACs; the reservoir lines lie within ${ns(Math.max(...pick.map((i) => Math.abs(perR[perR.length - 1][i].perCycle - perR[perR.length - 1][i + 4].perCycle))))} of these. Dashed: the measured cycle of Guo and of Chen. Red dashed: 25 % below Guo, my line between marginal and not shown. ${mode === 'unit' ? 'With a switch pair per unit capacitor the settling hardly costs time.' : 'With the same switch on every capacitor the settling takes most of the period above a few hundred ohm.'}`);
+
+    // 4. prior art
+    fill('tbPrior', table(['', 'Chen 2018', 'Guo 2024', 'Zaan'], [
+      ['Period', '33.3 ns (30 MS/s), p. 3053', '25 ns (40 MS/s), p. 2607', `${ns(1 / P.fs)}`],
+      ['Comparison cycles', '10 + 1 for offset, Fig. 9(c) p. 3057', '11 (10 bit + 1 redundant), p. 2607', `${cases[0].cycles} to ${cases[3].cycles}`],
+      ['Period / cycles', `at most ${ns(CHEN)}`, `at most ${ns(GUO)}`, `${ns(cases[0].period / cases[0].cycles)} to ${ns(cases[3].period / cases[3].cycles)}`],
+      ['Reference', 'two CDACs take turns; precharge 25 ns, 3/4 of the period, p. 3056', 'one CDAC; reservoir recharged for 12.5 ns during the conversion, shared with the CDAC during the MSB comparison, p. 2610', 'not decided'],
+      ['Inside the period besides the cycles', 'a short interval for charge redistribution, length not given, p. 3053; node reset during the offset cycle', 'CDAC reset at the end (Fig. 9(b)), length not given', 'see the intervals below'],
+      ['Comparator', 'double-tail latch, first stage sized for noise, p. 3057', 'dynamic integrator with double integration; its integration time is "strictly limited by the AD conversion speed", p. 2609', 'not decided'],
+    ]), 'Neither paper gives the comparator delay, the logic delay or the settling time by itself. Period divided by cycles is therefore an upper limit of one whole cycle, not a measured comparator speed.');
+
+    // 5. intervals of the heaviest case
+    const heavy = timingCase(d, P, { ron: 1000, scheme: 'reservoir', extraHalf: true, offsetCmp: true, mode });
+    const partRow = (p) => [esc(p.label), unset ? `${ns(p.t)} per kΩ` : `${ns((p.t * ron) / 1000)}`, `<span class="stat st-${p.status}">${p.status}</span>`, esc(p.source)];
+    fill('tbParts', table(['Interval', unset ? 'Length' : `Length at ${num(ron, 0)} Ω`, 'Status', 'How it is found'], [
+      ...heavy.parts.map(partRow),
+      ['Comparator decision plus logic, per cycle', 'not set', '', 'needs the PDK; this page reports what is left for it'],
+      ['Precharge of the idle CDAC (two CDACs)', 'no time from the conversion', '<span class="stat st-S">S</span>', `Chen 2018, p. 3056. At 40 MS/s the idle CDAC has at most ${ns(1 / P.fs)} for reset and precharge; Chen used 25 ns of 33.3 ns. A shorter precharge time weighs the clock jitter more (Budget, line T int)`],
+      ['Recharge of the reservoir', 'no time from the conversion', '<span class="stat st-S">S</span>', 'Guo 2024, p. 2610, Fig. 9(b): T CHG = 12.5 ns while the conversion runs'],
+      ['Reservoir shares with the CDAC', 'inside the first comparison', '<span class="stat st-S">S</span>', `Guo 2024, p. 2607. It must end within one cycle. With C RSV = C DAC (Guo p. 2610) and settling to ½ LSB of full scale, the reservoir switch must stay below about ${num(timingCase(d, P, { ron, scheme: 'reservoir', extraHalf: true, offsetCmp: true, mode }).rRsvMax, 0)} Ω (D). A repeatable error here is only a gain error, so this is on the safe side`],
+    ]), `Case shown: reservoir, ${heavy.decisions} decisions, offset comparison. Every calculated length is proportional to the switch resistance. The read takes no time while the node parasitic is ${P.cpar ? eng(P.cpar, 'F') : 'not set'}: the node sits at the average of the cell voltages at once, and only its own parasitic has to be charged.`);
+
+    last = ctx;
+    drawSteps(ctx);
   },
 };
 
-function drawBars(ctx) {
-  const { P, d, timing, tw, settle, tauC } = ctx;
-  const w = widthOf('tmBars', 1000);
-  const n = d.decisions;
-  const tdec = timing.mean;
-  const worstDec = Math.max(...tdec) * 2.5;
-  const slot = Math.max(...settle.map((s) => s.binary)) + worstDec + P.tLogic;
-  const syncT = P.tSample + n * slot;
-  const tEnd = Math.max(tw, syncT, timing.median) * 1.05;
-  const sx = (t) => 140 + (t / tEnd) * (w - 160);
-  const row = (y, segs, label) => `<text x="8" y="${y + 20}" class="lbl">${label}</text>` + segs.map(([t0, t1, cls]) => `<rect x="${sx(t0)}" y="${y}" width="${Math.max(1, sx(t1) - sx(t0))}" height="28" class="${cls} ${T.t >= t0 && T.t < t1 ? 'now' : ''}"/>`).join('');
-  const sync = [[0, P.tSample, 'ph-s']];
-  for (let i = 0; i < n; i++) sync.push([P.tSample + i * slot, P.tSample + (i + 1) * slot, i % 2 ? 'ph-c' : 'ph-c2']);
-  const asy = [[0, P.tSample, 'ph-s']];
-  let t = P.tSample;
-  for (let i = 0; i < n; i++) {
-    if (i > 0) {
-      asy.push([t, t + settle[i - 1].redundant, 'ph-d']);
-      t += settle[i - 1].redundant;
-    }
-    asy.push([t, t + tdec[i], 'ph-c']);
-    t += tdec[i];
-    asy.push([t, t + P.tLogic, 'ph-l']);
-    t += P.tLogic;
-  }
-  const ticks = [];
-  for (let k = 0; k <= Math.floor((tEnd * 1e9) / 5); k++) ticks.push(`<line x1="${sx(k * 5e-9)}" x2="${sx(k * 5e-9)}" y1="118" y2="124" class="tick"/><text x="${sx(k * 5e-9)}" y="140" class="tiny" text-anchor="middle">${k * 5} ns</text>`);
-  fill('tmBars', `<svg viewBox="0 0 ${w} 150" class="tsvg">${row(20, sync, 'synchronous')}${row(66, asy, 'self-timed')}<line x1="${sx(tw)}" x2="${sx(tw)}" y1="10" y2="110" class="budget"/><text x="${sx(tw) + 4}" y="14" class="tiny bad">1 / fs</text>${T.t < tEnd ? `<line x1="${sx(T.t)}" x2="${sx(T.t)}" y1="10" y2="110" class="cursor"/>` : ''}${ticks.join('')}</svg>`,
-    `Pink: sample (${eng(P.tSample, 's')}). Synchronous: ${n} equal slots, each long enough for full binary settling and a slow decision (${eng(slot, 's')}), total ${eng(syncT, 's')}. Self-timed: amber settling to the next tolerance, cyan comparator (mean over many samples; small inputs take longer), violet logic, total ${eng(t, 's')}. All values illustrative.`);
-}
-
-function clockView(ctx, w) {
-  const { tw } = ctx;
-  const per = 4;
-  const sx = (t) => 110 + (t / (per * tw)) * (w - 120);
-  const sq = (y, shift) => {
-    let d = `M110 ${y + 18}`;
-    for (let k = 0; k <= per * 2; k++) {
-      const t0 = (k * tw) / 2 + shift - tw / 2;
-      const hi = k % 2 === 1;
-      d += ` L${sx(Math.max(0, t0))} ${hi ? y : y + 18} L${sx(Math.min(per * tw, t0 + tw / 2))} ${hi ? y : y + 18}`;
-    }
-    return `<path d="${d}" class="wclk"/>`;
-  };
-  const conv = Array.from({ length: per }, (_, k) => `<rect x="${sx(k * tw + tw * 0.05)}" y="110" width="${sx(tw * 0.9) - sx(0)}" height="22" class="ph-c"/><text x="${sx(k * tw + tw / 2)}" y="126" class="onbar" text-anchor="middle">conversion ${k + 1}</text>`).join('');
-  return `<svg viewBox="0 0 ${w} 150" class="tsvg"><text x="6" y="32" class="lbl">CLK</text>${sq(18, 0)}<text x="6" y="76" class="lbl">CLK 180°</text>${sq(62, tw / 2)}<text x="6" y="126" class="lbl">ADC</text>${conv}</svg>`;
+function drawSteps(ctx) {
+  const { d, P } = ctx;
+  const mode = P.swMode;
+  const st = stepSettling(stepCaps(d), 1000, mode);
+  const sp = spice ? spice.runs.find((r) => r.mode === mode) : null;
+  const same = spice && JSON.stringify(spice.weights) === JSON.stringify(d.weights);
+  fill('tbSteps', table(['Step', 'Weight [LSB]', 'Capacitor', 'On the nodes before', 'Own time constant per kΩ', 'Tolerance of the next decision [LSB]', 'Settling per kΩ, redundant', 'Settling per kΩ, to ½ LSB', 'ngspice / model'],
+    st.map((s, j) => [`${j + 1}`, num(s.w, s.w < 1 ? 1 : 0), eng(s.c, 'F'), eng(s.cd, 'F'), ns(s.tau), num(s.tolNext, 1), `<b>${ns(s.tRed)}</b>`, ns(s.tBin), same && sp ? num(sp.steps[j].tSpice / sp.steps[j].tModel, 2) : 'other weights'])),
+    `Own time constant: τ = 2 R C j C d / (C j + C d), the new capacitor with what is on the nodes. ${mode === 'same' ? 'With the same switch everywhere a small step settles much slower than its own time constant: the node first moves too far and then comes back with the time constant of the largest capacitor, which is still connected behind its own switches.' : 'With a switch pair per unit capacitor every branch has the same R C, so no slow tail remains.'} Sum, redundant: ${ns(st.reduce((a, s) => a + s.tRed, 0))} per kΩ; to ½ LSB: ${ns(st.reduce((a, s) => a + s.tBin, 0))} per kΩ. Worst case residue, earlier steps taken as settled (optimistic), memory cells as one capacitor. ${sp ? `ngspice ${esc(spice.ngspice)} with ideal switches of ${num(sp.ron, 0)} Ω, time to e⁻³ of the start (spice/settling.mjs, ${esc(spice.generated)}).` : 'ngspice data not loaded.'}`);
 }

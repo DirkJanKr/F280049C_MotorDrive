@@ -10,7 +10,7 @@ import { formulaHtml } from './formulas.js';
 import { page as beamformer } from './pages/beamformer.js';
 import { page as sar } from './pages/sar.js';
 import { page as mismatch } from './pages/mismatch.js';
-import { page as timing } from './pages/timing.js';
+import { page as timing, mainCase } from './pages/timing.js';
 import { page as logic } from './pages/logic.js';
 import { page as valuesPage } from './pages/values.js';
 import { page as iqPage } from './pages/iq.js';
@@ -47,14 +47,14 @@ const PAGES = [
   tabs('g-sar', 'SAR ADC', [[redPage, 'Weights'], [sar, 'Conversion'], [levelsPage, 'Levels and rounding']]),
   tabs('g-mismatch', 'Mismatch', [[matchingPage, 'The 3σ rule'], [mismatch, 'Monte Carlo and area']]),
   offsetPage, beamformer,
-  tabs('g-timing', 'Timing', [[chenPage, 'Clock sequence after Chen'], [logic, 'Self-timed logic'], [timing, 'Decision time']]),
+  tabs('g-timing', 'Timing', [[chenPage, 'Clock sequence after Chen'], [logic, 'Self-timed logic'], [timing, 'Timing budget']]),
   refPage, iqPage, valuesPage, sourcesPage,
 ];
 // The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
 const NAV = [
   ['Overview', [['system', []]]],
   ['Design', [['balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['g-mismatch', []], ['offset', []]]],
-  ['Blocks', [['beamformer', ['cells']], ['g-timing', ['time']], ['reference', []], ['iq', []]]],
+  ['Blocks', [['beamformer', ['cells']], ['g-timing', []], ['reference', []], ['iq', []]]],
   ['Record', [['values', []], ['sources', []]]],
 ];
 const TAPEOUT = Date.UTC(2027, 2, 31);
@@ -86,7 +86,7 @@ function summary() {
     ['CDAC', eng(d.cdac, 'F'), 'sar'],
     ['memory cell', eng(d.cm, 'F'), 'sar'],
     ['capacitor area', `${num(c.areaTotal * 1e6, 3)} mm²`, 'mismatch'],
-    ['conversion', `${eng(c.timing.median, 's')} / ${eng(c.tw, 's')}`, 'timing', c.timing.median > c.tw ? 'warn' : ''],
+    ['time per decision', eng(mainCase(c).perCycle, 's'), 'timing', { fits: 'ok', marginal: 'warn', 'not shown': 'bad' }[mainCase(c).verdict]],
   ];
   $('summary').innerHTML = items.map(([k, v, go, cls]) => `<a class="sm ${cls || ''}" href="#${go}" title="${esc(cls === 'bad' || cls === 'warn' ? (c.checks.find((x) => x.go === go && x.state !== 'ok')?.why || '').replace(/<[^>]+>/g, '') : '')}"><span>${esc(k)}</span><b>${esc(v)}</b></a>`).join('');
 }

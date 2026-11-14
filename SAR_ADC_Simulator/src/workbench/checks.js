@@ -85,12 +85,6 @@ export function runChecks(ctx) {
     why: d.decisions === P.rawDecisions ? 'The weights give the planned number of raw decisions.' : `The weights give ${d.decisions} decisions; the plan has ${P.rawDecisions}. Each decision costs time; the output register needs ${d.decisions} bits.`,
     fix: '', go: 'sar', f: 'decisions',
   });
-  const late = ctx.timing.median > ctx.tw;
-  out.push({
-    id: 'time', label: 'Conversion fits in one sample period (illustrative)', state: late ? 'warn' : 'ok', value: eng(ctx.timing.median, 's'), limit: eng(ctx.tw, 's'),
-    why: late ? `With the illustrative timing values the median conversion takes ${eng(ctx.timing.median, 's')}, longer than 1 / fs = ${eng(ctx.tw, 's')}. No timing value is decided yet.` : `Median ${eng(ctx.timing.median, 's')} of ${eng(ctx.tw, 's')}; ${num(ctx.timing.late * 100, 1)} % of samples are late. Illustrative values.`,
-    fix: late ? 'See the Timing page: comparator τ, settling and logic delay.' : '', go: 'timing', f: 'tconv',
-  });
   return out;
 }
 

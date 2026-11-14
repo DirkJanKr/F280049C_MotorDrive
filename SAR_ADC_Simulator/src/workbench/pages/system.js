@@ -118,7 +118,7 @@ function chain(ctx) {
     arrow('V node'),
     card('budget', 'Comparator', [`noise ${eng(P.compNoise, 'V')} rms`, `last LSB ${eng(lastLsb, 'V')}`, `${num(comp.share, 0)} % of the noise allowance`], compPic(), comp.ok ? 'ok' : 'warn'),
     arrow('bit'),
-    card('logic', 'SAR logic', ['self-timed', `${d.decisions} raw decisions`, `${eng(ctx.timing.median, 's')} of ${eng(ctx.tw, 's')}`], logicPic(ctx), stateOf(ctx, ['time', 'dec'])),
+    card('logic', 'SAR logic', ['self-timed', `${d.decisions} raw decisions`, `${eng(ctx.tw / d.decisions, 's')} per decision at most`], logicPic(ctx), stateOf(ctx, ['dec'])),
     arrow(`${d.decisions} bits`),
     card('mismatch', 'Combiner + LUT', [`Σ dᵢ wᵢ → ${Math.round(P.outBits)} bit`, `weights: ${esc(String(P.calMethod).split(' (')[0])}`, `ENOB ${num(b.enob, 2)} (aim ${num(P.enobAim, 1)})`], lutPic(ctx), stateOf(ctx, ['enob'])),
     arrow(`${Math.round(P.outBits)} bits`),

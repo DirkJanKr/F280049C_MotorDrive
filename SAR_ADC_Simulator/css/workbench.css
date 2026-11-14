@@ -428,3 +428,8 @@ td.fx, .fx { font-family: var(--math); font-size: 14.5px; }
 /* charge-halving steps: only the fill level moves, and only when the viewer steps */
 .hv .hvf { transition: transform 450ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .hv .hvf { transition: none; } }
+
+/* timing budget */
+.tb-rst { fill: var(--muted); }
+.tbv { display: inline-block; white-space: nowrap; font-size: 12.5px; } .tbv b { font: 600 13px var(--mono); margin-right: 4px; }
+.tbv.ok b { color: var(--ok); } .tbv.warn b { color: var(--warn); } .tbv.bad b { color: var(--bad); }

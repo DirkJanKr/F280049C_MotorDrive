@@ -4,6 +4,7 @@
 
 import { eng, num, esc } from './kit.js';
 import { absorbedOffset } from './pages/offset.js';
+import { mainCase } from './pages/timing.js';
 
 /** The first readout the page drew, as [value, note]: for pages whose key number lives on the page. */
 const firstReadout = (id) => () => {
@@ -39,7 +40,7 @@ const LEADS = {
   beamformer: { q: 'How many memory cells does the longest delay need?', a: (c) => [`${c.need.m} cells`, `longest delay ${eng(c.tauMax, 's')}, ${c.P.memCells} set`] },
   chen: { q: 'How does the clock sequence of Chen 2018 fit in one 25 ns period?', a: firstReadout() },
   logic: { q: 'What must the self-timed logic do for every decision?', a: () => null },
-  timing: { q: 'Does one conversion fit in one sample period?', a: (c) => [eng(c.timing.median, 's'), `of ${eng(c.tw, 's')}; illustrative timing values, nothing decided`] },
+  timing: { q: 'How much time is left for the comparator and the logic in every decision?', a: (c) => { const k = mainCase(c); return [eng(k.perCycle, 's'), `${k.cycles} decisions, ${c.P.ron ? `switches of ${num(c.P.ron, 0)} Ω` : 'ideal switches (resistance not set)'}; Guo 2024 measured at most ${eng(25e-9 / 11, 's')} per cycle in 180 nm`]; } },
   reference: { q: 'How much reference charge does each conversion take?', a: firstReadout('rfRo') },
   iq: { q: 'How much SNR is left after the IQ demodulator?', a: firstReadout() },
   values: { q: 'Which values are decided, and which are still assumptions?', a: (c, store) => [`${store.values.filter((v) => v.status === 'U').length} of ${store.values.length}`, 'values are my decision (U); the rest come from papers, derivations or assumptions'] },

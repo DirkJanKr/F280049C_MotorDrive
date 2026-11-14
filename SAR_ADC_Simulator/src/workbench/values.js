@@ -72,6 +72,8 @@ export const SEED = [
   num('vosCal', 'comparator', 'Offset left after calibration', 0.15, 'mV', 1e-3, 'V', [0, 2, 0.01], 'S', 'Malki 2014, p. 1174: calibrated to within 0.15 mV', 'Chen 2018 (p. 3058) calibrates in the background but gives no value'),
   num('compNoise', 'comparator', 'Comparator input noise', 0.05, 'mV rms', 1e-3, 'V', [0, 0.5, 0.005], 'A', 'estimate; Chen 2018 gives no value; Malki 2014 (p. 1181, 40 nm) simulates 0.11 mV for the low-noise comparator'),
 
+  num('ron', 'timing', 'Switch on-resistance', null, 'Ω', 1, 'Ω', [50, 4000, 10], 'A', 'not set: needs the switch of the PDK. The Timing page sweeps it', 'with one switch pair per unit capacitor this is the resistance of one unit switch'),
+  choice('swSize', 'timing', 'CDAC switches', 'same for every capacitor', ['same for every capacitor', 'one pair per unit capacitor'], 'A', 'not decided; placeholder'),
   num('tSample', 'timing', 'Sampling (read and share) time', 5, 'ns', 1e-9, 's', [0.5, 15, 0.1], 'A', 'illustrative'),
   num('tauDac', 'timing', 'DAC settling time constant', 0.1, 'ns', 1e-9, 's', [0.01, 1, 0.01], 'A', 'illustrative'),
   num('ibias', 'timing', 'Comparator bias current', 50, 'µA', 1e-6, 'A', [5, 500, 5], 'A', 'illustrative'),

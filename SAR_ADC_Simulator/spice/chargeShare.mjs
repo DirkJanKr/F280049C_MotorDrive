@@ -18,7 +18,10 @@ export function chargeShareNetlist({ cTh, vinP, vinN, vpc, steps, ron = 200, tSt
     L.push(`Cd${j} a${j} b${j} ${s.c} ic=${vpc}`, `Ra${j} a${j} 0 1e15`, `Rb${j} b${j} 0 1e15`);
     L.push(`Vg${j} g${j} 0 pulse(0 1 ${t} 10p 10p 1 2)`);
     const [toA, toB] = s.sign > 0 ? ['p', 'n'] : ['n', 'p'];
-    L.push(`S${j}a a${j} ${toA} g${j} 0 sw`, `S${j}b b${j} ${toB} g${j} 0 sw`);
+    // a step may bring its own switch resistance (switches scaled with the capacitor)
+    const m = s.ron ? `sw${j}` : 'sw';
+    if (s.ron) L.push(`.model ${m} sw vt=0.5 vh=0.05 ron=${s.ron} roff=1e12`);
+    L.push(`S${j}a a${j} ${toA} g${j} 0 ${m}`, `S${j}b b${j} ${toB} g${j} 0 ${m}`);
   });
   const tEnd = (steps.length + 1) * tStep;
   return { netlist: L.join('\n'), tran: `tran ${tStep / 2000} ${tEnd} uic`, tStep };

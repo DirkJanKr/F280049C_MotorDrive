@@ -28,7 +28,7 @@ const PAGE = {
   beamformer: { open: ['beam'], extra: ['rxFocus', 'c', 'f0', 'fbw'] },
   chen: { open: ['target'] },
   logic: { extra: ['tSample', 'tLogic', 'tauDac', 'ibias', 'cload'] },
-  timing: { extra: ['tSample', 'tauDac', 'ibias', 'gmId', 'cload', 'vfinal', 'tLogic'] },
+  timing: { extra: ['ron', 'swSize', 'fs', 'cpar', 'vosCal'] },
   reference: { open: ['balance'] },
   iq: { extra: ['iqTaps', 'iqCut', 'iqDecim', 'iqTest', 'f0', 'fbw'] },
 };
