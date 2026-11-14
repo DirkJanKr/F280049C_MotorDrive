@@ -1,5 +1,6 @@
 // The inspector: one set of design values, the same on every page and in the same order.
 // A page only decides which groups start open and may add values that matter on that page alone.
+// A value a page lifts to the top is left out of its own group on that page.
 // The CDAC weights are not here: they are set in one place, SAR ADC > Weights.
 
 import { group, knobs, num } from './kit.js';
@@ -17,19 +18,19 @@ const BUCKET = (ui) => `<label class="chk"><input type="checkbox" id="useOff" ${
 
 const PAGE = {
   balance: { open: ['balance', 'target'] },
-  redundancy: { open: ['balance', 'comparator'] },
-  budget: { open: ['target', 'comparator', 'balance'], extra: ['temperature', 'jitter', 'calMethod'] },
-  power: { open: ['target'] },
-  sar: { open: ['comparator'], html: (ui) => group('In the step-by-step view', BUCKET(ui), true) },
-  levels: { open: ['caps', 'sim'] },
+  redundancy: { open: ['balance', 'comparator'], extra: ['rawDecisions'] },
+  budget: { open: ['target', 'comparator', 'balance'], extra: ['outBits', 'temperature', 'jitter', 'calMethod', 'f0', 'fbw'] },
+  power: { open: ['target', 'balance'] },
+  sar: { open: ['comparator'], extra: ['rawDecisions'], html: (ui) => group('In the step-by-step view', BUCKET(ui), true) },
+  levels: { open: ['caps', 'sim'], extra: ['outBits'] },
   matching: { open: ['caps'] },
   mismatch: { open: ['caps', 'balance', 'sim'] },
-  offset: { open: ['balance'] },
+  offset: { open: ['balance', 'comparator'] },
   beamformer: { open: ['beam'], extra: ['rxFocus', 'c', 'f0', 'fbw'] },
-  chen: { open: ['target'] },
-  logic: { extra: ['tSample', 'tLogic', 'tauDac', 'ibias', 'cload'] },
+  chen: { open: ['target', 'beam'] },
+  logic: { extra: ['tSample', 'tLogic', 'tauDac', 'ibias', 'gmId', 'cload', 'vfinal'] },
   timing: { extra: ['ron', 'swSize', 'fs', 'cpar', 'vosCal'] },
-  reference: { open: ['balance'] },
+  reference: { open: ['balance'], extra: ['jitter'] },
   iq: { extra: ['iqTaps', 'iqCut', 'iqDecim', 'iqTest', 'f0', 'fbw'] },
 };
 
@@ -41,6 +42,11 @@ export function designSide(store, pageId) {
     <p class="ks pad">Weights: <b>${w.slice(0, 4).map((x) => num(x, 1)).join(' ')} …</b> (${store.ctx.d.decisions} decisions). <a href="#redundancy">Set them on SAR ADC › Weights</a>.</p>`;
   if (cfg.extra) h += group('Only on this page', knobs(store.values, cfg.extra, used), true);
   if (cfg.html) h += cfg.html(store.ui);
-  for (const [id, title, ids] of GROUPS) h += group(title, knobs(store.values, ids, used), (cfg.open || []).includes(id));
+  // a value shown under 'Only on this page' is not repeated in its group, so no value has two knobs on one page
+  const shown = new Set(cfg.extra || []);
+  for (const [id, title, ids] of GROUPS) {
+    const rest = ids.filter((x) => !shown.has(x));
+    if (rest.length) h += group(title, knobs(store.values, rest, used), (cfg.open || []).includes(id));
+  }
   return h;
 }

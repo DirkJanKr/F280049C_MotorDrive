@@ -71,8 +71,9 @@ export function design(values, ui) {
   const delays = receiveDelays({ N: P.channels, pitch: P.pitch, theta: P.steer, F: P.focus, c: P.c });
   const qd = quantise(delays.tau, P.delayStep);
   const halfSteps = qd.map((x) => Math.round(x / (tw / 2)) % 2);
-  // one simulated chip: calibration and the error left after it
-  const key = JSON.stringify([d.weights, steps.map((x) => x.kind), P.cu, P.aC, P.seed, P.vosCal, P.vref, P.bits, P.fullScale, P.compNoise]);
+  // one simulated chip: calibration and the error left after it.
+  // The key holds everything the chip and its tests read: the node capacitance (C par, N, C M), the LSB charge and the output bits included.
+  const key = JSON.stringify([d.weights, steps.map((x) => x.kind), P.cu, P.aC, P.seed, P.vosCal, P.vref, P.bits, P.fullScale, P.compNoise, d.qLsb, d.cNode, P.outBits]);
   const vrms = P.fullScale / 2 / Math.SQRT2;
   const q = quantNoise(P);
   // rms error of a sine at -0.5 dBFS from its SNDR, in volts at the input
