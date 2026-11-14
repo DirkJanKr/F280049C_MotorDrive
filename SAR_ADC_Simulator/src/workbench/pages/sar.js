@@ -2,6 +2,7 @@
 // watch a conversion as buckets of charge, see what each decision needs from its
 // tolerance, and let the optimizer search the weights.
 
+import { NAME } from '../names.js';
 import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, esc, COL, fv, fq } from '../kit.js';
 import { PRESETS } from '../weights.js';
 import { view, describe, maxState, S } from '../anim/sarAnim.js';
@@ -93,15 +94,15 @@ export const page = {
     fill('sarFails', failBox(ctx, ['cover', 'tol', 'small', 'dec']));
     fill('wstrip', d.weights.map((w, i) => `<span class="wc ${steps[i].kind}" title="${steps[i].kind === 'cap' ? `${steps[i].units} unit capacitors` : steps[i].kind === 'small' ? `small capacitor ${eng(steps[i].units * P.cu, 'F')}` : 'charge halving'}">${num(w, w < 10 ? 2 : 0)}</span>`).join('') + `<span class="wn">LSB · <i class="k cap"></i>whole capacitors <i class="k half"></i>charge halving <i class="k small"></i>small capacitors</span>`);
     fill('sarErr', ctx.stepsError ? `<div class="warnbox">${esc(ctx.stepsError)} The generated weights are shown meanwhile.</div>` : '');
-    const small = ctx.smallest < 35e-15 - 1e-21;
+    const small = ctx.smallest < P.cuMin - 1e-21;
     fill('sarro', readouts([
       ['Decisions', `${d.decisions}`, `planned ${P.rawDecisions}`, d.decisions === P.rawDecisions ? 'ok' : 'warn', 'decisions'],
       ['Sum of the steps', `${num(d.cover.sum, 1)} LSB`, `${d.cover.need} needed`, d.cover.ok ? 'ok' : 'bad', 'cover'],
       ['One LSB as charge', eng(d.qLsb, 'C'), `${eng(d.qLsb / d.cNode[0], 'V')} at the input`, '', 'qlsb'],
-      ['CDAC', eng(d.cdac, 'F'), `${num(d.units, 2)} units of ${eng(P.cu, 'F')}`, '', 'cdac'],
+      [NAME.cdac, eng(d.cdac, 'F'), `${num(d.units, 2)} units of ${eng(P.cu, 'F')}`, '', 'cdac'],
       ['Memory cell CM', eng(d.cm, 'F'), 'from the charge balance', '', 'cm'],
-      ['Node at the last decision', eng(d.cNode[d.decisions - 1], 'F'), `1 LSB = ${eng(d.qLsb / d.cNode[d.decisions - 1], 'V')} there`, '', 'cnode'],
-      ['Smallest capacitor', eng(ctx.smallest, 'F'), small ? 'below the 35 fF PDK minimum' : 'at or above 35 fF', small ? 'bad' : 'ok', 'smallest'],
+      [NAME.cnodeW, eng(d.cNode[d.decisions - 1], 'F'), `1 LSB = ${eng(d.qLsb / d.cNode[d.decisions - 1], 'V')} there`, '', 'cnode'],
+      ['Smallest capacitor', eng(ctx.smallest, 'F'), small ? `below the ${eng(P.cuMin, 'F')} PDK minimum` : `at or above ${eng(P.cuMin, 'F')}`, small ? 'bad' : 'ok', 'smallest'],
     ]));
     const x = (store.ui.vin / P.fullScale) * d.codes;
     const chip = store.ui.useChip ? ctx.sim.chip : idealChip(d);
@@ -221,7 +222,7 @@ function compare(store, ctx) {
     ${row('weights', A.weights.map((w) => num(w, 2)).join(' '), C.weights.map((w) => num(w, 2)).join(' '))}
     ${row('decisions', A.decisions, C.decisions)}${row('sum of steps [LSB]', num(A.sum, 1), num(C.sum, 1))}
     ${row('first tolerance [LSB]', num(A.tol[0], 1), num(C.tol[0], 1))}${row('unit capacitors', num(A.units, 2), num(C.units, 2))}
-    ${row('CDAC', eng(A.cdac, 'F'), eng(C.cdac, 'F'))}${row('memory cell', eng(A.cm, 'F'), eng(C.cm, 'F'))}
+    ${row(NAME.cdac, eng(A.cdac, 'F'), eng(C.cdac, 'F'))}${row('memory cell', eng(A.cm, 'F'), eng(C.cm, 'F'))}
     ${row('smallest capacitor', eng(A.smallest, 'F'), eng(C.smallest, 'F'))}${row('capacitor area [mm²]', num(A.area * 1e6, 4), num(C.area * 1e6, 4))}
     ${row('ENOB from the charge budget', num(A.enob ?? NaN, 2), num(C.enob, 2))}${row('ENOB one chip, calibrated, no kT/C', num(A.enobCal, 2), num(C.enobCal, 2))}
   </tbody></table></div>`, 'Same chip seed for both; for many chips use the Mismatch page.');

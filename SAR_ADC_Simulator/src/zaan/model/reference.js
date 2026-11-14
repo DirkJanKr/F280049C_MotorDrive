@@ -5,9 +5,29 @@ import { createAdc } from '../../model/adc.js';
 import { convert as convertRedistribution } from '../../model/sar.js';
 import { createRng } from '../../model/rng.js';
 
-/** Precharge charge per conversion (estimate): every DAC capacitor recharged to V REF on both sides. */
+/**
+ * Units of the CDAC that are charged from V REF: every whole-unit or small capacitor, plus the one
+ * source unit of the charge halving chain. The halving capacitors start empty and take their charge
+ * from that source unit, not from V REF.
+ */
+export function prechargedUnits(steps) {
+  const caps = steps.filter((s) => s.kind === 'cap' || s.kind === 'small').reduce((a, s) => a + s.units, 0);
+  return caps + (steps.some((s) => s.kind === 'half') ? 1 : 0);
+}
+
+/**
+ * Charge the reference delivers per conversion: Q REF = V REF C, with C the capacitance charged from V REF
+ * (Chen 2018, eq. 2, p. 3056: Q REF = C DAC V REF; Rabuske 2017, eq. 3.14, p. 39: energy C V PC² per conversion,
+ * which is this charge times V PC). The factor 2 of Q+ − Q− belongs to the node bookkeeping, not to the source.
+ * Used by the Power page, the Reference page and the old Zaan reference chapter.
+ */
+export function referenceCharge(P, d) {
+  return P.vref * (prechargedUnits(d.steps) * P.cu);
+}
+
+/** Precharge charge per conversion and the average reference current. */
 export function prechargeCharge(P, d) {
-  const q = 2 * P.vref * d.cdac;
+  const q = referenceCharge(P, d);
   return { q, current: q * P.fs };
 }
 

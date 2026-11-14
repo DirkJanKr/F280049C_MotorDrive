@@ -5,6 +5,14 @@ import { startBeamAnim, beamControls, setBeamAngle } from '../anim/beamAnim.js';
 import { receiveDelays, quantise, cellsNeeded, beamPattern, worstPhaseError } from '../../zaan/model/beamformer.js';
 import { failBox } from '../checks.js';
 
+/** The two steps the beam pattern compares with the exact delays: the delay step that is set, and one write slot 1 / fs. */
+export function beamSteps(ctx) {
+  return [
+    { step: ctx.P.delayStep, label: `${eng(ctx.P.delayStep, 's')} step (delay step)` },
+    { step: ctx.tw, label: `${eng(ctx.tw, 's')} step (one write slot)` },
+  ];
+}
+
 export const page = {
   id: 'beamformer',
   title: 'Beamformer',
@@ -16,14 +24,14 @@ export const page = {
     const dOn = store.ui.bfDelays !== false;
     return `<div id="bfFails"></div><section class="card wide"><header><h3>The memory cells at work: sampled charge and the combining</h3><span class="ctl"><button class="mini" id="bfPlay">pause</button><button class="mini ${dOn ? 'on' : ''}" data-bfdelays="1">delays ${dOn ? 'on' : 'off'}</button><button class="mini" id="bfSweep">sweep −15° … +15°</button><label class="mini-l">speed <select id="bfSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label></span></header>
         <canvas id="bfcv" class="cv"></canvas>
-        <p class="cap">Left: the echo reaching each element; the line through the pulse centres is the wavefront at the steering angle. Middle: the memory cells as they sit on the chip. Every channel writes one cell per slot, going round (white frame); a channel with an extra half step writes on CLK 180°, half a slot later (violet). Each bar is the charge CM · V the cell holds. At every read the read select takes from each channel the cell written its delay ago (green frame), so all 16 green cells hold the same part of the echo. Right: those 16 charges are connected to one node and add; below, the node charge over time with the delays (green, up to about 16 times one channel) and without them (grey). Switch the delays off or change the angle and the green pattern moves.</p></section>
+        <p class="cap">Left: the echo reaching each element; the line through the pulse centres is the wavefront at the steering angle. Middle: the memory cells as they sit on the chip. Every channel writes one cell per slot, going round (white frame); a channel with an extra half step writes on CLK 180°, half a slot later (violet). Each bar is the charge CM · V the cell holds. At every read the read select takes from each channel the cell written its delay ago (green frame), so all green cells hold the same part of the echo. Right: the charges of all channels are connected to one node and add; below, the node charge over time with the delays (green, up to about N times one channel) and without them (grey). Switch the delays off or change the angle and the green pattern moves.</p></section>
       <div id="bfro"></div>
       <div class="grid2">${card('bfDelay', 'Delay per element, exact and rounded to the step')}${card('bfCells', 'Memory cells needed against steering angle')}</div>
-      <div class="grid2">${card('bfBeam', 'Beam pattern: exact, 12.5 ns and 25 ns steps')}${card('bfClk', 'Write and read timing with CLK and CLK 180°')}</div>
+      <div class="grid2">${card('bfBeam', 'Beam pattern: exact, rounded to the delay step and to one write slot')}${card('bfClk', 'Write and read timing with CLK and CLK 180°')}</div>
       ${explain('How the delay works', [
-        'Echoes from the steering direction reach the elements one after another. To add them, the earlier channels must wait. Each channel writes its signal into a ring of memory cells, one cell per write slot of 25 ns, and the read takes an older cell from a channel that must wait longer.',
-        'Whole slots of delay come from reading further back in the ring. The half slot comes from the clock: a channel that writes on CLK 180° samples 12.5 ns later, so the same cell holds a sample shifted by half a slot. The number of cells is still set by the longest delay in 25 ns slots, plus one for zero delay.',
-        'The read connects the chosen cell of all 16 channels to one node; their charges add. That is the delay-and-sum, done without an amplifier.',
+        'Echoes from the steering direction reach the elements one after another. To add them, the earlier channels must wait. Each channel writes its signal into a ring of memory cells, one cell per write slot T w = 1 / fs, and the read takes an older cell from a channel that must wait longer.',
+        'Whole slots of delay come from reading further back in the ring. The half slot comes from the clock: a channel that writes on CLK 180° samples half a slot later, so the same cell holds a sample shifted by half a slot. The number of cells is still set by the longest delay in whole slots, plus one for zero delay.',
+        'The read connects the chosen cell of every channel to one node; their charges add. That is the delay-and-sum, done without an amplifier.',
       ])}`;
   },
   mount(store, ctx) {
@@ -65,16 +73,17 @@ export const page = {
     const ang = [];
     for (let a = 0; a <= 30; a += 0.5) ang.push(a);
     const curve = (step) => ang.map((a) => [a, cellsNeeded(Math.max(...receiveDelays({ N: P.channels, pitch: P.pitch, theta: (a * Math.PI) / 180, F: Infinity, c: P.c }).tau), step, tw).m]);
-    fill('bfCells', plot({ x: { min: 0, max: 30, label: 'steering angle [°]' }, y: { min: 0, max: 45, label: 'cells per channel' }, series: [{ points: curve(25e-9), color: COL.muted, step: true, label: '25 ns step' }, { points: curve(P.delayStep), color: COL.an, step: true, width: 2.2, label: `${num(ns(P.delayStep), 2)} ns step` }], vlines: [{ x: Math.abs(P.steer) * (180 / Math.PI), color: COL.ref }], hlines: [{ y: P.memCells, color: COL.dig, dash: '5 3' }], legend: true }, w), `Green dashed: the ${P.memCells} cells you set. The 12.5 ns step needs no extra cells: they are counted in 25 ns slots.`);
+    fill('bfCells', plot({ x: { min: 0, max: 30, label: 'steering angle [°]' }, y: { min: 0, max: 45, label: 'cells per channel' }, series: [{ points: curve(tw), color: COL.muted, step: true, label: `${num(ns(tw), 2)} ns step (one write slot)` }, { points: curve(P.delayStep), color: COL.an, step: true, width: 2.2, label: `${num(ns(P.delayStep), 2)} ns step` }], vlines: [{ x: Math.abs(P.steer) * (180 / Math.PI), color: COL.ref }], hlines: [{ y: P.memCells, color: COL.dig, dash: '5 3' }], legend: true }, w), `Green dashed: the ${P.memCells} cells you set. A step of half a slot (${eng(tw / 2, 's')}) needs no extra cells: they are counted in write slots of ${eng(tw, 's')}.`);
     const base = { N: P.channels, pitch: P.pitch, theta: P.steer, F: P.focus, c: P.c, f0: P.f0 };
     const e = beamPattern({ ...base, tau: delays.tau });
-    const a = beamPattern({ ...base, tau: quantise(delays.tau, 12.5e-9) });
-    const b = beamPattern({ ...base, tau: quantise(delays.tau, 25e-9) });
+    const [stepA, stepB] = beamSteps(ctx);
+    const a = beamPattern({ ...base, tau: quantise(delays.tau, stepA.step) });
+    const b = beamPattern({ ...base, tau: quantise(delays.tau, stepB.step) });
     const s = (bp) => bp.angles.map((x, i) => [x, bp.db[i]]);
     const sg = Math.sin(P.steer) - Math.sign(P.steer || 1) * (ctx.lambda / P.pitch);
     const grating = P.pitch > ctx.lambda / 2 && Math.abs(sg) <= 1 ? `The pitch is ${num(P.pitch / ctx.lambda, 2)} wavelengths (λ = ${num(ctx.lambda * 1e6, 0)} µm), so a grating lobe appears near ${num((Math.asin(sg) * 180) / Math.PI, 0)}° at full level in this array factor; the element directivity (not modeled) lowers it. ` : '';
-    fill('bfBeam', plot({ x: { min: -90, max: 90, label: 'angle [°]' }, y: { min: -50, max: 2, label: 'level [dB]' }, series: [{ points: s(b), color: COL.muted, width: 1.2, label: '25 ns' }, { points: s(e), color: COL.an, width: 2.2, label: 'exact' }, { points: s(a), color: COL.ref, width: 1.6, dash: '5 3', label: '12.5 ns' }], legend: true }, w), `${grating}Narrowband at f0, array factor only.`);
-    fill('bfClk', clocks(ctx, w), 'One channel on CLK, one on CLK 180°. The half-slot shift is what gives the 12.5 ns step without extra cells; the read instant within the slot is drawn for illustration.');
+    fill('bfBeam', plot({ x: { min: -90, max: 90, label: 'angle [°]' }, y: { min: -50, max: 2, label: 'level [dB]' }, series: [{ points: s(b), color: COL.muted, width: 1.2, label: stepB.label }, { points: s(e), color: COL.an, width: 2.2, label: 'exact' }, { points: s(a), color: COL.ref, width: 1.6, dash: '5 3', label: stepA.label }], legend: true }, w), `${grating}Narrowband at f0, array factor only.`);
+    fill('bfClk', clocks(ctx, w), `One channel on CLK, one on CLK 180°. The half-slot shift is what gives the ${eng(tw / 2, 's')} step without extra cells; the read instant within the slot is drawn for illustration.`);
   },
 };
 

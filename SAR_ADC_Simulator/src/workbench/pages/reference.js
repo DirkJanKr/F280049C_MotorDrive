@@ -1,11 +1,14 @@
 // Item 3: the charge reference of Chen 2018 (Fig. 7, p. 3055 to 3056) with its calibration.
-//   Q_REF = I_P * T_int (eq. 1), target Q_REF = C_DAC * V_REF (eq. 2)
+//   Q_REF = I_P * T_int (eq. 1), target Q_REF = C_DAC * V_REF (eq. 2), with C_DAC the capacitance charged
+//   from V_REF (referenceCharge, shared with the Power page)
 // Calibration (during transmit): after each precharge the comparator compares V_DAC with V_REF and
 // the charge pump moves the gate of M_P by one packet on C_MOS. Receive: pump off, I_P held on C_MOS.
 // Values not in the paper are placeholders (A); they are listed on the page.
 
+import { NAME } from '../names.js';
 import { fill, widthOf, plot, readouts, explain, eng, num, COL } from '../kit.js';
 import { createRng } from '../../model/rng.js';
+import { referenceCharge, prechargedUnits } from '../../zaan/model/reference.js';
 
 const A = { pump: 100e-9, cmos: 4e-12, pulse: 2e-9, gm: 50e-6, cycles: 4000, droopDb: 0.3, rx: 100e-6 };
 
@@ -28,9 +31,10 @@ export const page = {
   },
   update(store, ctx) {
     const { P, d } = ctx;
-    const tint = 0.75 / P.fs;
-    const cdac = d.cdacEff;
-    const ipTarget = (cdac * P.vref) / tint;
+    const tint = P.tIntShare / P.fs;
+    const cdac = prechargedUnits(d.steps) * P.cu; // the capacitance charged from V REF
+    const qref = referenceCharge(P, d);
+    const ipTarget = qref / tint;
     const dI = A.gm * ((A.pump * A.pulse) / A.cmos);
     const lsbCal = (dI * tint) / cdac;
     const rng = createRng(P.seed + 31);
@@ -45,7 +49,7 @@ export const page = {
     }
     const jit = (P.jitter / tint) * 2 ** (P.bits - 1) / Math.SQRT2;
     fill('rfRo', readouts([
-      ['Q REF', eng(cdac * P.vref, 'C'), 'C DAC · V REF (eq. 2)'],
+      ['Q REF', eng(qref, 'C'), `V REF · C pre (eq. 2), C pre: ${NAME.cdacPre}`],
       ['I P needed', eng(ipTarget, 'A'), `Q REF / T int, T int = ${eng(tint, 's')}`],
       ['One calibration step', eng(lsbCal, 'V'), `${num((lsbCal / P.vref) * 100, 3)} % of V REF`],
       ['Cycles to settle', settled === null ? 'not settled' : `${settled}`, settled === null ? '' : `${eng(settled / P.fs, 's')} of transmit time`, settled === null ? 'bad' : 'ok'],
@@ -61,8 +65,8 @@ export const page = {
     const row = (a, b, s, n) => `<tr><td><span class="stat st-${s}">${s}</span></td><td>${a}</td><td class="num">${b}</td><td class="dim">${n}</td></tr>`;
     fill('rfVal', `<div class="tablewrap"><table class="tbl"><thead><tr><th>Status</th><th>Value</th><th></th><th>Where from</th></tr></thead><tbody>
       ${row('Pump current', eng(A.pump, 'A'), 'S', 'Chen 2018, Fig. 7(a)')}${row('C MOS', eng(A.cmos, 'F'), 'S', 'p. 3056: about 4 pF')}
-      ${row('Leakage drift', `${A.droopDb} dB in ${eng(A.rx, 's')}`, 'S', 'p. 3056, worst case')}${row('T int', eng(tint, 's'), 'D', '3/4 of the clock period, as in Chen')}
-      ${row('C DAC that is precharged', eng(cdac, 'F'), 'D', 'the charge-carrying part of the present weights')}
+      ${row('Leakage drift', `${A.droopDb} dB in ${eng(A.rx, 's')}`, 'S', 'p. 3056, worst case')}${row('T int', eng(tint, 's'), 'D', `${num(P.tIntShare, 2)} of the clock period (T int share; Chen: 3/4)`)}
+      ${row(`C pre, ${NAME.cdacPre}`, eng(cdac, 'F'), 'D', `${num(prechargedUnits(d.steps), 2)} units: the whole-unit capacitors and the one halving source unit; the halving capacitors start empty`)}
       ${row('Pump pulse width', eng(A.pulse, 's'), 'A', 'placeholder')}${row('gm of M P', eng(A.gm, 'S'), 'A', 'placeholder')}${row('Calibration cycles', `${A.cycles}`, 'A', 'placeholder')}
       ${row('Clock jitter', eng(P.jitter, 's'), 'A', 'the sampling jitter value of the workbench')}
     </tbody></table></div>`);

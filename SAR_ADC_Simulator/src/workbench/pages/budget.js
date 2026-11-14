@@ -10,7 +10,7 @@ import { changed } from '../store.js';
 const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', tint: 'b-tint', slot: 'b-slot', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
 const SWEEPS = {
   compNoise: { label: 'Comparator input noise', unit: 'mV rms', si: 1e-3, lo: 0, hi: 0.2 },
-  alpha: { label: 'alpha', unit: '', si: 1, lo: 0.1, hi: 3 },
+  alpha: { label: 'alpha, input', unit: '', si: 1, lo: 0.1, hi: 3 },
   cm: { label: 'Memory capacitor C M', unit: 'fF', si: 1e-15, lo: 30, hi: 400 },
   jitter: { label: 'Sampling clock jitter', unit: 'ps rms', si: 1e-12, lo: 0, hi: 10 },
   temperature: { label: 'Temperature', unit: 'K', si: 1, lo: 250, hi: 360 },

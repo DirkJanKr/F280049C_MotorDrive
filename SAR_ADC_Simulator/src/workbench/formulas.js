@@ -3,6 +3,7 @@
 
 import { v, t, frac, sqrt, sup, paren } from '../zaan/ui/math.js';
 import { eng, num, fq } from './kit.js';
+import { NAME } from './names.js';
 export { fv } from './kit.js';
 
 const QL = v('Q', 'LSB');
@@ -34,7 +35,7 @@ export const FORMULAS = {
     title: 'Charge of the full scale',
     rows: [[`${v('Q', 'FS')} = ${NCH} ${CM} ${v('V', 'in,max')}`, `${c.P.channels} × ${eng(c.d.cm, 'F')} × ${eng(c.P.fullScale, 'V')}`]],
     res: eng(c.d.qFs, 'C'),
-    note: 'D. Peak-to-peak differential input charge, Q+ − Q−. Every noise source is referred to this charge. Rabuske eq. 5 uses half of it, (C TH / 2) V.',
+    note: 'D. Peak-to-peak differential input charge, Q+ − Q−. Every noise source is referred to this charge. Rabuske 2017, eq. 4.21 (p. 72 to 73) uses half of it, (C TH / 2) V.',
   }),
   cm: (c) => ({
     title: 'Memory capacitor C M',
@@ -46,38 +47,38 @@ export const FORMULAS = {
     title: 'Reference voltage V REF',
     rows: [[`${VREF} = ${frac(`${v('α')} ${v('V', 'in,max')}`, '2')}`, frac(`${num(c.P.alphaIn, 3)} × ${eng(c.P.fullScale, 'V')}`, '2')]],
     res: eng(c.P.vref, 'V'),
-    note: 'D, from Chen eq. 3 with alpha = C TH / (2 C DAC) (Rabuske 2016, eq. 3): alpha = 2 V REF / V in,max.',
+    note: `D, from Chen eq. 3 with alpha = C TH / (2 C DAC) (Rabuske 2017, eq. 4.58, p. 89): alpha = 2 V REF / V in,max. The alpha here is the ${NAME.alphaIn}.`,
   }),
   cu: (c) => ({
     title: 'Unit capacitor C u',
     rows: [[`${CU} = ${frac(`${v('n', 'u')} ${QL}`, `2 ${VREF}`)} = ${frac(`${v('n', 'u')} ${NCH} ${CM}`, `${sup('2', v('B'))} ${v('α')}`)}`, frac(`${c.P.lsbPerUnit} × ${c.P.channels} × ${eng(c.d.cm, 'F')}`, `${sup('2', c.P.bits)} × ${num(c.P.alphaIn, 3)}`)]],
     res: eng(c.P.cu, 'F'),
-    note: 'D. One unit capacitor precharged to V REF moves 2 V REF C u, which is n u LSB. The PDK minimum for the MIM device is 35 fF.',
+    note: `D. One unit capacitor precharged to V REF moves 2 V REF C u, which is n u LSB. The alpha here is the ${NAME.alphaIn}. The PDK minimum for the MIM device is ${eng(c.P.cuMin, 'F')}.`,
   }),
   cdac: (c) => ({
-    title: 'CDAC capacitance',
+    title: NAME.cdacBalance,
     rows: [[`${v('C', 'DAC')} = ${frac(`${NCH} ${CM}`, `2 ${v('α')}`)}`, frac(`${c.P.channels} × ${eng(c.d.cm, 'F')}`, `2 × ${num(c.P.alphaIn, 3)}`)]],
-    res: `${eng(c.P.cdacBalance, 'F')} for a binary array`,
-    note: `D, Chen eq. 3. The present weights carry reference charge on ${eng(c.d.cdacEff, 'F')} (${num(c.d.sumW / c.P.lsbPerUnit, 2)} units) and use ${eng(c.d.cdac, 'F')} of capacitors (${num(c.d.units, 2)} units, including the halving capacitors, which start empty).`,
+    res: `${eng(c.P.cdacBalance, 'F')}, ${NAME.cdacBalance}`,
+    note: `D, Chen eq. 3 with the ${NAME.alphaIn}. ${NAME.cdacEff}: ${eng(c.d.cdacEff, 'F')} (${num(c.d.sumW / c.P.lsbPerUnit, 2)} units). ${NAME.cdac}: ${eng(c.d.cdac, 'F')} (${num(c.d.units, 2)} units; the halving capacitors start empty).`,
   }),
   cnode: (c) => {
     const n = c.d.decisions;
     return {
-      title: 'Node capacitance at the last decision',
-      rows: [[`${v('C', 'node,i')} = ${NCH} ${CM} + ${t('Σ')}<sub>j&lt;i</sub> 2 ${v('C', 'j')}`, `${c.P.channels} × ${eng(c.d.cm, 'F')} + ${eng(c.d.cNode[n - 1] - c.d.cNode[0], 'F')}`]],
+      title: NAME.cnodeW,
+      rows: [[`${v('C', 'node,i')} = ${NCH} ${CM} + ${v('C', 'par')} + ${t('Σ')}<sub>j&lt;i</sub> 2 ${v('C', 'j')}`, `${c.P.channels} × ${eng(c.d.cm, 'F')} + ${eng(c.P.cpar, 'F')} + ${eng(c.d.cNode[n - 1] - c.d.cNode[0], 'F')}`]],
       res: eng(c.d.cNode[n - 1], 'F'),
-      note: `Starts at ${eng(c.d.cNode[0], 'F')} (the 16 cells) and grows with every shared pair. The same comparator voltage is ${num(c.d.cNode[n - 1] / c.d.cNode[0], 2)} × more charge at the end than at the start.`,
+      note: `Starts at ${eng(c.d.cNode[0], 'F')} (the ${c.P.channels} cells and the node parasitic) and grows with every shared pair. The same comparator voltage is ${num(c.d.cNode[n - 1] / c.d.cNode[0], 2)} × more charge at the end than at the start. Each halving step adds a whole unit capacitor, so this is larger than the ideal binary value C TH (1 + 1 / alpha) of Rabuske 2017, eq. 4.52.`,
     };
   },
   lsbend: (c) => {
     const cl = c.d.cNode[c.d.decisions - 1];
-    return { title: 'One LSB at the comparator, last decision', rows: [[`${v('V', 'LSB')} = ${frac(QL, v('C', 'node,last'))}`, frac(eng(c.d.qLsb, 'C'), eng(cl, 'F'))]], res: eng(c.d.qLsb / cl, 'V'), note: 'Comparator offset and noise must be compared with this, not with the 1 V / 1024 LSB at the input.' };
+    return { title: 'One LSB at the comparator, last decision', rows: [[`${v('V', 'LSB')} = ${frac(QL, v('C', 'node,last'))}`, frac(eng(c.d.qLsb, 'C'), eng(cl, 'F'))]], res: eng(c.d.qLsb / cl, 'V'), note: `Comparator offset and noise must be compared with this, not with the ${eng(c.P.fullScale, 'V')} / ${c.d.codes} LSB at the input.` };
   },
   allowed: (c) => ({
     title: 'Charge noise allowed for the ENOB aim',
     rows: [[`${v('σ', 'Q,max')} = ${frac(`${v('Q', 'FS')} / ${paren(`2${sqrt('2')}`)}`, `${sup('10', paren(`6.02 ${t('ENOB')} + 1.76`) + ' / 20')}`)}`, frac(`${eng(c.d.qFs, 'C')} / 2.83`, sup('10', `${num((6.02 * c.P.enobAim + 1.76) / 20, 3)}`))]],
     res: `${fq(c, c.budget.allowed, true)} = ${num(c.budget.allowed / c.d.qLsb, 3)} LSB`,
-    note: `For a full-scale sine. Ideal ${c.P.bits}-bit quantisation alone is ${QL} / √12 = 0.289 LSB, half of this power at ENOB 9.5.`,
+    note: `For a full-scale sine. Ideal ${c.P.bits}-bit quantisation alone is ${QL} / √12 = 0.289 LSB, ${num(((1 / 12) / (c.budget.allowed / c.d.qLsb) ** 2) * 100, 0)} % of this power at ENOB ${num(c.P.enobAim, 1)}.`,
   }),
   enob: (c) => ({
     title: 'ENOB from the charge budget',
@@ -101,26 +102,26 @@ export const FORMULAS = {
     res: budgetRow(c, 'samp'),
     note: c.budget.arrayGain
       ? `Each channel has a cell CM on node + and one on node −; each keeps a random charge with variance kT CM when its write switch opens, independent of the other side, so the differential charge of one channel has variance 2 kT CM. The ${c.P.channels} cells are independent, so the charges add in power (√N) while the aligned signal adds in amplitude (N): the beamformer gain of 10 log10 N = ${num(c.budget.arrayGainDb, 1)} dB.`
-      : 'Beamformer gain off: the cell noise is counted as if it added like the signal (N times), a worst case 12 dB higher in power.',
+      : `Beamformer gain off: the cell noise is counted as if it added like the signal (N times), a worst case ${num(c.budget.arrayGainDb, 1)} dB higher in power.`,
   }),
   'b-pre': (c) => {
     const halves = c.d.steps.filter((x) => x.kind === 'half').length;
     return {
       title: 'CDAC precharge kT/C as charge',
-      rows: [[`${v('σ', 'Q,pre')} = ${sqrt(`4 ${kT} ${v('C', 'DAC')} + ${v('n', '½')} · 4 ${kT} ${frac(CU, '2')}`)}`, sqrt(`4 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.d.cdac, 'F')} + ${halves} × 4 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.P.cu / 2, 'F')}`)]],
+      rows: [[`${v('σ', 'Q,pre')} = ${sqrt(`4 ${kT} ${v('C', 'DAC')} + ${v('n', '½')} · 4 ${kT} ${frac(CU, '2')}`)}, ${v('C', 'DAC')}: ${NAME.cdac}`, sqrt(`4 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.d.cdac, 'F')} + ${halves} × 4 × ${eng(1.381e-23 * c.P.temperature, 'J')} × ${eng(c.P.cu / 2, 'F')}`)]],
       res: budgetRow(c, 'pre'),
       note: 'Each step is one floating capacitor C between node + and node −. When its precharge switches open it keeps a random plate charge with variance kT C. That charge enters node + and node − with opposite sign, so the differential charge sees twice it: variance 4 kT C. Every step is shared once, so all of the CDAC counts. A halving step also opens the switch between its two halves (series capacitance Cu / 2).',
     };
   },
   'b-comp': (c) => {
     const cl = c.d.cNode[c.d.decisions - 1];
-    return { title: 'Comparator noise as charge', rows: [[`${v('σ', 'Q,cmp')} = ${v('C', 'node,last')} ${v('v', 'n')}`, `${eng(cl, 'F')} × ${eng(c.P.compNoise, 'V')}`]], res: budgetRow(c, 'comp'), note: 'A voltage noise v n at the comparator is the charge C node · v n on the node. A noisy decision that the later steps cannot repair adds half of that power, σ² / 2. With a repeated last step the last two decisions both have no repair, which gives σ² in total. Checked by direct simulation (400 000 conversions): 0.197 LSB against 0.197 LSB for the default weights, within 11 % for a ½ LSB last step. The parasitic capacitance of the summing node is not in C node yet; it would add to it.' };
+    return { title: 'Comparator noise as charge', rows: [[`${v('σ', 'Q,cmp')} = ${v('C', 'node,last')} ${v('v', 'n')}`, `${eng(cl, 'F')} × ${eng(c.P.compNoise, 'V')}`]], res: budgetRow(c, 'comp'), note: `C node,last is the ${NAME.cnodeW}. A voltage noise v n at the comparator is the charge C node · v n on the node. C node includes the parasitic capacitance of the summing node (now ${eng(c.P.cpar, 'F')}). The budget counts the full σ² of the last decision. Simulated (error power with noise minus without): 0.197 LSB against 0.197 LSB for the default weights and 0.182 against 0.183 LSB for binary weights.` };
   },
-  'b-slot': (c) => ({ title: 'Read-slot gain variation', rows: [[`${v('σ', 'G')} = ${frac(`σ(${v('C', 'M')})`, sqrt('N'))}`, `${num(c.P.aC / Math.sqrt(c.d.cm * 1e15), 2)} % / √${c.P.channels} = ${num(c.P.aC / Math.sqrt(c.d.cm * 1e15) / Math.sqrt(c.P.channels), 3)} %`], [`${v('σ', 'Q')} = ${v('σ', 'G')} · ${frac(v('Q', 'FS'), `2${sqrt('2')}`)}`, 'for a full-scale sine']], res: budgetRow(c, 'slot'), note: 'Each read slot adds another set of N memory cells, so the sampling capacitance, and with it the gain, differs a little from sample to sample (Rabuske 2017, eq. 4.42: gain error = ΔC / (C TH + ΔC)). It repeats every 22 samples, is proportional to the signal, and can be removed with one digital gain per slot. Counted as zero while "Gain of each read slot" is set to calibrated.' }),
-  'b-tint': (c) => ({ title: 'Jitter on the precharge time', rows: [[`${v('σ', 'Q')} = ${frac(v('σ', 't'), v('T', 'int'))} · ${frac(v('Q', 'FS'), `2${sqrt('2')}`)}`, `${frac(eng(c.P.jitter, 's'), eng(0.75 / c.P.fs, 's'))} × ${eng(c.d.qFs / 2 / Math.SQRT2, 'C')}`]], res: budgetRow(c, 'tint'), note: 'Chen 2018, p. 3056: the CDAC is charged by a current for T int, so a timing error scales the whole reference charge. The error is proportional to the signal; the value is for a full-scale sine. T int is 3/4 of the clock period, as in Chen. The same clock jitter value as for sampling is used (assumption).' }),
+  'b-slot': (c) => ({ title: 'Read-slot gain variation', rows: [[`${v('σ', 'G')} = ${frac(`σ(${v('C', 'M')})`, sqrt('2N'))}`, `${num(c.P.aC / Math.sqrt(c.d.cm * 1e15), 2)} % / √(2 × ${c.P.channels}) = ${num(c.P.aC / Math.sqrt(c.d.cm * 1e15) / Math.sqrt(2 * c.P.channels), 3)} %`], [`${v('σ', 'Q')} = ${v('σ', 'G')} · ${frac(v('Q', 'FS'), `2${sqrt('2')}`)}`, 'for a full-scale sine']], res: budgetRow(c, 'slot'), note: `Each read slot adds another set of N memory cells on node + and N on node −, so the sampling capacitance, and with it the gain, differs a little from sample to sample (Rabuske 2017, eq. 4.42: gain error = −ΔC / (C TH + ΔC)). The two sides are drawn independently; only their common part changes the gain (eq. 4.38), so the gain averages over 2N cells. The difference between the sides is second order (eq. 4.30, 4.33). It repeats every ${c.P.memCells} samples, is proportional to the signal, and can be removed with one digital gain per slot. Counted as zero while "Gain of each read slot" is set to calibrated.` }),
+  'b-tint': (c) => ({ title: 'Jitter on the precharge time', rows: [[`${v('σ', 'Q')} = ${frac(v('σ', 't'), v('T', 'int'))} · ${frac(v('Q', 'FS'), `2${sqrt('2')}`)}`, `${frac(eng(c.P.jitter, 's'), eng(c.P.tIntShare / c.P.fs, 's'))} × ${eng(c.d.qFs / 2 / Math.SQRT2, 'C')}`], [`${v('T', 'int')} = ${v('k', 'int')} / ${v('f', 's')}`, `${num(c.P.tIntShare, 2)} / ${eng(c.P.fs, 'Hz')}`]], res: budgetRow(c, 'tint'), note: 'Chen 2018, p. 3056: the CDAC is charged by a current for T int, so a timing error scales the whole reference charge. The error is proportional to the signal; the value is for a full-scale sine. k int is the T int share of the clock period (Chen: 3/4). The same clock jitter value as for sampling is used (assumption).' }),
   'b-jit': (c) => {
     const f = c.P.f0 * (1 + c.P.fbw / 2);
-    return { title: 'Sampling clock jitter as charge', rows: [[`${v('σ', 'Q,j')} = ${NCH} ${CM} · 2π ${v('f', 'max')} ${v('σ', 't')} ${v('V', 'rms')}`, `${eng(c.P.channels * c.d.cm, 'F')} × 2π × ${eng(f, 'Hz')} × ${eng(c.P.jitter, 's')} × ${eng(c.vrms, 'V')}`]], res: budgetRow(c, 'jit'), note: 'A full-scale sine at the band edge f0 (1 + bw / 2) changes fastest; a timing error σt gives a voltage error 2π f σt V rms. Counted as if all channels jitter together (worst case: the 16 errors add like the signal).' };
+    return { title: 'Sampling clock jitter as charge', rows: [[`${v('σ', 'Q,j')} = ${NCH} ${CM} · 2π ${v('f', 'max')} ${v('σ', 't')} ${v('V', 'rms')}`, `${eng(c.P.channels * c.d.cm, 'F')} × 2π × ${eng(f, 'Hz')} × ${eng(c.P.jitter, 's')} × ${eng(c.vrms, 'V')}`]], res: budgetRow(c, 'jit'), note: `A full-scale sine at the band edge f0 (1 + bw / 2) changes fastest; a timing error σt gives a voltage error 2π f σt V rms. Counted as if all channels jitter together (worst case: the ${c.P.channels} errors add like the signal).` };
   },
   gain: (c) => ({ title: 'Beamformer gain on channel noise', rows: [[`${v('G')} = 10 log<sub>10</sub> ${NCH}`, `10 log<sub>10</sub> ${c.P.channels}`]], res: `${num(c.budget.arrayGainDb, 2)} dB`, note: 'Signal from N aligned channels adds as N, independent noise as √N. Only noise that is independent per channel gets this; here that is the kT/C of the memory cells.' }),
   tol: (c) => ({ title: 'Tolerance of decision 1', rows: [[`${v('t', 'i')} = ${t('Σ')}<sub>j&gt;i</sub> ${v('w', 'j')} + ${v('w', 'last')} − ${v('w', 'i')}`, `${num(c.d.weights.slice(1).reduce((a, w) => a + w, 0), 2)} + ${num(c.d.weights[c.d.weights.length - 1], 2)} − ${num(c.d.weights[0], 2)}`]], res: `${num(c.d.tol[0], 2)} LSB`, note: 'How far the level after this decision may be wrong and still be reached by the later steps. After the last step the residue must lie within ± w last.' }),

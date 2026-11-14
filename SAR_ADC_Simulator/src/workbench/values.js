@@ -14,6 +14,8 @@ export const GROUPS = {
   cdac: 'CDAC and weights',
   comparator: 'Comparator',
   timing: 'Timing (illustrative)',
+  reference: 'Reference and supply',
+  chip: 'Chip',
   iq: 'IQ demodulator (illustrative)',
   sim: 'Simulation',
 };
@@ -55,10 +57,11 @@ export const SEED = [
   num('fullScale', 'balance', 'V in,max: peak-to-peak differential swing per channel', 1, 'V', 1, 'V', [0.4, 2, 0.05], 'A', 'working figure; Chen 2018 has 800 mV (p. 3056)'),
   num('cm', 'balance', 'Memory capacitor C M', 112, 'fF', 1e-15, 'F', [20, 400, 1], 'A', 'placeholder: gives C u = 35 fF at alpha 0.40; Chen 2018 has 133 fF (p. 3055)'),
   num('cpar', 'balance', 'Parasitic capacitance on the summing node', 0, 'fF', 1e-15, 'F', [0, 3000, 10], 'A', 'unknown until extracted: switches and routing of all memory cells. Dilutes the signal like a lower alpha (Rabuske 2017, eq. 4.13)'),
-  num('alpha', 'balance', 'alpha = C TH / (2 C DAC)', 0.4, '', 1, '1', [0.1, 4, 0.01], 'A', 'placeholder: gives V REF = 200 mV; Chen 2018 has 0.40 (p. 3056); Rabuske 2016 simulates 0.5 to 3'),
+  num('alpha', 'balance', 'alpha = C TH / (2 C DAC)', 0.4, '', 1, '1', [0.1, 4, 0.01], 'A', 'placeholder: gives V REF = 200 mV; Chen 2018 has 0.40 (p. 3056); Rabuske 2016 simulates 0.5 to 3', 'this is the alpha, input; the Values page also lists the alpha with the present weights and the alpha with the present weights incl. C par'),
 
-  num('pairSigma', 'cdac', 'Pair mismatch σ(ΔC/C) at 35 fF', 1.193, '%', 0.01, '1', [0.1, 5, 0.001], 'S', 'PDK mim5_2: 0.0499 µm / √(W L), W L = 35 fF / 2 fF/µm²'),
-  num('density', 'cdac', 'Capacitor density', 2, 'fF/µm²', 1e-3, 'F/m²', [0.5, 10, 0.1], 'S', 'PDK mim5_2'),
+  num('pairSigma', 'cdac', 'Pair mismatch σ(ΔC/C) at 35 fF and 2 fF/µm²', 1.193, '%', 0.01, '1', [0.1, 5, 0.001], 'S', 'PDK mim5_2: 0.0499 µm / √(W L), W L = 35 fF / 2 fF/µm²'),
+  num('density', 'cdac', 'Capacitor density', 2, 'fF/µm²', 1e-3, 'F/m²', [0.5, 10, 0.1], 'S', 'PDK mim5_2', 'the pair mismatch follows the area of a capacitor: at another density the same capacitance has another area'),
+  num('cuMin', 'cdac', 'PDK minimum capacitor', 35, 'fF', 1e-15, 'F', [5, 100, 1], 'S', 'PDK mim5_2'),
   num('routing', 'cdac', 'Area factor for routing and switches', 1.5, '×', 1, '1', [1, 3, 0.1], 'A', 'review slide 26'),
   num('lsbPerUnit', 'cdac', 'LSB per unit capacitor n u', 8, 'LSB', 1, 'LSB', [1, 32, 1], 'A', '29 Oct example array; Chen 2018 has 8 (3 LSBs by redistribution, p. 3056)'),
   num('topUnits', 'cdac', 'First step', 32, 'units', 1, '1', [8, 256, 1], 'A', '29 Oct example array'),
@@ -82,6 +85,13 @@ export const SEED = [
   num('vfinal', 'timing', 'Comparator swing for a valid output', 0.9, 'V', 1, 'V', [0.3, 1.8, 0.05], 'A', 'illustrative'),
   num('tLogic', 'timing', 'Logic delay per decision', 0.2, 'ns', 1e-9, 's', [0, 1, 0.01], 'A', 'illustrative'),
   num('jitter', 'timing', 'Sampling clock jitter', 1, 'ps rms', 1e-12, 's', [0, 20, 0.1], 'A', 'illustrative'),
+
+  num('tIntShare', 'reference', 'T int share of the clock period', 0.75, '', 1, '1', [0.25, 0.95, 0.05], 'S', 'Chen 2018, p. 3056: T int = 25 ns = 3/4 of the period', 'the CDAC precharge current flows for T int = share / fs'),
+  num('rsvRatio', 'reference', 'Reservoir to CDAC capacitance ratio C RSV / C DAC', 1, '', 1, '1', [0.25, 10, 0.05], 'S', 'Guo 2024, p. 2610: the reservoir has a similar capacitance as the CDAC'),
+  num('vdd', 'reference', 'Supply voltage V DD', 1.8, 'V', 1, 'V', [1, 5, 0.1], 'A', 'placeholder', 'Chen 2018 uses 1.8 V (p. 3059)'),
+
+  num('chipW', 'chip', 'Chip width', 3.2, 'mm', 1e-3, 'm', [1, 10, 0.1], 'A', 'placeholder'),
+  num('chipH', 'chip', 'Chip height', 5, 'mm', 1e-3, 'm', [1, 10, 0.1], 'A', 'placeholder'),
 
   num('iqTaps', 'iq', 'Low-pass filter taps', 63, '', 1, '1', [7, 127, 2], 'A', 'illustrative'),
   num('iqDecim', 'iq', 'Decimation factor', 4, '', 1, '1', [1, 8, 1], 'A', 'illustrative'),

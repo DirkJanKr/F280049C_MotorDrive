@@ -1,6 +1,6 @@
 // Coupling of the tunable values: every value in values.js is changed by a sensible amount,
 // design() is run again, and the outputs that must follow are checked.
-// Links that are broken and cannot be fixed in values.js, design.js or designSide.js are marked todo.
+// A link that is still broken is marked todo.
 // The audit that goes with this test is docs/audit/coupling-audit.md.
 
 import test from 'node:test';
@@ -217,32 +217,46 @@ test('raw decisions planned move the decisions check', () => {
   assert.equal(run({ rawDecisions: 13 }).checks.find((c) => c.id === 'dec').state, 'warn');
 });
 
-// Broken links: they hold only after a change outside values.js, design.js and designSide.js.
+// Links fixed after the audit (docs/audit/fixes-applied.md).
 
-test('broken: C par lowers the effective alpha (Rabuske 2017, eq. 4.13)', { todo: 'd.alpha in src/zaan/model/cdac.js leaves C par out' }, () => {
-  assert.ok(run({ cpar: 1000 }).d.alpha < run().d.alpha);
+test('C par lowers the effective alpha (Rabuske 2017, eq. 4.13, 4.21, 4.58); d.alpha stays without it', () => {
+  assert.ok(run({ cpar: 1000 }).d.alphaEff < run().d.alphaEff);
+  assert.equal(run({ cpar: 1000 }).d.alpha, run().d.alpha);
 });
 
+// Link 2 is left as it is: the owner has not approved a change of the formula.
 test('broken: a receive focus moves the cells needed', { todo: 'design.js takes tauMax from the plane wave only; changing it would change a formula' }, () => {
   assert.ok(run({ steer: 0, rxFocus: 5 }).need.m > run({ steer: 0 }).need.m);
 });
 
-test('broken: capacitor density moves the matching (pair figure is given for 2 fF/µm²)', { todo: 'pairSigma is fixed at 35 fF and 2 fF/µm²; aC should follow from the PDK slope and the density' }, () => {
+test('capacitor density moves the matching (pair figure is given for 35 fF at 2 fF/µm²)', () => {
   assert.notEqual(run({ density: 4 }).sigmaU, run().sigmaU);
+  assert.ok(close(run({ density: 4 }).P.aC, Math.SQRT2 * run().P.aC));
 });
 
-test('missing: the T int share of the period is a value', { todo: '0.75 is hard coded in budget.js, formulas.js, pages/reference.js and pages/chen.js' }, () => {
-  assert.ok('tIntShare' in run().P);
+test('the T int share of the period is a value and moves the T int jitter line', () => {
+  assert.equal(run().P.tIntShare, 0.75);
+  assert.ok(close(line(run({ tIntShare: 0.375 }), 'tint').sigma, 2 * line(run(), 'tint').sigma));
 });
 
-test('missing: the supply voltage is a value', { todo: 'pages/power.js reads store.ui.pwVdd with 1.8 V as fallback' }, () => {
-  assert.ok('vdd' in run().P);
+test('the supply voltage is a value and moves the power estimate', () => {
+  assert.equal(run().P.vdd, 1.8);
+  assert.ok(close(powerOf(run()), BASE.power, 1e-12));
+  assert.ok(powerOf(run({ vdd: 3.3 })) > powerOf(run()));
 });
 
-test('missing: the PDK minimum capacitor is a value', { todo: '35e-15 is hard coded in checks.js, pages/balance.js, pages/sar.js and pages/optimizer.js' }, () => {
-  assert.ok('cuMin' in run().P);
+test('the PDK minimum capacitor is a value and moves the smallest-capacitor check', () => {
+  assert.equal(run().P.cuMin, 35e-15);
+  assert.equal(run({ cuMin: 50 }).checks.find((c) => c.id === 'small').state, 'warn');
 });
 
-test('missing: the reservoir to CDAC ratio is a value', { todo: 'C RSV = C DAC is hard coded in src/zaan/model/timingBudget.js' }, () => {
-  assert.ok('rsvRatio' in run().P);
+test('the reservoir to CDAC ratio is a value and moves the reservoir switch limit', () => {
+  assert.equal(run().P.rsvRatio, 1);
+  const r = (ctx) => outputs(ctx)['timing budget reservoir rRsvMax at 500 ohm'];
+  assert.ok(r(run({ rsvRatio: 2 })) < r(run()));
+});
+
+test('chip width and height are values and set the chip area', () => {
+  assert.ok(close(run().chipArea, 16e-6));
+  assert.ok(close(run({ chipH: 10 }).chipArea, 2 * run().chipArea));
 });

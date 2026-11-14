@@ -36,7 +36,7 @@ export const page = {
   id: 'timing',
   title: 'Timing budget',
   main() {
-    return `${card('tbBars', 'How the 25 ns are spent, per case', '', 'wide')}
+    return `${card('tbBars', 'How one clock period is spent, per case', '', 'wide')}
       ${card('tbVerdict', 'Time left per decision for comparator plus logic, and the verdict', '', 'wide')}
       ${card('tbSweep', 'Time left per decision against switch resistance', '', 'wide')}
       ${card('tbPrior', 'What Chen and Guo measured in 180 nm', '', 'wide')}
@@ -116,7 +116,7 @@ export const page = {
       ['Comparator decision plus logic, per cycle', 'not set', '', 'needs the PDK; this page reports what is left for it'],
       ['Precharge of the idle CDAC (two CDACs)', 'no time from the conversion', '<span class="stat st-S">S</span>', `Chen 2018, p. 3056. At 40 MS/s the idle CDAC has at most ${ns(1 / P.fs)} for reset and precharge; Chen used 25 ns of 33.3 ns. A shorter precharge time weighs the clock jitter more (Budget, line T int)`],
       ['Recharge of the reservoir', 'no time from the conversion', '<span class="stat st-S">S</span>', 'Guo 2024, p. 2610, Fig. 9(b): T CHG = 12.5 ns while the conversion runs'],
-      ['Reservoir shares with the CDAC', 'inside the first comparison', '<span class="stat st-S">S</span>', `Guo 2024, p. 2607. It must end within one cycle. With C RSV = C DAC (Guo p. 2610) and settling to ½ LSB of full scale, the reservoir switch must stay below about ${num(timingCase(d, P, { ron, scheme: 'reservoir', extraHalf: true, offsetCmp: true, mode }).rRsvMax, 0)} Ω (D). A repeatable error here is only a gain error, so this is on the safe side`],
+      ['Reservoir shares with the CDAC', 'inside the first comparison', '<span class="stat st-S">S</span>', `Guo 2024, p. 2607. It must end within one cycle. With C RSV = ${num(P.rsvRatio, 2)} C DAC (reservoir to CDAC ratio; Guo p. 2610: similar capacitance) and settling to ½ LSB of full scale, the reservoir switch must stay below about ${num(timingCase(d, P, { ron, scheme: 'reservoir', extraHalf: true, offsetCmp: true, mode }).rRsvMax, 0)} Ω (D). A repeatable error here is only a gain error, so this is on the safe side`],
     ]), `Case shown: reservoir, ${heavy.decisions} decisions, offset comparison. Every calculated length is proportional to the switch resistance. The read takes no time while the node parasitic is ${P.cpar ? eng(P.cpar, 'F') : 'not set'}: the node sits at the average of the cell voltages at once, and only its own parasitic has to be charged.`);
 
     last = ctx;

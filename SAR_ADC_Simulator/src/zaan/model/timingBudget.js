@@ -7,7 +7,7 @@
 //     one calibration cycle, summing-node reset (CPRST) during the calibration cycle.
 //     p. 3056: two CDAC arrays (ping-pong), T_int = 25 ns = 3/4 of the period, so precharging
 //     takes no time from the conversion.
-//   Guo 2024, p. 2607 and 2610, Fig. 4(b) and 9(b): 25 ns period, 11 comparisons, ONE CDAC.
+//   Guo 2024, p. 2607 and 2610, Fig. 4(b) and Fig. 9(b) (p. 2609): 25 ns period, 11 comparisons, ONE CDAC.
 //     The CDAC is reset (phi_RST) at the end of a conversion and takes its charge from the
 //     reservoir (phi_REF) during the MSB comparison, which needs no DAC. The reservoir itself is
 //     recharged for T_CHG = 12.5 ns while the conversion runs.
@@ -166,9 +166,12 @@ export function timingCase(d, P, o) {
   const perCycle = left / cycles;
   const guo = cycleOf(PRIOR.guo);
   const verdict = perCycle >= guo ? 'fits' : perCycle >= guo * (1 - MARGINAL) ? 'marginal' : 'not shown';
-  // reservoir share (phi REF) must end inside the first cycle: C_RSV = C_DAC in series (Guo p. 2610), to 0.5 LSB of full scale
+  // reservoir share (phi REF) must end inside the first cycle: C_RSV in series with C_DAC, to 0.5 LSB of full scale.
+  // C_RSV = rsvRatio C_DAC; Guo p. 2610 sets it to a similar capacitance (ratio 1, series C_DAC / 2)
   const cdac = caps.reduce((a, s) => a + s.c, 0);
-  const rRsvMax = o.scheme === 'reservoir' ? perCycle / (Math.log(2 ** (P.bits + 1)) * (cdac / 2)) : null;
+  const ratio = P.rsvRatio ?? 1;
+  const cSeries = (cdac * ratio) / (1 + ratio);
+  const rRsvMax = o.scheme === 'reservoir' ? perCycle / (Math.log(2 ** (P.bits + 1)) * cSeries) : null;
   return { ...o, period, decisions, cycles, parts, fixed, left, perCycle, verdict, shorter: 1 - perCycle / guo, settle, rRsvMax, tInt: o.scheme === 'pingpong' ? period : 12.5e-9 };
 }
 

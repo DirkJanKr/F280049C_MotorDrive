@@ -3,6 +3,7 @@
 // moves along the chain. Below: what feeds the chain (reference, clocks, calibration).
 // Click a card to open its page.
 
+import { NAME } from '../names.js';
 import { eng, num, esc, readouts, fq } from '../kit.js';
 
 export const page = {
@@ -34,9 +35,9 @@ function summaryPanel(ctx) {
     [ctx.ui.qUnit === 'V' ? 'Noise at the input' : 'Noise as charge', fq(ctx, b.total, true), `allowed ${fq(ctx, b.allowed, true)}`, b.ok ? 'ok' : 'bad', 'allowed'],
     ['One LSB', eng(d.qLsb, 'C'), `${eng(d.qLsb / d.cNode[0], 'V')} at the input`, '', 'qlsb'],
     ['Decisions', `${d.decisions}`, `planned ${P.rawDecisions}`, '', 'decisions'],
-    ['CDAC', eng(d.cdac, 'F'), `${num(d.units, 0)} × ${eng(P.cu, 'F')}`, '', 'cdac'],
+    [NAME.cdac, eng(d.cdac, 'F'), `${num(d.units, 0)} × ${eng(P.cu, 'F')}`, '', 'cdac'],
     ['Memory cell', eng(d.cm, 'F'), `${d.memCaps} in the array`, '', 'cm'],
-    ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / (3.2e-3 * 5e-3)) * 100, 2)} % of the chip`, '', 'area'],
+    ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / ctx.chipArea) * 100, 2)} % of the chip`, '', 'area'],
   ])}
   <h3 class="sh">What does not pass</h3>${fails}
   <h3 class="sh">Noise power, share of the allowance</h3><div class="nb">${b.lines
@@ -114,7 +115,7 @@ function chain(ctx) {
   const main = [
     card('beamformer', 'Beamformer', [`${P.channels} × ${P.memCells} memory cells`, `step ${eng(P.delayStep, 's')}`, `CM ${eng(d.cm, 'F')}`], cellsPic(ctx), stateOf(ctx, ['cells'])),
     arrow('charge'),
-    card('sar', 'Charge sharing', [`${d.decisions} decisions`, `CDAC ${eng(d.cdac, 'F')}, ${num(d.units, 0)} units`, `1 LSB = ${eng(d.qLsb, 'C')}`], capsPic(ctx), stateOf(ctx, ['cover', 'tol', 'small'])),
+    card('sar', 'Charge sharing', [`${d.decisions} decisions`, `${NAME.cdac} ${eng(d.cdac, 'F')}, ${num(d.units, 0)} units`, `1 LSB = ${eng(d.qLsb, 'C')}`], capsPic(ctx), stateOf(ctx, ['cover', 'tol', 'small'])),
     arrow('V node'),
     card('budget', 'Comparator', [`noise ${eng(P.compNoise, 'V')} rms`, `last LSB ${eng(lastLsb, 'V')}`, `${num(comp.share, 0)} % of the noise allowance`], compPic(), comp.ok ? 'ok' : 'warn'),
     arrow('bit'),

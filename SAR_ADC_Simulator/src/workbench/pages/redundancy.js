@@ -6,6 +6,7 @@
 // the input full scale: that is overrange, not an error. Tolerance: t_i = sum of later steps
 // + last step - w_i (standard for a redundant search, for example Chang 2013).
 
+import { NAME } from '../names.js';
 import { fill, readouts, explain, eng, num, esc, knobs } from '../kit.js';
 import { PRESETS } from '../weights.js';
 import { designCdac } from '../../zaan/model/cdac.js';
@@ -74,7 +75,7 @@ export const page = {
       const best = searchLists(ctx, store.ui.rdMax);
       const now = ctx.budget.enob;
       const tr = best.map(({ d, enob }, i) => `<tr><td class="num">${d.weights.map((w) => num(w, 2)).join(' ')}</td><td class="num">${d.decisions}</td><td class="num">${num(d.sumW, 1)}</td><td class="num">${num(d.alpha, 3)}</td><td class="num">${num(Math.min(...d.tol.slice(0, -1)), 1)}</td><td class="num"><b>${num(enob, 2)}</b></td><td><button class="mini" data-rduse="${i}">use</button></td></tr>`).join('');
-      fill('rdBest', best.length ? `<div class="tablewrap"><table class="tbl"><thead><tr><th>Weights [LSB]</th><th>Decisions</th><th>Σw</th><th>alpha of the list</th><th>Smallest tolerance [LSB]</th><th>ENOB (estimate)</th><th></th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="cap">No list in the family passes. Allow more decisions, or lower the mismatch or the offset.</p>',
+      fill('rdBest', best.length ? `<div class="tablewrap"><table class="tbl"><thead><tr><th>Weights [LSB]</th><th>Decisions</th><th>Σw</th><th>alpha with the weights of the list</th><th>Smallest tolerance [LSB]</th><th>ENOB (estimate)</th><th></th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="cap">No list in the family passes. Allow more decisions, or lower the mismatch or the offset.</p>',
         `The present weights give ENOB ${num(now, 2)} in the budget. What moves the ENOB: a last step of ½ LSB halves the quantisation by the levels; every LSB of extra Σw is extra capacitance on the node, which makes the comparator noise and the precharge noise larger in LSB. So the best list is the one with a ½ LSB last step and the least redundancy that still covers the errors. The first step does not have to be 256: it only may not be larger than all later steps together plus the last step, and the whole list must reach 511. A smaller first step gives the first decision more tolerance but needs more or larger later steps. "use" loads the list as custom weights.`);
       document.querySelectorAll('[data-rduse]').forEach((b) => {
         b.onclick = () => {
@@ -99,14 +100,14 @@ export const page = {
       ['Present weights: sum', `${num(d.sumW, 1)} LSB`, `binary: ${num(bin.sumW, 0)}`],
       ['Overrange', `${num(d.cover.overrange * 100, 1)} %`, `inputs up to ±${num(d.cover.reach, 0)} LSB convert correctly`],
       ['CDAC charge', eng(d.sumW * d.qLsb, 'C'), `Q LSB · Σw; half the full scale is ${eng(d.qFs / 2, 'C')}`],
-      ['alpha', num(d.alpha, 3), `binary: ${num(bin.alpha, 3)}`],
+      [NAME.alphaW, num(d.alpha, 3), `${NAME.alphaBin}: ${num(bin.alpha, 3)}`],
     ]));
     const tr = rows.map(([name, x]) => {
       const f = x.sumW / bin.sumW;
       const td = tDecOf(x.decisions);
       return `<tr><td>${esc(name)}</td><td class="num wrap">${x.weights.map((w) => num(w, 1)).join(' ')}</td><td class="num">${x.decisions}</td><td class="num">${num(x.sumW, 1)}</td><td class="num">${num(x.cover.overrange * 100, 1)} %</td><td class="num">${eng(x.cdacEff, 'F')} (× ${num(f, 3)})</td><td class="num">${eng(P.vref * f, 'V')}</td><td class="num">${num(x.alpha, 3)}</td><td class="num">${num(Math.min(...x.tol.slice(0, -1)), 1)}</td><td class="num ${td < 1.5e-9 ? 'badc' : ''}">${eng(td, 's')}</td></tr>`;
     }).join('');
-    fill('rdTab', `<div class="tablewrap"><table class="tbl"><thead><tr><th>List</th><th>Weights [LSB]</th><th>Decisions</th><th>Σw</th><th>Overrange</th><th>C DAC at V REF = ${eng(P.vref, 'V')}</th><th>or V REF at the binary C DAC</th><th>alpha</th><th>Smallest tolerance [LSB]</th><th>Time per decision</th></tr></thead><tbody>${tr}</tbody></table></div>`,
+    fill('rdTab', `<div class="tablewrap"><table class="tbl"><thead><tr><th>List</th><th>Weights [LSB]</th><th>Decisions</th><th>Σw</th><th>Overrange</th><th>C DAC charge carrying, at V REF = ${eng(P.vref, 'V')}</th><th>or V REF at the C DAC of the binary array</th><th>alpha with these weights</th><th>Smallest tolerance [LSB]</th><th>Time per decision</th></tr></thead><tbody>${tr}</tbody></table></div>`,
       `C DAC is the capacitance that carries reference charge; the halving capacitors start empty. Time per decision: 78 % of the ${eng(1 / P.fs, 's')} period shared by the decisions and the offset-calibration comparison (the rest is charge redistribution and reset, read off Chen Fig. 4(b), an assumption); Chen has 2.4 ns. Red: below 1.5 ns, which is my assumption for what 0.18 µm logic and a comparator can do, not a paper value.`);
   },
 };

@@ -1,5 +1,6 @@
 // Mismatch page: Monte Carlo over many chips, one chip in detail, and the area on the chip.
 
+import { NAME } from '../names.js';
 import { group, knobs, card, fill, widthOf, plot, readouts, explain, eng, num, esc, COL } from '../kit.js';
 import { designCdac } from '../../zaan/model/cdac.js';
 import { drawChip, convert, combine } from '../../zaan/model/chargeSar.js';
@@ -9,7 +10,6 @@ import { testChip } from '../../zaan/model/testbench.js';
 import { summarise } from '../../zaan/model/montecarlo.js';
 import { createRng } from '../../model/rng.js';
 import { L, runLms, dnlWith, diagram, describeLms } from '../anim/lmsAnim.js';
-import { CHIP } from '../design.js';
 
 const mc = { result: null, yieldCu: null, running: false, key: '' };
 
@@ -51,7 +51,7 @@ export const page = {
       ['Binary matching would need', eng(ctx.binCu, 'F'), 'unit capacitor for 3σ DNL < 0.5 LSB'],
       ['ENOB, this chip', `${num(sim.sRaw.enob, 2)} → ${num(sim.sCal.enob, 2)}`, 'design → calibrated', sim.sCal.enob >= P.enobAim ? 'ok' : 'bad'],
       ['Peak DNL, this chip', `${num(sim.linRaw.peakDnl, 2)} → ${num(sim.linCal.peakDnl, 2)}`, 'LSB'],
-      ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / (CHIP.w * CHIP.h)) * 100, 2)} % of the chip`, '', 'area'],
+      ['Capacitor area', `${num(ctx.areaTotal * 1e6, 3)} mm²`, `${num((ctx.areaTotal / ctx.chipArea) * 100, 2)} % of the chip`, '', 'area'],
     ]));
     const key = JSON.stringify([d.weights, ctx.steps.map((s) => s.kind), P.cu, P.aC, P.chips, P.seed, P.bits]);
     if (key !== mc.key) {
@@ -84,14 +84,14 @@ export const page = {
 function area(ctx, w) {
   const { d, P } = ctx;
   const cw = Math.min(220, w * 0.32);
-  const ch = (cw * CHIP.h) / CHIP.w;
-  const s = (a) => (Math.sqrt(a) / CHIP.w) * cw;
+  const ch = (cw * P.chipH) / P.chipW;
+  const s = (a) => (Math.sqrt(a) / P.chipW) * cw;
   const bin = designCdac({ ...P, radix: 2, cu: ctx.binCu, halvingOn: 'charge halving' }, P.memCells);
   const binA = ((bin.cdac + bin.memCaps * bin.cm) * P.routing) / P.density;
-  const rows = [['Memory cells', `${d.memCaps} × ${eng(d.cm, 'F')}`, ctx.memArea], ['CDAC', `${num(d.units, 2)} × ${eng(P.cu, 'F')}`, ctx.cdacArea], ['Total', `× ${num(P.routing, 1)} routing and switches`, ctx.areaTotal]];
+  const rows = [['Memory cells', `${d.memCaps} × ${eng(d.cm, 'F')}`, ctx.memArea], [NAME.cdac, `${num(d.units, 2)} × ${eng(P.cu, 'F')}`, ctx.cdacArea], ['Total', `× ${num(P.routing, 1)} routing and switches`, ctx.areaTotal]];
   fill('mmArea', `<div class="areabox"><svg viewBox="0 0 ${cw + 20} ${ch + 20}" class="tsvg" style="max-width:${cw + 20}px"><rect x="10" y="10" width="${cw}" height="${ch}" class="die"/><rect x="18" y="18" width="${s(binA)}" height="${s(binA)}" class="ar-bin"/><rect x="18" y="18" width="${s(ctx.memArea)}" height="${s(ctx.memArea)}" class="ar-mem"/><rect x="${22 + s(ctx.memArea)}" y="18" width="${s(ctx.cdacArea)}" height="${s(ctx.cdacArea)}" class="ar-cdac"/></svg>
-    <table class="tbl"><thead><tr><th>Part</th><th>How many</th><th>mm²</th><th>% of chip</th></tr></thead><tbody>${rows.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td class="num">${num(c * 1e6, 4)}</td><td class="num">${num((c / (CHIP.w * CHIP.h)) * 100, 2)}</td></tr>`).join('')}
-    <tr><td class="dim">Binary, matched units</td><td class="dim">${eng(ctx.binCu, 'F')} units</td><td class="num dim">${num(binA * 1e6, 3)}</td><td class="num dim">${num((binA / (CHIP.w * CHIP.h)) * 100, 1)}</td></tr></tbody></table></div>`, 'Blue: memory cells, teal: CDAC, faint red: the same converter with binary weights and units large enough for matching. Capacitor plates at the density set in the side panel; comparator, logic and IQ demodulator are not included.');
+    <table class="tbl"><thead><tr><th>Part</th><th>How many</th><th>mm²</th><th>% of chip</th></tr></thead><tbody>${rows.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td class="num">${num(c * 1e6, 4)}</td><td class="num">${num((c / ctx.chipArea) * 100, 2)}</td></tr>`).join('')}
+    <tr><td class="dim">Binary, matched units</td><td class="dim">${eng(ctx.binCu, 'F')} units</td><td class="num dim">${num(binA * 1e6, 3)}</td><td class="num dim">${num((binA / ctx.chipArea) * 100, 1)}</td></tr></tbody></table></div>`, 'Blue: memory cells, teal: CDAC, faint red: the same converter with binary weights and units large enough for matching. Capacitor plates at the density set in the side panel; comparator, logic and IQ demodulator are not included.');
 }
 
 function runMc(store, btn) {

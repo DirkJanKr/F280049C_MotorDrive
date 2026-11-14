@@ -8,9 +8,11 @@ import { group, knobs, num } from './kit.js';
 const GROUPS = [
   ['target', 'Target', ['enobAim', 'bits', 'fs', 'fullScale']],
   ['balance', 'Charge balance', ['cm', 'alpha', 'lsbPerUnit', 'cpar']],
-  ['caps', 'Capacitors', ['pairSigma', 'density', 'routing', 'slotCal']],
+  ['caps', 'Capacitors', ['pairSigma', 'density', 'cuMin', 'routing', 'slotCal']],
   ['comparator', 'Comparator', ['compNoise', 'vosCal', 'vos']],
   ['beam', 'Beamformer', ['channels', 'pitch', 'steer', 'delayStep', 'memCells']],
+  ['reference', 'Reference and supply', ['tIntShare', 'rsvRatio', 'vdd']],
+  ['chip', 'Chip', ['chipW', 'chipH']],
   ['sim', 'Simulation', ['seed', 'chips']],
 ];
 
@@ -20,17 +22,17 @@ const PAGE = {
   balance: { open: ['balance', 'target'] },
   redundancy: { open: ['balance', 'comparator'], extra: ['rawDecisions'] },
   budget: { open: ['target', 'comparator', 'balance'], extra: ['outBits', 'temperature', 'jitter', 'calMethod', 'f0', 'fbw'] },
-  power: { open: ['target', 'balance'] },
+  power: { open: ['target', 'balance', 'reference'] },
   sar: { open: ['comparator'], extra: ['rawDecisions'], html: (ui) => group('In the step-by-step view', BUCKET(ui), true) },
   levels: { open: ['caps', 'sim'], extra: ['outBits'] },
   matching: { open: ['caps'] },
-  mismatch: { open: ['caps', 'balance', 'sim'] },
+  mismatch: { open: ['caps', 'balance', 'sim', 'chip'] },
   offset: { open: ['balance', 'comparator'] },
   beamformer: { open: ['beam'], extra: ['rxFocus', 'c', 'f0', 'fbw'] },
   chen: { open: ['target', 'beam'] },
   logic: { extra: ['tSample', 'tLogic', 'tauDac', 'ibias', 'gmId', 'cload', 'vfinal'] },
-  timing: { extra: ['ron', 'swSize', 'fs', 'cpar', 'vosCal'] },
-  reference: { open: ['balance'], extra: ['jitter'] },
+  timing: { open: ['reference'], extra: ['ron', 'swSize', 'fs', 'cpar', 'vosCal'] },
+  reference: { open: ['balance', 'reference'], extra: ['jitter'] },
   iq: { extra: ['iqTaps', 'iqCut', 'iqDecim', 'iqTest', 'f0', 'fbw'] },
 };
 

@@ -70,10 +70,13 @@ export function chargeLines(P, d, { arrayGain = true, res = null, split = true, 
     { id: 'comp', label: 'Comparator noise at the last decision', sigma: comparatorCharge(P, d, d.decisions - 1), perChannel: false },
     { id: 'samp', label: 'kT/C of the memory cells', sigma: arrayGain ? Math.sqrt(N) * cellOne : N * cellOne, perChannel: true },
     { id: 'pre', label: 'CDAC precharge noise (kT/C estimate)', sigma: prechargeCharge(P, d), perChannel: false },
-    // Chen 2018 p. 3056: jitter on T int changes the whole reference charge; for a full-scale sine sigma_Q = (sigma_t / T int) Q FS / (2 sqrt 2)
-    { id: 'tint', label: 'Jitter on the precharge time T int', sigma: ((P.jitter / (0.75 / P.fs)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
-    // Rabuske 2017, eq. 4.42 with the PDK matching: gain differs per read slot; zero when calibrated per slot
-    { id: 'slot', label: `Read-slot gain variation${P.slotCal ? ' (calibrated)' : ', at full scale'}`, sigma: P.slotCal ? 0 : ((P.aC / 100 / Math.sqrt(d.cm * 1e15) / Math.sqrt(N)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
+    // Chen 2018 p. 3056: jitter on T int changes the whole reference charge; for a full-scale sine sigma_Q = (sigma_t / T int) Q FS / (2 sqrt 2),
+    // T int = (T int share) / fs, the share is 3/4 in Chen
+    { id: 'tint', label: 'Jitter on the precharge time T int', sigma: ((P.jitter / (P.tIntShare / P.fs)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
+    // Rabuske 2017, eq. 4.38 and 4.42 with the PDK matching: gain differs per read slot; zero when calibrated per slot.
+    // N fresh cells on each side; only their common part (e p + e n) / 2 changes the gain, so sigma G = sigma(C M) / sqrt(2 N).
+    // The difference between the sides is second order (eq. 4.30, 4.33).
+    { id: 'slot', label: `Read-slot gain variation${P.slotCal ? ' (calibrated)' : ', at full scale'}`, sigma: P.slotCal ? 0 : ((P.aC / 100 / Math.sqrt(d.cm * 1e15) / Math.sqrt(2 * N)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
     { id: 'jit', label: 'Sampling clock jitter', sigma: N * d.cm * 2 * Math.PI * fJ * P.jitter * vrms, perChannel: false },
   ];
 }

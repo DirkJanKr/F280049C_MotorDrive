@@ -2,21 +2,16 @@
 // Used by test/coupling.test.mjs and to write the baseline snapshot.
 
 import { timingCase } from '../src/zaan/model/timingBudget.js';
+import { powerEstimate } from '../src/workbench/pages/power.js';
 
 /** The case the summary bar shows (the same as mainCase in pages/timing.js), for a given switch resistance. */
 export function timingMain(ctx, ron = ctx.P.ron || 0) {
   return timingCase(ctx.d, ctx.P, { ron, scheme: 'pingpong', extraHalf: false, offsetCmp: false, mode: ctx.P.swMode });
 }
 
-/** The power estimate of pages/power.js, written out again because the page computes it inside update(). */
-export function powerOf(ctx, vdd = 1.8) {
-  const { P, d } = ctx;
-  const chen = { p: 1.58e-3, fs: 30e6, cycles: 11, vdd: 1.8, qref: 1.5e-12 * 0.16 };
-  const scale = (P.fs / chen.fs) * ((d.decisions + 1) / chen.cycles) * (vdd / chen.vdd) ** 2;
-  const pLogic = chen.p * scale;
-  const pRef = vdd * d.cdacEff * P.vref * P.fs;
-  const pRefChen = chen.vdd * chen.qref * chen.fs;
-  return pLogic + pRef - pRefChen * scale;
+/** The power estimate of pages/power.js, at the supply of the values or at another one. */
+export function powerOf(ctx, vdd = ctx.P.vdd) {
+  return powerEstimate({ ...ctx.P, vdd }, ctx.d).total;
 }
 
 /** A flat list of named numbers taken from the context. */
@@ -60,6 +55,9 @@ export function outputs(ctx) {
     'timing budget perCycle at 500 ohm': timingMain(ctx, 500).perCycle,
     'timing budget read at 500 ohm': timingMain(ctx, 500).parts[0].t,
     power: powerOf(ctx),
+    'd.alphaEff': ctx.d.alphaEff,
+    chipArea: ctx.chipArea,
+    'timing budget reservoir rRsvMax at 500 ohm': timingCase(ctx.d, ctx.P, { ron: 500, scheme: 'reservoir', extraHalf: false, offsetCmp: false, mode: ctx.P.swMode }).rRsvMax,
   };
   for (const l of budget.lines) out[`budget line ${l.id}`] = l.sigma;
   for (const l of budget.lines) out[`budget line ${l.id} lsb`] = l.lsb;

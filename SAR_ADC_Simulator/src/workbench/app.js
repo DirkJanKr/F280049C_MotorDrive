@@ -1,6 +1,7 @@
 // Zaan workbench: pages for the system, beamformer, SAR ADC, mismatch and area,
 // timing, SAR logic and values. Summary bar and side panel can be shown or hidden.
 
+import { NAME } from './names.js';
 import { store, load, subscribe, setValue, setUi, changed, resetValues, saveVersion, deleteVersion, loadVersion, exportJson, importJson } from './store.js';
 import { PRESETS } from './weights.js';
 import { eng, num, esc, fq } from './kit.js';
@@ -83,7 +84,7 @@ function summary() {
     ['delay step', eng(P.delayStep, 's'), 'beamformer'],
     ['cells per channel', `${P.memCells}`, 'beamformer', c.need.m > P.memCells ? 'bad' : ''],
     ['decisions', `${d.decisions}`, 'sar', d.decisions !== P.rawDecisions ? 'warn' : ''],
-    ['CDAC', eng(d.cdac, 'F'), 'sar'],
+    [NAME.cdac, eng(d.cdac, 'F'), 'sar'],
     ['memory cell', eng(d.cm, 'F'), 'sar'],
     ['capacitor area', `${num(c.areaTotal * 1e6, 3)} mm²`, 'mismatch'],
     ['time per decision', eng(mainCase(c).perCycle, 's'), 'timing', { fits: 'ok', marginal: 'warn', 'not shown': 'bad' }[mainCase(c).verdict]],

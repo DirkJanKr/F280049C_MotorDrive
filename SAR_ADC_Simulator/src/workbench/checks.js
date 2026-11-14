@@ -1,8 +1,7 @@
 // Every pass or fail of the design, with the reason in numbers and what would fix it.
 
+import { NAME } from './names.js';
 import { eng, num, fq } from './kit.js';
-
-const PDK_MIN = 35e-15;
 
 function fixFor(line, ctx) {
   const { P, d, budget } = ctx;
@@ -23,7 +22,7 @@ function fixFor(line, ctx) {
     case 'samp':
       return `This charge is √(2kT·N·CM)${budget.arrayGain ? '' : ' × √N (beamformer gain is off)'}. Relative to the signal it shrinks with a larger C M.`;
     case 'pre':
-      return `This charge is √(4kT·CDAC) = ${fq(ctx, line.sigma, true)}; a larger alpha (larger V REF, smaller CDAC) lowers it relative to the LSB.`;
+      return `This charge is √(4 kT C DAC + n½ · 4 kT C u / 2) = ${fq(ctx, line.sigma, true)}, C DAC the ${NAME.cdac}, n½ the number of halving steps; a larger alpha (larger V REF, smaller C DAC) lowers it relative to the LSB.`;
     case 'slot':
       return 'Correct the gain of each of the read slots digitally (one factor per slot), or use larger memory cells.';
     case 'tint':
@@ -74,10 +73,10 @@ export function runChecks(ctx) {
     why: need.m > P.memCells ? `At ±${num(Math.abs(P.steer) * (180 / Math.PI), 1)}° the longest delay is ${eng(ctx.tauMax, 's')}; that takes ${need.m} cells of ${eng(ctx.tw, 's')}, more than the ${P.memCells} there are.` : `The longest delay ${eng(ctx.tauMax, 's')} fits in ${need.m} of the ${P.memCells} cells.`,
     fix: need.m > P.memCells ? `Set ${need.m} cells, or reduce the steering range.` : '', go: 'beamformer', f: 'cells',
   });
-  const small = ctx.smallest < PDK_MIN - 1e-21;
+  const small = ctx.smallest < P.cuMin - 1e-21;
   out.push({
-    id: 'small', label: 'Smallest capacitor', state: small ? 'warn' : 'ok', value: eng(ctx.smallest, 'F'), limit: 'PDK minimum 35 fF',
-    why: small ? `A step uses a ${eng(ctx.smallest, 'F')} capacitor, below the 35 fF minimum of the MIM device; its matching is unknown from the PDK.` : 'Every capacitor is at least the PDK minimum.',
+    id: 'small', label: 'Smallest capacitor', state: small ? 'warn' : 'ok', value: eng(ctx.smallest, 'F'), limit: `PDK minimum ${eng(P.cuMin, 'F')}`,
+    why: small ? `A step uses a ${eng(ctx.smallest, 'F')} capacitor, below the ${eng(P.cuMin, 'F')} minimum of the MIM device; its matching is unknown from the PDK.` : 'Every capacitor is at least the PDK minimum.',
     fix: small ? 'Use charge halving for the steps below one unit.' : '', go: 'sar', f: 'smallest',
   });
   out.push({

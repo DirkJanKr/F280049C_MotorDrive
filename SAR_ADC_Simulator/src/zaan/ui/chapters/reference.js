@@ -72,13 +72,13 @@ export const chapter = {
       check('Offset during weight calibration', 'Offset present while the weights are measured can push decisions outside their redundancy range and corrupt the weights (Lopez-Angulo, IMSE). Calibrate the offset first, or keep it within the tolerance during weight calibration.') +
       insight('Why the reference stays quiet', 'The reference only refills the CDAC between conversions, with the same charge every time. During the decisions it is disconnected, so the analog channels sharing it see no signal-dependent spikes.');
     fillReadouts(document.getElementById('rf-ro'), [
-      ['Precharge per conversion', eng(pre.q, 'C'), 'estimate: 2 · VREF · CDAC'],
+      ['Precharge per conversion', eng(pre.q, 'C'), 'V REF times the precharged capacitance (Chen 2018, eq. 2)'],
       ['Average reference current', eng(pre.current, 'A'), `at ${num(P.fs / 1e6, 0)} MS/s`],
       ['Offset at last decision', `${num(off(P.vosCal)[n - 1], 2)} LSB`, `after calibration (${num(P.vosCal * 1e3, 2)} mV)`],
       ['Ping-pong CDAC area', eng(2 * d.cdac, 'F'), 'two copies'],
     ]);
     document.getElementById('rf-math').innerHTML = [
-      eq(v('Q', 'pre'), '≈', `2 ${v('V', 'REF')} ${v('C', 'DAC')}`, '=', `2 × ${num(P.vref * 1e3, 0)} ${t('mV')} × ${eng(d.cdac, 'F')}`, '=', eng(pre.q, 'C'), t('(estimate)')),
+      eq(v('Q', 'pre'), '=', `${v('V', 'REF')} ${v('C', 'pre')}`, '=', `${num(P.vref * 1e3, 0)} ${t('mV')} × ${eng(pre.q / P.vref, 'F')}`, '=', eng(pre.q, 'C'), t('(C pre: whole-unit capacitors and the one halving source unit; the halving capacitors start empty)')),
       eq(v('I', 'avg'), '=', `${v('Q', 'pre')} ${v('f', 's')}`, '=', eng(pre.current, 'A')),
       eq(t('offset in LSB at decision'), v('i'), '=', frac(`${v('C', 'node,i')} ${v('V', 'os')}`, v('Q', 'LSB'))),
     ].join('');

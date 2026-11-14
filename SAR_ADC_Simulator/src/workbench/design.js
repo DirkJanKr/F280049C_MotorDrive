@@ -15,7 +15,17 @@ import { buildSteps } from '../zaan/model/steps.js';
 import { createRng } from '../model/rng.js';
 import { stepsFor } from './weights.js';
 
-export const CHIP = { w: 3.2e-3, h: 5e-3 };
+// The PDK gives the pair mismatch as 0.0499 µm / √(W L). pairSigma is that figure for a 35 fF capacitor at
+// 2 fF/µm² (source of pairSigma in values.js), so these two numbers belong to the figure, not to the design.
+const PAIR_AT = { cFf: 35, density: 2e-3 };
+
+/**
+ * Mismatch coefficient A C [% √fF] of one capacitor: σ(C) = A C / √(C / 1 fF).
+ * The pair figure scales with the area W L = C / density, so at another density the same capacitance matches differently.
+ */
+export function mismatchCoefficient(pairSigma, density) {
+  return (pairSigma / Math.SQRT2) * Math.sqrt(PAIR_AT.cFf * (density / PAIR_AT.density)) * 100;
+}
 
 export function siOf(values, id) {
   const x = values.find((q) => q.id === id);
@@ -33,10 +43,11 @@ export function modelParams(values) {
     cmIn: g('cm'), alphaIn: g('alpha'), cdacBalance: bal.cdac, cpar: g('cpar') || 0, slotCal: g('slotCal') !== 'not calibrated',
     fs: g('fs'), f0: g('f0'), fbw: g('fbw'), fullScale: g('fullScale'), bits: g('bits'), outBits: Math.max(g('bits'), g('outBits') ?? g('bits')), calMethod: g('calMethod'), enobAim: g('enobAim'), rawDecisions: g('rawDecisions'),
     channels: g('channels'), pitch: g('pitch'), steer: g('steer'), focus: g('rxFocus') ?? Infinity, delayStep: g('delayStep'), c: g('c'), memCells: g('memCells'),
-    vref: bal.vref, cu: bal.cu, density: g('density'), aC: ((pair / Math.SQRT2) * Math.sqrt(35)) * 100, routing: g('routing'),
+    vref: bal.vref, cu: bal.cu, density: g('density'), aC: mismatchCoefficient(pair, g('density')), routing: g('routing'), cuMin: g('cuMin'),
     radix: g('radix'), topUnits: g('topUnits'), lsbPerUnit: g('lsbPerUnit'), halvings: g('halvings'), halvingOn: g('halvingOn'),
     vos: g('vos'), vosCal: g('vosCal'), compNoise: g('compNoise'), ibias: g('ibias'), gmId: g('gmId'), cload: g('cload'), vfinal: g('vfinal'),
     iqTaps: g('iqTaps'), iqDecim: g('iqDecim'), iqCut: g('iqCut'), iqTest: g('iqTest'), ron: g('ron'), swMode: g('swSize') === 'one pair per unit capacitor' ? 'unit' : 'same', tSample: g('tSample'), tauDac: g('tauDac'), tLogic: g('tLogic'), temperature: g('temperature'), jitter: g('jitter'), chips: g('chips'), seed: g('seed'),
+    tIntShare: g('tIntShare'), rsvRatio: g('rsvRatio'), vdd: g('vdd'), chipW: g('chipW'), chipH: g('chipH'),
   };
 }
 
@@ -111,7 +122,7 @@ export function design(values, ui) {
   const ctx = {
     P, steps, stepsError: s.error, d, tw, tauMax, need, delays, qd, halfSteps, sim, res, budget, enob, timing, vrms, tolNeed,
     tauC: comparatorTau(P), settle: settlingTimes(d, P.tauDac), phaseErr: worstPhaseError(P.f0, P.delayStep),
-    memArea, cdacArea, areaTotal: memArea + cdacArea, smallest, binCu: binaryMatchingCu(P).cu,
+    memArea, cdacArea, areaTotal: memArea + cdacArea, chipArea: P.chipW * P.chipH, smallest, binCu: binaryMatchingCu(P).cu,
     sigmaU, lambda: P.c / P.f0, ui,
     // the binary CDAC of the charge balance, for the Charge balance page
     dBin: designCdac(P, P.memCells, binarySteps(P.bits, P.lsbPerUnit)),

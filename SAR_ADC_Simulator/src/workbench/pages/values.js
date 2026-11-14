@@ -1,5 +1,6 @@
 // Values page: every value in one list, design versions, and export.
 
+import { NAME } from '../names.js';
 import { GROUPS, STATUS } from '../values.js';
 import { eng, num, tidyTables } from '../kit.js';
 import { exportJson } from '../store.js';
@@ -20,14 +21,16 @@ export const page = {
     const vers = store.versions.map((v) => `<li><b>${esc(v.name)}</b> <span class="cap">${esc(v.date.slice(0, 16).replace('T', ' '))}</span> <button class="mini" data-loadv="${esc(v.name)}">load</button> <button class="mini" data-delv="${esc(v.name)}">delete</button></li>`).join('');
     const c = store.ctx;
     const dv = [
-      ['V REF', eng(c.P.vref, 'V'), 'alpha · V in,max / 2', 'Chen 2018 eq. 3 with Rabuske 2016 eq. 3'],
-      ['C DAC (binary)', eng(c.P.cdacBalance, 'F'), 'N · C M / (2 · alpha)', 'Chen 2018 eq. 3'],
+      ['V REF', eng(c.P.vref, 'V'), 'alpha · V in,max / 2, with the alpha, input', 'Chen 2018 eq. 3 with Rabuske 2017 eq. 4.58'],
+      [NAME.cdacBalance, eng(c.P.cdacBalance, 'F'), 'N · C M / (2 · alpha), with the alpha, input', 'Chen 2018 eq. 3'],
       ['Q FS', eng(c.d.qFs, 'C'), 'N · C M · V in,max', 'Q+ − Q−, peak to peak'],
       ['Q LSB', eng(c.d.qLsb, 'C'), 'Q FS / 2^B', ''],
       ['Unit capacitor C u', eng(c.P.cu, 'F'), 'n u · Q LSB / (2 · V REF)', 'one unit moves 2 V REF C u = n u LSB'],
-      ['CDAC of the present weights', eng(c.d.cdac, 'F'), 'units · C u', `${num(c.d.units, 2)} units, ${num(c.d.sumW / c.P.lsbPerUnit, 2)} carry charge`],
-      ['alpha of the present weights', num(c.d.alpha, 3), 'N · C M / (2 · C DAC that carries charge)', ''],
-      ['σ of one unit capacitor', `${num(c.sigmaU * 100, 3)} %`, 'pair σ / √2 · √(35 fF / C u)', 'PDK area scaling'],
+      [NAME.cdac, eng(c.d.cdac, 'F'), 'units · C u', `${num(c.d.units, 2)} units; the halving capacitors start empty`],
+      [NAME.cdacEff, eng(c.d.cdacEff, 'F'), 'Σ w / n u · C u', `${num(c.d.sumW / c.P.lsbPerUnit, 2)} units carry charge`],
+      [NAME.alphaW, num(c.d.alpha, 3), `N · C M / (2 · ${NAME.cdacEff})`, 'Rabuske 2017 eq. 4.58'],
+      [NAME.alphaEff, num(c.d.alphaEff, 3), `N · C M / (2 · ${NAME.cdacEff} + C par)`, 'Rabuske 2017 eq. 4.21 and 4.58 with C par on the node (eq. 4.13); equal to the one above while C par = 0'],
+      ['σ of one unit capacitor', `${num(c.sigmaU * 100, 3)} %`, 'pair σ / √2 · √(35 fF · ρ / (2 fF/µm² · C u))', 'PDK area scaling: the pair figure is for 35 fF at 2 fF/µm², ρ is the capacitor density'],
       ['Longest delay', eng(c.tauMax, 's'), '(N − 1) · pitch · sin θ / c', ''],
     ];
     const legend = `<section class="card wide"><header><h3>Status of every value</h3></header><p class="cap" style="margin:0">${Object.entries(STATUS).map(([k, t]) => `<span class="stat st-${k}">${k}</span> ${esc(t)}`).join(' &nbsp; ')}. No value is decided unless it is marked U. Change a status with the selector in front of a value.</p>

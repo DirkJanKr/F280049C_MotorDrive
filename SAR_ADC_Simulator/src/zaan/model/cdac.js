@@ -11,7 +11,7 @@
 //   between the two summing nodes changes Q+ - Q- by 2 C V_REF, with either sign,
 //   so the peak-to-peak range of the whole CDAC is 4 V_REF C_DAC.
 //
-// Rabuske and Fernandes 2016, eq. 3, p. 1411 (as given in the spec; PDF not in the repo):
+// Rabuske and Fernandes 2017, eq. 4.58, p. 89:
 //
 //   alpha = C_TH / (2 * C_DAC),  C_TH = N * C_M
 //
@@ -21,8 +21,8 @@
 //   Q_FS  = N * C_M * V_in,max          Q_LSB = Q_FS / 2^B
 //
 // Charge convention in this code: Q = Q+ - Q-, the difference of the charges on the
-// two summing nodes, each on its own capacitance N * C_M. Rabuske eq. 5 uses the
-// differential-mode charge (C_TH / 2) * V, which is half of this; voltages are the same.
+// two summing nodes, each on its own capacitance N * C_M. Rabuske 2017, eq. 4.21 and its text
+// (p. 72 to 73) uses the differential-mode charge (C_TH / 2) * V, which is half of this; voltages are the same.
 //
 // The unit capacitor follows from the LSB (D): one unit delivers 2 V_REF C_u = n_u Q_LSB,
 // so C_u = n_u * Q_LSB / (2 * V_REF) = n_u * N * C_M / (2^B * alpha), n_u = LSB per unit.
@@ -71,6 +71,9 @@ export function designCdac(P, cells = 22, givenSteps = null) {
   return {
     steps, weights, stepW, sumW, decisions: steps.length + 1, codes, units, cdac, cdacEff, qUnit, qStep, qLsb, qFs, cm, cmSlide, cAdd, cNode, cTh,
     alpha: (P.channels * cm) / (2 * cdacEff), alphaPhysical: (P.channels * cm) / (2 * cdac),
+    // alpha with the node parasitic: the node at the end is C TH + C par + 2 C DAC = C TH (1 + 1 / alphaEff),
+    // Rabuske 2017, eq. 4.21 and 4.58 with C par added to the sampling capacitance in the denominator only (eq. 4.13)
+    alphaEff: cTh / (2 * cdacEff + (P.cpar || 0)),
     tol: tolerances(weights), cover: coverage(weights, P.bits), memCaps, plateArea: plates, area: plates * P.routing,
   };
 }

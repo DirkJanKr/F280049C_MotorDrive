@@ -14,8 +14,8 @@ const RESET = 0.12; // share for CPRST (A, from Fig. 4(b))
 function setup(ctx, which) {
   const { P, d } = ctx;
   return which === 'chen'
-    ? { name: 'Chen 2018', T: 1 / 30e6, cells: 8, ch: 9, n: 10, half: false }
-    : { name: 'Zaan', T: 1 / P.fs, cells: P.memCells, ch: P.channels, n: d.decisions, half: P.delayStep < 1 / P.fs - 1e-12 };
+    ? { name: 'Chen 2018', T: 1 / 30e6, cells: 8, ch: 9, n: 10, half: false, tIntShare: 0.75 }
+    : { name: 'Zaan', T: 1 / P.fs, cells: P.memCells, ch: P.channels, n: d.decisions, half: P.delayStep < 1 / P.fs - 1e-12, tIntShare: P.tIntShare };
 }
 
 export const page = {
@@ -47,13 +47,13 @@ export const page = {
   update(store, ctx) {
     const s = setup(ctx, store.ui.chenWhich || 'chen');
     const tDec = (s.T * (1 - REDIS - RESET)) / (s.n + 1);
-    const tint = 0.75 * s.T;
+    const tint = s.tIntShare * s.T;
     fill('chRo', readouts([
       ['Clock period T', eng(s.T, 's'), `${num(1e-6 / s.T, 0)} MS/s`],
       ['Memory cells', `${s.cells}`, `longest delay ${eng((s.cells - 1) * s.T, 's')}`],
       ['Decisions', `${s.n} + 1`, 'the extra one calibrates the offset'],
       ['Time per decision', eng(tDec, 's'), 'comparator, logic and settling together', tDec < 1.5e-9 ? 'bad' : 'ok'],
-      ['T int', eng(tint, 's'), '3/4 of the period'],
+      ['T int', eng(tint, 's'), `${num(s.tIntShare, 2)} of the period${s.name === 'Zaan' ? ' (T int share, side panel)' : ', p. 3056'}`],
       ['20 ps jitter on T int', `${num((20e-12 / tint) * 2 ** (ctx.P.bits - 1) / Math.SQRT2, 2)} LSB rms`, 'full-scale sine'],
     ]));
     diagram(s, widthOf('chView', 1000));
@@ -64,7 +64,7 @@ export const page = {
       `<b>Less time per decision.</b> Chen: ${eng(td(c), 's')} for each of 10 + 1 decisions. Zaan: ${eng(td(z), 's')} for each of ${z.n} + 1, because the period is shorter (${eng(z.T, 's')} against ${eng(c.T, 's')}) and there are more decisions. Chen's process is the same 0.18 µm node.`,
       `<b>The 12.5 ns delay step needs a second sampling phase.</b> Chen has one set of sampling clocks and a delay step of one period. With the inverted clock a channel on the half step samples half a period later, so its cell has half a period less between sampling and readout: the shortest delay is no longer a full period for those channels. The readout stays common to all channels.`,
       `<b>More clocks to route.</b> ${z.cells} sampling clocks (twice that with the second phase) and ${z.cells} readout clocks for each of ${z.ch} channels, against 8 and 8 × 9.`,
-      `<b>Shorter T int.</b> ${eng(0.75 * z.T, 's')} against 25 ns: the same clock jitter is ${num(25e-9 / (0.75 * z.T), 2)} times more reference noise.`,
+      `<b>Shorter T int.</b> ${eng(z.tIntShare * z.T, 's')} against 25 ns: the same clock jitter is ${num(25e-9 / (z.tIntShare * z.T), 2)} times more reference noise.`,
       `<b>The longest hold is longer.</b> A cell holds its charge up to ${eng((z.cells - 1) * z.T, 's')} (Chen: 233 ns), so leakage and the settling of ${z.cells} switches per channel on the summing node count more.`,
     ].map((x) => `<li>${x}</li>`).join(''));
   },

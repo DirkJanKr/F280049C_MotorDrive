@@ -1,6 +1,12 @@
 // Timing inside one conversion: settling of each step and comparator decision time.
 
-/** DAC settling for step i: binary to 0.5 LSB, with redundancy only to the next tolerance (slide 23). */
+/**
+ * DAC settling for step i: binary to 0.5 LSB, with redundancy only to the next tolerance (slide 23).
+ * One time constant per step, tau ln(w / t next). Kept for the optimizer and the illustrative Timing chart.
+ * The timing budget does not use it: it uses the RC network of all connected capacitors in timingBudget.js,
+ * because ngspice shows that a small late step first overshoots and then returns with the time constant of
+ * the largest earlier capacitor (spice/settling.mjs).
+ */
 export function settlingTimes(d, tau) {
   return d.weights.map((w, i) => {
     const tNext = Math.max(0.5, d.tol[i + 1] ?? 0.5);
