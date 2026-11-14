@@ -38,7 +38,8 @@ export const page = {
   main() {
     return `${card('tbBars', 'How the 25 ns are spent, per case', '', 'wide')}
       ${card('tbVerdict', 'Time left per decision for comparator plus logic, and the verdict', '', 'wide')}
-      <div class="grid2">${card('tbSweep', 'Time left per decision against switch resistance')}${card('tbPrior', 'What Chen and Guo measured in 180 nm')}</div>
+      ${card('tbSweep', 'Time left per decision against switch resistance', '', 'wide')}
+      ${card('tbPrior', 'What Chen and Guo measured in 180 nm', '', 'wide')}
       ${card('tbParts', 'The intervals of one period', '', 'wide')}
       ${card('tbSteps', 'Settling of every CDAC step', '', 'wide')}
       ${explain('How to read this page', [
@@ -77,13 +78,16 @@ export const page = {
     const ticks = [0, 5, 10, 15, 20, 25].filter((t) => t * 1e-9 <= 1 / P.fs + 1e-12).map((t) => `<line x1="${sx(t * 1e-9)}" x2="${sx(t * 1e-9)}" y1="${hBars - 24}" y2="${hBars - 18}" class="tick"/><text x="${sx(t * 1e-9)}" y="${hBars - 4}" class="tiny" text-anchor="middle">${t} ns</text>`).join('');
     const groupLbl = `<text x="${x0 - 8}" y="${8 + 2 * rowH + 2}" class="tiny" text-anchor="end">two CDACs</text><text x="${x0 - 8}" y="${18 + 6 * rowH + 2}" class="tiny" text-anchor="end">reservoir</text>`;
     fill('tbBars', `<svg viewBox="0 0 ${w} ${hBars}" class="tsvg" role="img" aria-label="Timing budget per case">${rows.join('')}${groupLbl}${ticks}</svg>`,
-      `${unset ? 'The switch resistance is not set, so these bars are for ideal switches: the upper limit of the time left. Set a value in the side panel to see the settling.' : `Switches of ${num(ron, 0)} Ω, ${swText}.`} Amber: CDAC settling. Violet: node short for the offset comparison. Grey: CDAC reset (reservoir only). Blue blocks: what is left, one block per comparison cycle, for comparator plus logic. Upper four rows: two CDACs that take turns, as in Chen 2018. Lower four: one CDAC that takes its charge from a reservoir, as in Guo 2024.`);
+      `${unset ? 'The switch resistance is not set, so these bars are for ideal switches: the upper limit of the time left. Set a value in the side panel to see the settling.' : `Switches of ${num(ron, 0)} Ω, ${swText}.`} Teal: CDAC settling. Violet: node short for the offset comparison. Grey: CDAC reset (reservoir only). Blue blocks: what is left, one block per comparison cycle, for comparator plus logic. Upper four rows: two CDACs that take turns, as in Chen 2018. Lower four: one CDAC that takes its charge from a reservoir, as in Guo 2024.`);
 
     // 2. verdict matrix over the sweep
     const cols = unset ? SWEEP : [...new Set([...SWEEP, ron])].sort((a, b) => a - b);
     const perR = cols.map((r) => timingCases(d, P, r, mode));
-    fill('tbVerdict', table(['Reference', 'Case', 'Cycles', ...cols.map((r) => (r === 0 ? 'ideal switches' : `${num(r, 0)} Ω${r === ron && !unset ? ' (set)' : ''}`))],
-      cases.map((k, i) => [refName(k), caseName(k), `${k.cycles}`, ...perR.map((list) => { const q = list[i]; return `<span class="tbv ${CLS[q.verdict]}" title="${WORD[q.verdict]}"><b>${q.perCycle > 0 ? ns(q.perCycle) : 'none'}</b></span>`; })])),
+    // the reference scheme is a group row above its four cases, not a column repeated on every row
+    const head = ['Case', 'Cycles', ...cols.map((r) => (r === 0 ? 'ideal switches' : `${num(r, 0)} Ω${r === ron && !unset ? ' (set)' : ''}`))];
+    const verdictRow = (k, i) => `<tr><td>${esc(caseName(k))}</td><td class="num">${k.cycles}</td>${perR.map((list) => { const q = list[i]; return `<td class="num"><span class="tbv ${CLS[q.verdict]}" title="${WORD[q.verdict]}"><b>${q.perCycle > 0 ? ns(q.perCycle) : 'none'}</b></span></td>`; }).join('')}</tr>`;
+    const body = cases.map((k, i) => `${i === 0 || refName(k) !== refName(cases[i - 1]) ? `<tr class="grp"><td colspan="${head.length}">${refName(k)}</td></tr>` : ''}${verdictRow(k, i)}`).join('');
+    fill('tbVerdict', `<div class="tablewrap"><table class="tbl"><thead><tr>${head.map((h, j) => `<th${j ? ' class="num"' : ''}>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`,
       `Green: fits with margin. Amber: marginal. Red: does not fit as shown so far. Time left per decision = (1 / fs − read − CDAC settling − node short − CDAC reset) / cycles. Compared with the cycle Guo 2024 measured, at most ${ns(GUO)} (25 ns / 11), and Chen 2018, at most ${ns(CHEN)} (33.3 ns / 11). Switches: ${swText} (side panel). The sweep is not a choice of value. The two reference schemes differ only by the CDAC reset, because Guo's reservoir charges the CDAC during the first comparison, which needs no DAC (Guo 2024, p. 2607 and 2610).`);
 
     // 3. sweep plot

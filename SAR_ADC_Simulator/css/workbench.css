@@ -255,13 +255,26 @@ p.cap:empty { display: none; }
 .lsvg .lcs { font: 12px var(--mono); }
 .lsvg .lah { fill: var(--muted); }
 
-/* tables, values */
-.tablewrap { overflow-x: auto; }
+/* tables, values
+   One table style on every page: headers may wrap so columns stay narrow; numbers are right aligned in the
+   mono font (kit.js marks numeric columns). A table that is still too wide scrolls sideways: its first column
+   stays in place and a line above it says that it scrolls. */
+.tablewrap { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.tablewrap.scrolls { padding-bottom: 4px; }
+.tablewrap.scrolls::before { content: "Wide table: scroll sideways for all columns"; position: sticky; left: 0; display: block; font-size: 12px; color: var(--muted); padding: 0 0 4px; }
 .tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
-.tbl th { text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 5px 8px; white-space: nowrap; }
+.tbl th { text-align: left; vertical-align: bottom; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--line); padding: 5px 8px; }
 .tbl td { border-bottom: 1px solid var(--grid); padding: 4px 8px; }
-.tbl td.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
-.vt input[type=number], .vt select { width: 110px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; font: 13px var(--mono); }
+.tbl td.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl th.num { text-align: right; } .tbl th.nw { white-space: nowrap; }
+.tbl td.num.wrap { white-space: normal; text-align: left; min-width: 16ch; }
+.tablewrap.scrolls .tbl th:first-child, .tablewrap.scrolls .tbl td:first-child { position: sticky; left: 0; z-index: 1; background: var(--panel); box-shadow: inset -1px 0 0 var(--line); }
+.tbl tr.grp td { padding-top: 10px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); }
+.tbl .fv { text-align: left; }
+.vt input[type=number], .vt select { width: 80px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; font: 13px var(--mono); }
+.vt select.stsel { width: auto; }
+.vcols { columns: 2 440px; column-gap: 14px; }
+.vcols > .card { break-inside: avoid; margin-bottom: 14px; }
 .vt .srcin { width: 100%; min-width: 120px; background: transparent; border: 0; border-bottom: 1px dotted var(--line); color: var(--muted); font-size: 12.5px; }
 textarea { width: 100%; min-height: 140px; font: 12px var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin: 4px 0; }
 .row { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
@@ -280,13 +293,15 @@ textarea { width: 100%; min-height: 140px; font: 12px var(--mono); background: v
 .pop.sheet { left: 8px; right: 8px; bottom: 8px; max-width: none; max-height: 70vh; overflow-y: auto; }
 .pop-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 4px; }
 .pop-x { background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); cursor: pointer; width: 28px; height: 28px; font-size: 16px; }
-.pop .eqline, .eqline { font: 18px/1.5 var(--math); padding: 6px 0 0; overflow-x: auto; }
+/* the popover shows its equation like the Matching page: .eq for the symbols, .fx for the numbers */
+.pop .eqline, .eqline { font: 18px/1.5 var(--math); color: var(--ink); padding: 6px 0 0; overflow-x: auto; }
+.pop .eqline i { font-style: normal; }
 .eqline i { font-style: italic; } .eqline sub, .eqline sup { font-size: 0.68em; font-style: normal; } .eqline .mt { font-style: normal; }
 .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 0.2em; }
 .frac .fn { border-bottom: 1px solid currentColor; padding: 0 0.25em 0.05em; } .frac .fd { padding: 0.05em 0.25em 0; }
 .sqrt { display: inline-flex; align-items: stretch; } .sqrt .rs { padding-right: 0.05em; } .sqrt .rad { border-top: 1px solid currentColor; padding: 0.1em 0.15em 0; margin-top: 0.12em; }
-.eqnum { font: 16px/1.5 var(--math); color: var(--muted); padding-left: 1.2em; overflow-x: auto; }
-.eqres { font: 600 15px var(--mono); color: var(--an); padding: 6px 0 2px 1.2em; }
+.eqnum { font: 14.5px/1.5 var(--math); color: var(--muted); padding-left: 1.2em; overflow-x: auto; }
+.eqres { font: 600 13.5px/1.45 var(--mono); color: var(--ink); padding: 6px 0 2px 1.2em; }
 .pop-n { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.45; }
 
 /* checks: what fails and why */
@@ -301,7 +316,7 @@ textarea { width: 100%; min-height: 140px; font: 12px var(--mono); background: v
 .verdict.bad { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 7%, var(--panel)); }
 .verdict p { margin: 4px 0 0; font-size: 13.5px; }
 .vbig { font: 700 34px var(--mono); color: var(--ok); white-space: nowrap; } .verdict.bad .vbig { color: var(--bad); }
-.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; align-items: start; }
 .ck { border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; background: var(--panel2); }
 .ck p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
 .ckh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -315,6 +330,7 @@ textarea { width: 100%; min-height: 140px; font: 12px var(--mono); background: v
 /* budget table */
 .tbl.budget td { vertical-align: middle; }
 .tbl.budget tr.over td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+.tablewrap.scrolls .tbl.budget tr.over td:first-child { box-shadow: inset 3px 0 0 var(--bad), inset -1px 0 0 var(--line); }
 .tbl.budget tr.tot td { border-top: 2px solid var(--line); font-weight: 600; }
 .shc { min-width: 170px; white-space: nowrap; } .shc .num { margin-left: 6px; font: 12.5px var(--mono); }
 .shb { position: relative; display: inline-block; width: 110px; height: 10px; background: var(--bg); border-radius: 5px; vertical-align: middle; }

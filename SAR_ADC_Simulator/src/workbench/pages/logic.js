@@ -119,7 +119,9 @@ function block(ctx, ph, decided, w) {
   const n = ctx.d.decisions;
   const H = 330;
   const act = (k) => (ph.kind === k ? 'act' : '');
-  const cellW = Math.min(46, (w - 520) / n);
+  // the registers end before the DONE box at w - 140
+  const cellW = Math.min(46, (w - 150 - 420) / n);
+  const lcs = cellW < 28 ? 'lcs sm' : 'lcs';
   const regX = 420;
   const cells = (y, fn) => Array.from({ length: n }, (_, i) => fn(i, regX + i * cellW, y)).join('');
   const pointer = ph.kind === 'done' ? -1 : ph.kind === 'sample' ? 0 : ph.i;
@@ -127,12 +129,12 @@ function block(ctx, ph, decided, w) {
     <rect x="20" y="40" width="150" height="110" rx="12" class="lb ${act('decide')}"/><text x="95" y="72" class="lt" text-anchor="middle">comparator</text><text x="95" y="96" class="ls" text-anchor="middle">OUTP / OUTN</text><text x="95" y="124" class="lv" text-anchor="middle">${ph.kind === 'decide' ? 'regenerating' : decided ? `last = ${L.plan.r.dec[decided - 1]}` : 'reset'}</text>
     <rect x="210" y="40" width="160" height="110" rx="12" class="lb ${act('logic')}"/><text x="290" y="72" class="lt" text-anchor="middle">valid detect</text><text x="290" y="96" class="ls" text-anchor="middle">OUTP ≠ OUTN</text><text x="290" y="124" class="lv" text-anchor="middle">VALID ${ph.kind === 'logic' ? '1' : '0'}</text>
     <path d="M170 95 H210" class="lw ${act('logic')}"/><path d="M370 95 H${regX - 10}" class="lw ${act('logic')}"/>
-    <text x="${regX}" y="34" class="ls">one-hot pointer</text>${cells(44, (i, x, y) => `<rect x="${x}" y="${y}" width="${cellW - 5}" height="34" rx="5" class="lc ${i === pointer ? 'ptr' : ''}"/><text x="${x + (cellW - 5) / 2}" y="${y + 22}" class="lcs" text-anchor="middle">${i + 1}</text>`)}
-    <text x="${regX}" y="110" class="ls">decision register D</text>${cells(120, (i, x, y) => `<rect x="${x}" y="${y}" width="${cellW - 5}" height="34" rx="5" class="lc ${i < decided ? (L.plan.r.dec[i] ? 'one' : 'zero') : ''}"/><text x="${x + (cellW - 5) / 2}" y="${y + 23}" class="lcs" text-anchor="middle">${i < decided ? L.plan.r.dec[i] : '·'}</text>`)}
-    <text x="${regX}" y="186" class="ls">switch drivers SW to the CDAC</text>${cells(196, (i, x, y) => `<rect x="${x}" y="${y}" width="${cellW - 5}" height="34" rx="5" class="lc ${ph.kind === 'share' && ph.i === i ? 'sw' : i < decided - (ph.kind === 'logic' || ph.kind === 'decide' ? 1 : 0) && i < n - 1 ? 'swd' : ''}"/><text x="${x + (cellW - 5) / 2}" y="${y + 23}" class="lcs" text-anchor="middle">${i < n - 1 ? `s${i + 1}` : ''}</text>`)}
+    <text x="${regX}" y="34" class="ls">one-hot pointer</text>${cells(44, (i, x, y) => `<rect x="${x}" y="${y}" width="${cellW - 5}" height="34" rx="5" class="lc ${i === pointer ? 'ptr' : ''}"/><text x="${x + (cellW - 5) / 2}" y="${y + 22}" class="${lcs}" text-anchor="middle">${i + 1}</text>`)}
+    <text x="${regX}" y="110" class="ls">decision register D</text>${cells(120, (i, x, y) => `<rect x="${x}" y="${y}" width="${cellW - 5}" height="34" rx="5" class="lc ${i < decided ? (L.plan.r.dec[i] ? 'one' : 'zero') : ''}"/><text x="${x + (cellW - 5) / 2}" y="${y + 23}" class="${lcs}" text-anchor="middle">${i < decided ? L.plan.r.dec[i] : '·'}</text>`)}
+    <text x="${regX}" y="186" class="ls">switch drivers SW to the CDAC</text>${cells(196, (i, x, y) => `<rect x="${x}" y="${y}" width="${cellW - 5}" height="34" rx="5" class="lc ${ph.kind === 'share' && ph.i === i ? 'sw' : i < decided - (ph.kind === 'logic' || ph.kind === 'decide' ? 1 : 0) && i < n - 1 ? 'swd' : ''}"/><text x="${x + (cellW - 5) / 2}" y="${y + 23}" class="${lcs}" text-anchor="middle">${i < n - 1 ? `s${i + 1}` : ''}</text>`)}
     <path d="M${regX + n * cellW + 10} 213 H${w - 30} V290 H95 V150" class="lw ${act('share')}" marker-end="url(#la)"/>
     <text x="${w - 40}" y="306" class="ls" text-anchor="end">charge to the node, comparator reset, next decision starts</text>
-    <rect x="${w - 170}" y="40" width="140" height="70" rx="12" class="lb ${act('done')}"/><text x="${w - 100}" y="70" class="lt" text-anchor="middle">DONE</text><text x="${w - 100}" y="94" class="ls" text-anchor="middle">to output register</text>
+    <rect x="${w - 140}" y="40" width="110" height="70" rx="12" class="lb ${act('done')}"/><text x="${w - 85}" y="66" class="lt" text-anchor="middle">DONE</text><text x="${w - 85}" y="86" class="ls" text-anchor="middle">to output</text><text x="${w - 85}" y="102" class="ls" text-anchor="middle">register</text>
     <defs><marker id="la" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="lah"/></marker></defs>
   </svg>`;
   fill('lgBlock', svg);

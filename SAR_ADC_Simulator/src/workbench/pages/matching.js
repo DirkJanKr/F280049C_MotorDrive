@@ -21,7 +21,7 @@ function arrayView(arr, w) {
   const p = [`<svg viewBox="0 0 ${w} 150" class="tsvg" role="img" aria-label="The bits of the array">`];
   arr.list.forEach((b, i) => {
     const x = L + i * bw;
-    p.push(`<rect x="${x + 1.5}" y="4" width="${bw - 3}" height="24" rx="3" fill="${colOf[b.kind]}" opacity="0.9"/><text x="${x + bw / 2}" y="20" text-anchor="middle" class="tiny" style="fill:#fff">${b.W}</text>`);
+    p.push(`<rect x="${x + 1.5}" y="4" width="${bw - 3}" height="24" rx="3" fill="${colOf[b.kind]}" opacity="0.9"/><text x="${x + bw / 2}" y="20" text-anchor="middle" class="tiny" style="fill:var(--on-brand)">${b.W}</text>`);
     p.push(`<text x="${x + bw / 2}" y="42" text-anchor="middle" class="tiny">${b.kind === 'cap' ? `${b.units}u` : b.kind === 'half' ? '½' : 'none'}</text>`);
   });
   p.push(`<text x="4" y="20" class="tiny">code weight</text><text x="4" y="42" class="tiny">units</text>`);
@@ -32,7 +32,7 @@ function arrayView(arr, w) {
       const a = on(i);
       const txt = arr.polarity ? (a ? '+' : '−') : a ? 'on' : 'off';
       const fillc = arr.polarity ? (a ? 'var(--an)' : 'var(--ref)') : a ? 'var(--an)' : 'var(--panel2)';
-      p.push(`<rect x="${L + i * bw + 1.5}" y="${y}" width="${bw - 3}" height="24" rx="3" fill="${fillc}" stroke="var(--line)"/><text x="${L + i * bw + bw / 2}" y="${y + 16}" text-anchor="middle" class="tiny" style="fill:${arr.polarity || a ? '#fff' : 'var(--ink)'}">${txt}</text>`);
+      p.push(`<rect x="${L + i * bw + 1.5}" y="${y}" width="${bw - 3}" height="24" rx="3" fill="${fillc}" stroke="var(--line)"/><text x="${L + i * bw + bw / 2}" y="${y + 16}" text-anchor="middle" class="tiny" style="fill:${arr.polarity || a ? 'var(--on-brand)' : 'var(--ink)'}">${txt}</text>`);
     });
   });
   p.push(`<text x="${L}" y="136" class="tiny">${arr.polarity ? 'every capacitor reverses' : 'the largest switches on, the rest off'}</text></svg>`);

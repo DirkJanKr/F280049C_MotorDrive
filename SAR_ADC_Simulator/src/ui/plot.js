@@ -56,7 +56,9 @@ export function linePlot(o) {
   for (const v of xt) parts.push(`<line x1="${sx(v)}" x2="${sx(v)}" y1="${m.t}" y2="${m.t + ph}" stroke="var(--grid)"/>`);
   for (const v of yt) parts.push(`<line x1="${m.l}" x2="${m.l + pw}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--grid)"/>`);
   parts.push(`<rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="none" stroke="var(--border)"/>`);
-  for (const v of xt) parts.push(`<text x="${sx(v)}" y="${m.t + ph + 14}" text-anchor="middle" font-size="10.5" class="muted mono">${xf(v)}</text>`);
+  // in the lower left corner the first x label would run into the lowest y label: start it at the axis instead
+  const corner = (v) => Math.abs(v - x.min) < 1e-9 * (Math.abs(x.max - x.min) || 1) && yt.some((u) => Math.abs(u - y.min) < 1e-9 * (Math.abs(y.max - y.min) || 1));
+  for (const v of xt) parts.push(`<text x="${sx(v)}" y="${m.t + ph + 14}" text-anchor="${corner(v) ? 'start' : 'middle'}" font-size="10.5" class="muted mono">${xf(v)}</text>`);
   for (const v of yt) parts.push(`<text x="${m.l - 6}" y="${sy(v) + 3.5}" text-anchor="end" font-size="10.5" class="muted mono">${yf(v)}</text>`);
   if (x.label) parts.push(`<text x="${m.l + pw / 2}" y="${H - 3}" text-anchor="middle" font-size="11.5" class="muted">${esc(x.label)}</text>`);
   if (y.label) parts.push(`<text transform="translate(12 ${m.t + ph / 2}) rotate(-90)" text-anchor="middle" font-size="11.5" class="muted">${esc(y.label)}</text>`);

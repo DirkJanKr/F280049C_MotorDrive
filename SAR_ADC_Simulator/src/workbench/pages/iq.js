@@ -34,7 +34,7 @@ export const page = {
     return `<p class="ks pad">Digital, after the ADC. Nothing here is decided; the values show what each one does.</p>` + group('Filter and decimation', knobs(store.values, ['iqTaps', 'iqCut', 'iqDecim', 'iqTest'], used)) + group('Signal', knobs(store.values, ['f0', 'fbw', 'fs'], used), false);
   },
   main() {
-    return `<section class="card wide"><header><h3>The demodulator in hardware</h3></header><div id="iqBlocks"></div></section>
+    return `<section class="card wide"><header><h3>The demodulator in hardware</h3></header><div id="iqBlocks"></div><p class="cap" id="iqBlocks-cap"></p></section>
       <div id="iqro"></div>
       ${STAGES.map((s) => `<section class="card wide"><header><h3>${s.n}. ${s.title}</h3><span class="snrtag" id="iqSnr-${s.id}"></span></header><div class="cbody" id="iq-${s.id}"></div><p class="cap" id="iq-${s.id}-cap"></p></section>`).join('')}
       ${explain('Where the SNR gain comes from', [
@@ -93,23 +93,24 @@ function spectrumPlot(sg, i, o, r) {
 
 function blocks(ctx, o, r) {
   const w = Math.max(760, widthOf('iqBlocks', 1000));
-  const H = 250;
+  const H = 170;
   const bw = (w - 60) / 5;
+  // short lines, so the text stays inside its block at laptop width
   const items = [
-    ['ADC', `${o.bits} bit, ${eng(o.fs, 'S/s')}`, `SNR ${num(r.stages[0].snr, 1)} dB`],
-    ['NCO + mixers', '2 multipliers at fs', `cos and −sin of 2π f0 n / fs`],
-    ['FIR low-pass', `${o.K} taps on I and on Q`, `cutoff ${eng(o.fc, 'Hz')}`],
-    [`↓ ${o.D}`, 'keep every D-th', `${eng(o.fs / o.D, 'S/s')} out`],
-    ['I and Q out', 'to the image processing', `SNR ${num(r.stages[3].snr, 1)} dB`],
+    ['ADC', [`${o.bits} bit, ${eng(o.fs, 'S/s')}`, `SNR ${num(r.stages[0].snr, 1)} dB`]],
+    ['NCO + mixers', ['2 multipliers at fs', 'cos and −sin', 'of 2π f0 n / fs']],
+    ['FIR low-pass', [`${o.K} taps`, 'on I and on Q', `cutoff ${eng(o.fc, 'Hz')}`]],
+    [`↓ ${o.D}`, ['keep every D-th', `${eng(o.fs / o.D, 'S/s')} out`]],
+    ['I and Q out', ['to the image', 'processing', `SNR ${num(r.stages[3].snr, 1)} dB`]],
   ];
   const p = [`<svg viewBox="0 0 ${w} ${H}" class="lsvg" role="img" aria-label="IQ demodulator blocks"><defs><marker id="iqa" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" class="lah"/></marker></defs>`];
-  items.forEach(([t, a, b], i) => {
+  items.forEach(([t, lines], i) => {
     const x = 14 + i * (bw + 10);
-    p.push(`<rect x="${x}" y="40" width="${bw - 14}" height="110" rx="12" class="lb ${i === 0 || i === 4 ? '' : 'act'}"/><text x="${x + 12}" y="34" class="ls">${i < 4 ? `step ${i + 1}` : ''}</text><text x="${x + (bw - 14) / 2}" y="74" class="lt" text-anchor="middle">${t}</text><text x="${x + (bw - 14) / 2}" y="100" class="ls" text-anchor="middle">${a}</text><text x="${x + (bw - 14) / 2}" y="122" class="ls" text-anchor="middle">${b}</text>`);
+    const cx = x + (bw - 14) / 2;
+    p.push(`<rect x="${x}" y="40" width="${bw - 14}" height="116" rx="12" class="lb ${i === 0 || i === 4 ? '' : 'act'}"/><text x="${x + 12}" y="34" class="ls">${i < 4 ? `step ${i + 1}` : ''}</text><text x="${cx}" y="68" class="lt" text-anchor="middle">${t}</text>${lines.map((l, k) => `<text x="${cx}" y="${92 + k * 19}" class="ls" text-anchor="middle">${l}</text>`).join('')}`);
     if (i < 4) p.push(`<path d="M${x + bw - 14} 95 H${x + bw + 8}" class="lw act" marker-end="url(#iqa)"/>`);
   });
-  p.push(`<text x="14" y="${H - 52}" class="ls">The filter runs in polyphase form: it only computes the outputs that are kept,</text><text x="14" y="${H - 36}" class="ls">so it needs K multiplications per output per branch at fs / D instead of at fs. A symmetric filter halves that again.</text>`);
-  p.push(`<text x="14" y="${H - 18}" class="ls">Word width: the in-band SNR of ${num(r.stages[3].snr + 1, 1)} dB for a full-scale tone is about ${num((r.stages[3].snr + 1 - 1.76) / 6.02, 1)} bit, so I and Q need at least that many bits after the filter, more than the ${o.bits} bits of the ADC.</text>`);
   p.push('</svg>');
-  fill('iqBlocks', p.join(''));
+  // the notes are text, not drawing: as a caption they wrap with the card
+  fill('iqBlocks', p.join(''), `The filter runs in polyphase form: it only computes the outputs that are kept, so it needs K multiplications per output per branch at fs / D instead of at fs. A symmetric filter halves that again. Word width: the in-band SNR of ${num(r.stages[3].snr + 1, 1)} dB for a full-scale tone is about ${num((r.stages[3].snr + 1 - 1.76) / 6.02, 1)} bit, so I and Q need at least that many bits after the filter, more than the ${o.bits} bits of the ADC.`);
 }

@@ -28,7 +28,7 @@ export const page = {
       <div class="grid2">${card('mmErr', 'This chip: weight error per step')}${card('mmDnl', 'This chip: DNL and INL before and after calibration')}</div>
       <section class="card wide"><header><h3>LMS calibration on chip: the hookup and the weights converging</h3><span class="ctl"><label class="mini-l">μ <select id="lmsMu">${[5, 7, 9].map((k) => `<option value="${k}" ${(store.ui.lmsMu || 7) === k ? 'selected' : ''}>2^−${k}</option>`).join('')}</select></label><button class="mini primary" id="lmsPlay">▶ run calibration</button></span></header>
         <div id="lmsDiag"></div><div class="grid2 inner"><div id="lmsW" class="cbody"></div><div id="lmsE" class="cbody"></div></div><p class="cap" id="lmsCap"></p></section>
-      <div class="grid2">${card('mmWhy', 'Why the DNL does not go below about 1 LSB here')}${card('mmArea', 'Area on the 3.2 mm × 5 mm chip, to scale')}</div>
+      ${card('mmWhy', 'Why the DNL does not go below about 1 LSB here', '', 'wide')}${card('mmArea', 'Area on the 3.2 mm × 5 mm chip, to scale', '', 'wide')}
       ${explain('What mismatch does here', [
         'Every capacitor comes out a little off its design value. A step built from k unit capacitors has a relative error of σu / √k, so the big steps are relatively accurate but carry the largest absolute error in LSB.',
         'With redundancy the comparison levels still find the input; only the weights used to add up the decisions are wrong. Calibration measures them once per chip and puts them in the LUT. Without redundancy a wrong weight loses codes, and calibration cannot get them back.',
@@ -74,7 +74,7 @@ export const page = {
     }, w), `Dots: true minus design weight of this chip (seed ${P.seed}). Shaded: ±3σ over many chips, lines at ±1σ; σ = w σu / √units for whole and small capacitors, about w σu / √2 for a halving step (approximation). What the tolerance must cover is on the SAR ADC page.`);
     const k = Array.from({ length: d.codes - 2 }, (_, i) => i + 1);
     const lim = Math.max(1, sim.linRaw.peakDnl, sim.linCal.peakDnl) * 1.1;
-    fill('mmDnl', plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -lim, max: lim, label: 'DNL' }, series: [{ points: k.map((i) => [i, sim.linRaw.dnl[i]]), color: COL.muted, width: 0.9, label: 'design weights' }, { points: k.map((i) => [i, sim.linCal.dnl[i]]), color: COL.an, width: 1.1, label: 'calibrated' }], legend: true }, w) + plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -Math.max(1, sim.linRaw.peakInl) * 1.1, max: Math.max(1, sim.linRaw.peakInl) * 1.1, label: 'INL' }, series: [{ points: k.map((i) => [i, sim.linRaw.inl[i]]), color: COL.muted, width: 0.9 }, { points: k.map((i) => [i, sim.linCal.inl[i]]), color: COL.an, width: 1.1 }] }, w), 'Ramp of 16 samples per code without comparator noise (offset after calibration included), so the histogram itself does not scatter. Grey: design weights, cyan: calibrated weights rounded to the output bits.');
+    fill('mmDnl', plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -lim, max: lim, label: 'DNL' }, series: [{ points: k.map((i) => [i, sim.linRaw.dnl[i]]), color: COL.muted, width: 0.9, label: 'design weights' }, { points: k.map((i) => [i, sim.linCal.dnl[i]]), color: COL.an, width: 1.1, label: 'calibrated' }], legend: true }, w) + plot({ height: 160, x: { min: 0, max: d.codes, label: 'code' }, y: { min: -Math.max(1, sim.linRaw.peakInl) * 1.1, max: Math.max(1, sim.linRaw.peakInl) * 1.1, label: 'INL' }, series: [{ points: k.map((i) => [i, sim.linRaw.inl[i]]), color: COL.muted, width: 0.9 }, { points: k.map((i) => [i, sim.linCal.inl[i]]), color: COL.an, width: 1.1 }] }, w), 'Ramp of 16 samples per code without comparator noise (offset after calibration included), so the histogram itself does not scatter. Grey: design weights, blue: calibrated weights rounded to the output bits.');
     area(ctx, widthOf('mmArea'));
     whyDnl(ctx);
     lms(ctx, false);
@@ -91,7 +91,7 @@ function area(ctx, w) {
   const rows = [['Memory cells', `${d.memCaps} × ${eng(d.cm, 'F')}`, ctx.memArea], ['CDAC', `${num(d.units, 2)} × ${eng(P.cu, 'F')}`, ctx.cdacArea], ['Total', `× ${num(P.routing, 1)} routing and switches`, ctx.areaTotal]];
   fill('mmArea', `<div class="areabox"><svg viewBox="0 0 ${cw + 20} ${ch + 20}" class="tsvg" style="max-width:${cw + 20}px"><rect x="10" y="10" width="${cw}" height="${ch}" class="die"/><rect x="18" y="18" width="${s(binA)}" height="${s(binA)}" class="ar-bin"/><rect x="18" y="18" width="${s(ctx.memArea)}" height="${s(ctx.memArea)}" class="ar-mem"/><rect x="${22 + s(ctx.memArea)}" y="18" width="${s(ctx.cdacArea)}" height="${s(ctx.cdacArea)}" class="ar-cdac"/></svg>
     <table class="tbl"><thead><tr><th>Part</th><th>How many</th><th>mm²</th><th>% of chip</th></tr></thead><tbody>${rows.map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td class="num">${num(c * 1e6, 4)}</td><td class="num">${num((c / (CHIP.w * CHIP.h)) * 100, 2)}</td></tr>`).join('')}
-    <tr><td class="dim">Binary, matched units</td><td class="dim">${eng(ctx.binCu, 'F')} units</td><td class="num dim">${num(binA * 1e6, 3)}</td><td class="num dim">${num((binA / (CHIP.w * CHIP.h)) * 100, 1)}</td></tr></tbody></table></div>`, 'Cyan: memory cells, amber: CDAC, faint red: the same converter with binary weights and units large enough for matching. Capacitor plates at the density set on the left; comparator, logic and IQ demodulator are not included.');
+    <tr><td class="dim">Binary, matched units</td><td class="dim">${eng(ctx.binCu, 'F')} units</td><td class="num dim">${num(binA * 1e6, 3)}</td><td class="num dim">${num((binA / (CHIP.w * CHIP.h)) * 100, 1)}</td></tr></tbody></table></div>`, 'Blue: memory cells, teal: CDAC, faint red: the same converter with binary weights and units large enough for matching. Capacitor plates at the density set in the side panel; comparator, logic and IQ demodulator are not included.');
 }
 
 function runMc(store, btn) {
@@ -246,7 +246,7 @@ function flipCard(ctx) {
     p.push(`<text x="8" y="${y + 20}" class="lbl">${label}</text>`);
     ws.forEach((x, i) => {
       const plus = i === 0 ? first : !first;
-      p.push(`<rect x="${L + i * bw + 2}" y="${y}" width="${bw - 4}" height="30" rx="4" class="${plus ? 'tn-mis' : 'tn-off'}" opacity="0.85"/><text x="${L + i * bw + bw / 2}" y="${y + 20}" text-anchor="middle" class="tiny" style="fill:#fff">${plus ? '+' : '−'}${num(x, 0)}</text>`);
+      p.push(`<rect x="${L + i * bw + 2}" y="${y}" width="${bw - 4}" height="30" rx="4" class="${plus ? 'tn-mis' : 'tn-off'}" opacity="0.85"/><text x="${L + i * bw + bw / 2}" y="${y + 20}" text-anchor="middle" class="tiny" style="fill:var(--on-brand)">${plus ? '+' : '−'}${num(x, 0)}</text>`);
     });
   };
   rowOf(14, 'just below mid-scale', false);

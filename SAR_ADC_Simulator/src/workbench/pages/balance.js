@@ -174,20 +174,22 @@ function alphaVisual(ctx) {
   const mem = P.channels * P.cmIn;
   const rows = [[P.alphaIn, 'now'], [0.4, 'Chen 2018'], [1, 'alpha 1']].filter(([a, l], i) => i === 0 || Math.abs(a - P.alphaIn) > 0.005);
   const L = 120;
-  const R = 300;
+  const R = 330;
   const maxC = Math.max(...rows.map(([a]) => mem * (1 + 1 / a)));
   const sx = (c) => (c / maxC) * (w - L - R);
-  const p = [`<svg viewBox="0 0 ${w} ${46 + rows.length * 58}" class="tsvg" role="img" aria-label="Alpha as two capacitances">`];
-  p.push(`<text x="${L}" y="16" class="tiny">capacitance on the node at the last decision, to scale</text><text x="${w - R + 20}" y="16" class="tiny">voltage left</text><text x="${w - R + 150}" y="16" class="tiny">1 LSB at the comparator</text>`);
+  const p = [`<svg viewBox="0 0 ${w} ${60 + rows.length * 58}" class="tsvg" role="img" aria-label="Alpha as two capacitances">`];
+  // headers on two lines and bar labels as name over value, so nothing overlaps at laptop width
+  p.push(`<text x="${L}" y="14" class="tiny">capacitance on the node</text><text x="${L}" y="29" class="tiny">at the last decision, to scale</text><text x="${w - R + 20}" y="29" class="tiny">voltage left</text><text x="${w - R + 130}" y="14" class="tiny">1 LSB at</text><text x="${w - R + 130}" y="29" class="tiny">the comparator</text>`);
+  const barText = (x, y, name, value) => `<text x="${x}" y="${y + 16}" text-anchor="middle" class="tiny" style="fill:var(--on-brand)">${name}</text><text x="${x}" y="${y + 31}" text-anchor="middle" class="tiny" style="fill:var(--on-brand)">${value}</text>`;
   rows.forEach(([a, label], i) => {
-    const y = 28 + i * 58;
+    const y = 42 + i * 58;
     const dac = mem / a;
     const keep = a / (1 + a);
     p.push(`<text x="8" y="${y + 18}" class="lbl" style="font-weight:600">α = ${num(a, 2)}</text><text x="8" y="${y + 34}" class="tiny">${label}</text>`);
-    p.push(`<rect x="${L}" y="${y}" width="${sx(mem)}" height="38" fill="var(--an)"/><text x="${L + sx(mem) / 2}" y="${y + 23}" text-anchor="middle" class="tiny" style="fill:#fff">N·C M ${eng(mem, 'F')}</text>`);
-    p.push(`<rect x="${L + sx(mem)}" y="${y}" width="${sx(dac)}" height="38" fill="var(--ref)" opacity="0.75"/><text x="${L + sx(mem) + sx(dac) / 2}" y="${y + 23}" text-anchor="middle" class="tiny" style="fill:#fff">2·C DAC ${eng(dac, 'F')}</text>`);
-    p.push(`<text x="${w - R + 20}" y="${y + 25}" class="lbl" style="font-weight:600">${num(keep * 100, 0)} %</text><text x="${w - R + 150}" y="${y + 25}" class="lbl" style="font-weight:600">${eng(lsbV * keep, 'V')}</text>`);
+    p.push(`<rect x="${L}" y="${y}" width="${sx(mem)}" height="38" fill="var(--an)"/>${barText(L + sx(mem) / 2, y, 'N·C M', eng(mem, 'F'))}`);
+    p.push(`<rect x="${L + sx(mem)}" y="${y}" width="${sx(dac)}" height="38" fill="var(--ref)" opacity="0.75"/>${barText(L + sx(mem) + sx(dac) / 2, y, '2·C DAC', eng(dac, 'F'))}`);
+    p.push(`<text x="${w - R + 20}" y="${y + 25}" class="lbl" style="font-weight:600">${num(keep * 100, 0)} %</text><text x="${w - R + 130}" y="${y + 25}" class="lbl" style="font-weight:600">${eng(lsbV * keep, 'V')}</text>`);
   });
   p.push('</svg>');
-  fill('blVis', p.join(''), `alpha = N · C M / (2 · C DAC): the capacitance that holds the signal (blue) divided by the CDAC capacitance that joins the node during the conversion (orange). The signal is a charge, so when the node grows the voltage drops: at the last decision alpha / (1 + alpha) of it is left. The comparator noise and offset do not drop with it. Rows use the same memory cell (${eng(P.cmIn, 'F')}); a higher alpha then means a smaller CDAC, charged to a higher V REF = alpha · V in,max / 2. With the unit capacitor fixed at the PDK minimum it is the other way round: the CDAC stays and the memory cell grows with alpha.`);
+  fill('blVis', p.join(''), `alpha = N · C M / (2 · C DAC): the capacitance that holds the signal (blue) divided by the CDAC capacitance that joins the node during the conversion (teal). The signal is a charge, so when the node grows the voltage drops: at the last decision alpha / (1 + alpha) of it is left. The comparator noise and offset do not drop with it. Rows use the same memory cell (${eng(P.cmIn, 'F')}); a higher alpha then means a smaller CDAC, charged to a higher V REF = alpha · V in,max / 2. With the unit capacitor fixed at the PDK minimum it is the other way round: the CDAC stays and the memory cell grows with alpha.`);
 }

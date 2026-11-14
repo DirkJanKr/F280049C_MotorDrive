@@ -1,7 +1,7 @@
 // Values page: every value in one list, design versions, and export.
 
 import { GROUPS, STATUS } from '../values.js';
-import { eng, num } from '../kit.js';
+import { eng, num, tidyTables } from '../kit.js';
 import { exportJson } from '../store.js';
 import { latexEscape } from '../../zaan/exportFormats.js';
 import { esc } from '../kit.js';
@@ -32,7 +32,7 @@ export const page = {
     ];
     const legend = `<section class="card wide"><header><h3>Status of every value</h3></header><p class="cap" style="margin:0">${Object.entries(STATUS).map(([k, t]) => `<span class="stat st-${k}">${k}</span> ${esc(t)}`).join(' &nbsp; ')}. No value is decided unless it is marked U. Change a status with the selector in front of a value.</p>
       <div class="tablewrap"><table class="tbl"><thead><tr><th>Status</th><th>Derived value</th><th></th><th>Derivation</th><th>Note</th></tr></thead><tbody>${dv.map(([a, b, f, n]) => `<tr><td><span class="stat st-D">D</span></td><td>${a}</td><td class="num">${b}</td><td>${f}</td><td class="dim">${esc(n)}</td></tr>`).join('')}</tbody></table></div></section>`;
-    return `${legend}<div class="grid2">${groups.join('')}</div>
+    return `${legend}<div class="vcols">${groups.join('')}</div>
       <div class="grid2">
         <section class="card"><header><h3>Design versions</h3></header><div class="row"><input type="text" id="verName" placeholder="name, e.g. radix 1.9, Cu 35 fF"/><button class="mini" id="saveVer">save current</button></div><ul class="vlist">${vers || '<li class="cap">No versions saved yet.</li>'}</ul>
           <h4>JSON file (current design and all versions)</h4><textarea id="jsonOut" readonly>${esc(exportJson())}</textarea><div class="row"><button class="mini" data-copy="jsonOut">copy</button><a class="mini" id="jsonDl" download="zaan-workbench.json">download</a></div>
@@ -40,7 +40,9 @@ export const page = {
         <section class="card"><header><h3>LaTeX table and MATLAB struct</h3></header><textarea id="texOut" readonly>${esc(latex(store))}</textarea><button class="mini" data-copy="texOut">copy LaTeX</button><textarea id="matOut" readonly>${esc(matlab(store))}</textarea><button class="mini" data-copy="matOut">copy MATLAB</button></section>
       </div>`;
   },
-  update() {},
+  update() {
+    tidyTables(document);
+  },
 };
 
 function latex(store) {

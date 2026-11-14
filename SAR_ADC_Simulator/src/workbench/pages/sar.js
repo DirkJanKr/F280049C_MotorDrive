@@ -37,7 +37,7 @@ export const page = {
         <div id="sarView"></div><p class="cap" id="sarSay"></p>
         <p class="cap">Left: the charge of the memory cells on the node. Each CDAC step is a capacitor precharged to VREF; after each decision it is connected with the polarity that pulls the charge towards zero (green +, magenta −). In the differential view one capacitor floats between node + and node − (dotted), so the two nodes get opposite charges. The charge is kept; the node capacitance grows with every step, so later steps see a smaller voltage per LSB.</p></section>
       <section class="card wide"><header><h3>What each decision needs from its tolerance</h3></header><div class="cbody" id="sTol"></div><p class="cap" id="sTol-cap"></p></section>
-      <div class="grid2">${card('sWalk', 'The search: comparison level per decision')}${card('sTable', 'Charges per decision')}</div>
+      ${card('sWalk', 'The search: comparison level per decision', '', 'wide')}${card('sTable', 'Charges per decision', '', 'wide')}
       <section class="card wide"><header><h3>Compare designs</h3><button class="mini" id="keepA">keep current as A</button></header><div class="cbody" id="sCmp"></div><p class="cap" id="sCmp-cap"></p></section>
       <section class="card wide"><header><h3>Circuit level: ngspice against Rabuske eq. 4.21</h3></header><div class="cbody" id="spiceCmp"><p class="cap">Loading the ngspice run…</p></div><p class="cap" id="spiceCmp-cap"></p></section>
       ${explain('Reading this page', [
@@ -164,13 +164,13 @@ function tolerance(ctx) {
   const R = 70;
   const xmax = Math.max(1.5, ...rows.map((r) => r.need + r.noise), ...rows.map((r) => r.mismatch + r.offsetRaw)) * 1.15;
   const sx = (v) => L + (Math.min(v, xmax) / xmax) * (w - L - R);
-  const H = 40 + rows.length * rh + 30;
+  const H = 16 + rows.length * rh + 30;
   const p = [`<svg viewBox="0 0 ${w} ${H}" class="tsvg tolc" role="img" aria-label="Tolerance needed against available">`];
   const ticks = [0, 0.5, 1, 2, 3, 4, 5, 8, 10, 20].filter((t) => t <= xmax);
-  for (const t of ticks) p.push(`<line x1="${sx(t)}" x2="${sx(t)}" y1="30" y2="${H - 26}" class="tick"/><text x="${sx(t)}" y="${H - 10}" class="tiny" text-anchor="middle">${t}</text>`);
+  for (const t of ticks) p.push(`<line x1="${sx(t)}" x2="${sx(t)}" y1="6" y2="${H - 26}" class="tick"/><text x="${sx(t)}" y="${H - 10}" class="tiny" text-anchor="middle">${t}</text>`);
   p.push(`<text x="${w - 8}" y="${H - 10}" class="tiny" text-anchor="end">LSB</text>`);
   rows.forEach((r, i) => {
-    const y = 34 + i * rh;
+    const y = 10 + i * rh;
     const have = r.have + 0.5;
     p.push(`<text x="8" y="${y + 15}" class="lbl">decision ${r.i + 1}</text>`);
     let acc = 0;
@@ -186,11 +186,12 @@ function tolerance(ctx) {
       else if (!r.ok) p.push(`<text x="${w - R + 6}" y="${y + 15}" class="tiny bad">short</text>`);
     } else p.push(`<text x="${w - R + 6}" y="${y + 15}" class="tiny">no repair</text>`);
   });
-  p.push(`<g class="tleg"><rect x="${L}" y="8" width="12" height="12" class="tn-mis"/><text x="${L + 16}" y="18" class="tiny">DAC mismatch 3σ</text><rect x="${L + 150}" y="8" width="12" height="12" class="tn-off"/><text x="${L + 166}" y="18" class="tiny">offset against the last decision</text><rect x="${L + 400}" y="8" width="12" height="12" class="tn-noise"/><text x="${L + 416}" y="18" class="tiny">comparator noise 3σ</text></g>`);
   p.push('</svg>');
+  // the legend is HTML, so it wraps on a narrow screen instead of running out of the drawing
+  const legend = `<div class="pleg"><span><i style="background:var(--cal)"></i>DAC mismatch 3σ</span><span><i style="background:var(--ref)"></i>offset against the last decision</span><span><i style="background:color-mix(in srgb, var(--clk) 45%, transparent)"></i>comparator noise 3σ</span></div>`;
   const P = ctx.P;
   const d = ctx.d;
-  fill('sTol', p.join(''), `Green line: the tolerance plus ½ LSB, what the later steps can still repair. The need for the check is ${fv('need', 'mismatch + offset')}; comparator noise is drawn on top but counted in the ${fv('b-comp', 'noise budget')}, since an unrepaired noise error is output noise. White tick: mismatch + the offset before calibration (${eng(P.vos, 'V')}); calibration brings it to ${eng(P.vosCal, 'V')}. The offset as charge grows with the node, ${num(offsetLsb(d, P.vosCal, 0).total, 2)} LSB at decision 1 to ${num(offsetLsb(d, P.vosCal, d.decisions - 1).total, 2)} LSB at the last; only the difference from the last uses tolerance, the rest shifts every code equally. Comparator noise as charge: ${fq(ctx, comparatorCharge(P, d, 0), true)} at decision 1, ${fq(ctx, comparatorCharge(P, d, d.decisions - 1), true)} at the last.`);
+  fill('sTol', legend + p.join(''), `Green line: the tolerance plus ½ LSB, what the later steps can still repair. The need for the check is ${fv('need', 'mismatch + offset')}; comparator noise is drawn on top but counted in the ${fv('b-comp', 'noise budget')}, since an unrepaired noise error is output noise. Short tick: mismatch + the offset before calibration (${eng(P.vos, 'V')}); calibration brings it to ${eng(P.vosCal, 'V')}. The offset as charge grows with the node, ${num(offsetLsb(d, P.vosCal, 0).total, 2)} LSB at decision 1 to ${num(offsetLsb(d, P.vosCal, d.decisions - 1).total, 2)} LSB at the last; only the difference from the last uses tolerance, the rest shifts every code equally. Comparator noise as charge: ${fq(ctx, comparatorCharge(P, d, 0), true)} at decision 1, ${fq(ctx, comparatorCharge(P, d, d.decisions - 1), true)} at the last.`);
 }
 
 function table(ctx) {

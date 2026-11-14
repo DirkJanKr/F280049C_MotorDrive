@@ -59,9 +59,48 @@ export function card(id, title, extra = '', cls = '') {
   return `<section class="card ${cls}"><header><h3>${esc(title)}</h3>${extra}</header><div class="cbody" id="${id}"></div><p class="cap" id="${id}-cap"></p></section>`;
 }
 
+// A cell that holds one number, maybe with a unit: "2.08 ns", "−0.5", "47.5 %", "1.12 pF (× 1.04)".
+const NUMERIC = /^[−+-]?(\d[\d.,]*|\.\d+)(e[−+-]?\d+)?\s*(×\s*)?[a-zA-Zµ%Ω°/²]{0,7}(\s*rms)?(\s*\(.{0,16}\))?$/;
+
+/** Right-align columns of numbers in the mono font, as on every other table. Cells a page already styled stay as they are. */
+export function tidyTables(root) {
+  root.querySelectorAll('table.tbl').forEach((t) => {
+    const rows = [...t.tBodies].flatMap((b) => [...b.rows]);
+    const heads = t.tHead ? [...t.tHead.rows[0].cells] : [];
+    heads.forEach((th, col) => {
+      // short headers stay on one line; long ones may wrap so the column stays narrow
+      if (th.textContent.trim().length <= 14) th.classList.add('nw');
+      const cells = rows.map((r) => r.cells[col]).filter((c) => c && c.colSpan === 1 && c.textContent.trim() && !c.querySelector('input, select, textarea'));
+      const nums = cells.filter((c) => NUMERIC.test(c.textContent.trim()));
+      if (!cells.length || nums.length < 0.6 * cells.length) return;
+      th.classList.add('num');
+      nums.forEach((c) => c.classList.add('num'));
+    });
+  });
+  markScrolling(root);
+}
+
+/** Tables wider than their card scroll: say so, and keep the first column in view. */
+function markScrolling(root = document) {
+  root.querySelectorAll('.tablewrap').forEach((w) => {
+    w.classList.remove('scrolls');
+    w.classList.toggle('scrolls', w.scrollWidth > w.clientWidth + 1);
+  });
+}
+let resizeTimer = 0;
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => markScrolling(document), 150);
+  });
+}
+
 export function fill(id, html, cap = null) {
   const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
+  if (el) {
+    el.innerHTML = html;
+    tidyTables(el);
+  }
   if (cap !== null) {
     const c = document.getElementById(`${id}-cap`);
     if (c) {

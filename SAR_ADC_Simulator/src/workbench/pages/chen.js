@@ -109,7 +109,7 @@ function diagram(s, w) {
   let vd = `M${sx(0)} ${y('V DAC') + 22}`;
   for (const k of k3) vd += ` L${sx((k + 0.08) * s.T)} ${y('V DAC') + 22} L${sx((k + 0.83) * s.T)} ${y('V DAC') + 4} H${sx((k + 1) * s.T)} V${y('V DAC') + 22}`;
   p.push(`<path d="${vd}" class="wv"/>`);
-  for (let k = 0; k <= per; k++) p.push(`<line x1="${sx(k * s.T)}" x2="${sx(k * s.T)}" y1="8" y2="${H - 26}" class="tick"/><text x="${sx(k * s.T)}" y="${H - 8}" class="tiny" text-anchor="middle">${num(k * s.T * 1e9, 1)} ns</text>`);
+  for (let k = 0; k <= per; k++) p.push(`<line x1="${sx(k * s.T)}" x2="${sx(k * s.T)}" y1="8" y2="${H - 26}" class="tick"/><text x="${sx(k * s.T)}" y="${H - 8}" class="tiny" text-anchor="${k === per ? 'end' : 'middle'}">${num(k * s.T * 1e9, 1)} ns</text>`);
   p.push('</svg>');
   fill('chView', p.join(''), `${s.name}. COMP: ${s.n} self-timed comparisons after the redistribution interval, and one more during CPRST for the offset calibration. RST and INT belong to the CDAC that is being precharged (PC A or PC B high); the other one converts. V DAC ramps to V REF during T int. Only the first cells and two readout clocks are drawn; redistribution (${num(REDIS * 100, 0)} % of the period) and reset (${num(RESET * 100, 0)} %) are read off Fig. 4(b) and are assumptions.`);
 }
