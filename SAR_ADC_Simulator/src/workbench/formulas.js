@@ -135,7 +135,7 @@ export const FORMULAS = {
         [`${t('noise')} = ${frac(`3 ${v('C', 'node,i')} ${v('v', 'n')}`, QL)}`, `${num(r.noise, 2)} LSB, shown only`],
       ],
       res: `need ${num(r.need, 2)} LSB, have ${num(r.have, 2)} + ½ LSB`,
-      note: 'The common part of the offset shifts every code equally; only the difference from the last decision uses tolerance.',
+      note: 'The common part of the offset shifts every code equally; only the difference from the last decision uses tolerance. Noise needs no tolerance: a noise flip only happens when the residue is within the noise, so the error it leaves is about that size, repaired or not. What the fixed errors leave of tolerance + ½ LSB is what the settling of the step before may use.',
     };
   },
   cover: (c) => ({ title: 'Coverage of the range', rows: [[`${t('Σ')} ${v('w', 'i')} + ${v('w', 'last')} ≥ ${sup('2', `${v('B')} − 1`)}`, `${num(c.d.cover.sum, 1)} + ${num(c.d.weights[c.d.weights.length - 1], 2)} ≥ ${2 ** (c.P.bits - 1)}`]], res: c.d.cover.ok ? `met, overrange ${num(c.d.cover.overrange * 100, 1)} %` : 'not met', note: 'From mid-scale the steps must reach either end of the input range. What they reach beyond it is overrange, which redundancy brings by itself.' }),

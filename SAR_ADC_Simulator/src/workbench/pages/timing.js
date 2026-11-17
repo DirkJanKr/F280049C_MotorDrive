@@ -24,7 +24,12 @@ const CHEN = cycleOf(PRIOR.chen);
 
 /** The case the summary bar and the lead show: the present weights, ping-pong reference, no offset comparison. */
 export function mainCase(ctx) {
-  return timingCase(ctx.d, ctx.P, { ron: ctx.P.ron || 0, scheme: 'pingpong', extraHalf: false, offsetCmp: false, mode: ctx.P.swMode });
+  return timingCase(ctx.d, ctx.P, { ron: ctx.P.ron || 0, scheme: 'pingpong', extraHalf: false, offsetCmp: false, mode: ctx.P.swMode, allow: allowOf(ctx) });
+}
+
+/** What mismatch and offset leave of tolerance + ½ LSB at every decision: the error the settling may have (budget.js). */
+function allowOf(ctx) {
+  return ctx.tolNeed.map((r) => r.allow);
 }
 
 const caseName = (k) => `${k.decisions} decisions${k.offsetCmp ? ' + offset comparison' : ''}`;
@@ -54,7 +59,7 @@ export const page = {
     const ron = P.ron || 0;
     const unset = !P.ron;
     const swText = mode === 'unit' ? 'one switch pair per unit capacitor' : 'the same switch for every capacitor';
-    const cases = timingCases(d, P, ron, mode);
+    const cases = timingCases(d, P, ron, mode, allowOf(ctx));
 
     // 1. bars
     const w = widthOf('tbBars', 1000);
@@ -82,7 +87,7 @@ export const page = {
 
     // 2. verdict matrix over the sweep
     const cols = unset ? SWEEP : [...new Set([...SWEEP, ron])].sort((a, b) => a - b);
-    const perR = cols.map((r) => timingCases(d, P, r, mode));
+    const perR = cols.map((r) => timingCases(d, P, r, mode, allowOf(ctx)));
     // the reference scheme is a group row above its four cases, not a column repeated on every row
     const head = ['Case', 'Cycles', ...cols.map((r) => (r === 0 ? 'ideal switches' : `${num(r, 0)} Ω${r === ron && !unset ? ' (set)' : ''}`))];
     const verdictRow = (k, i) => `<tr><td>${esc(caseName(k))}</td><td class="num">${k.cycles}</td>${perR.map((list) => { const q = list[i]; return `<td class="num"><span class="tbv ${CLS[q.verdict]}" title="${WORD[q.verdict]}"><b>${q.perCycle > 0 ? ns(q.perCycle) : 'none'}</b></span></td>`; }).join('')}</tr>`;
@@ -94,7 +99,7 @@ export const page = {
     const wp = widthOf('tbSweep');
     const pick = [0, 1, 2, 3];
     const colours = [COL.dig, COL.an, COL.ref, COL.bad];
-    const line = (i) => [0, 2000].map((r) => [r, timingCases(d, P, r, mode)[i].perCycle * 1e9]);
+    const line = (i) => [0, 2000].map((r) => [r, timingCases(d, P, r, mode, allowOf(ctx))[i].perCycle * 1e9]);
     fill('tbSweep', plot({ x: { min: 0, max: 2000, label: 'switch on-resistance [Ω]' }, y: { min: 0, max: 3.2, label: 'time left per decision [ns]' }, series: pick.map((i, n) => ({ points: line(i).map(([r, t]) => [r, Math.max(0, t)]), color: colours[n], width: 2, label: caseName(cases[i]) })), hlines: [{ y: GUO * 1e9, color: COL.muted, dash: '6 3', label: 'Guo 2024' }, { y: CHEN * 1e9, color: COL.muted, dash: '2 3', label: 'Chen 2018' }, { y: GUO * (1 - MARGINAL) * 1e9, color: COL.bad, dash: '4 3' }], legend: true }, wp),
       `Two CDACs; the reservoir lines lie within ${ns(Math.max(...pick.map((i) => Math.abs(perR[perR.length - 1][i].perCycle - perR[perR.length - 1][i + 4].perCycle))))} of these. Dashed: the measured cycle of Guo and of Chen. Red dashed: 25 % below Guo, my line between marginal and not shown. ${mode === 'unit' ? 'With a switch pair per unit capacitor the settling hardly costs time.' : 'With the same switch on every capacitor the settling takes most of the period above a few hundred ohm.'}`);
 
@@ -127,10 +132,10 @@ export const page = {
 function drawSteps(ctx) {
   const { d, P } = ctx;
   const mode = P.swMode;
-  const st = stepSettling(stepCaps(d), 1000, mode);
+  const st = stepSettling(stepCaps(d), 1000, mode, allowOf(ctx));
   const sp = spice ? spice.runs.find((r) => r.mode === mode) : null;
   const same = spice && JSON.stringify(spice.weights) === JSON.stringify(d.weights);
-  fill('tbSteps', table(['Step', 'Weight [LSB]', 'Capacitor', 'On the nodes before', 'Own time constant per kΩ', 'Tolerance of the next decision [LSB]', 'Settling per kΩ, redundant', 'Settling per kΩ, to ½ LSB', 'ngspice / model'],
-    st.map((s, j) => [`${j + 1}`, num(s.w, s.w < 1 ? 1 : 0), eng(s.c, 'F'), eng(s.cd, 'F'), ns(s.tau), num(s.tolNext, 1), `<b>${ns(s.tRed)}</b>`, ns(s.tBin), same && sp ? num(sp.steps[j].tSpice / sp.steps[j].tModel, 2) : 'other weights'])),
-    `Own time constant: τ = 2 R C j C d / (C j + C d), the new capacitor with what is on the nodes. ${mode === 'same' ? 'With the same switch everywhere a small step settles much slower than its own time constant: the node first moves too far and then comes back with the time constant of the largest capacitor, which is still connected behind its own switches.' : 'With a switch pair per unit capacitor every branch has the same R C, so no slow tail remains.'} Sum, redundant: ${ns(st.reduce((a, s) => a + s.tRed, 0))} per kΩ; to ½ LSB: ${ns(st.reduce((a, s) => a + s.tBin, 0))} per kΩ. Worst case residue, earlier steps taken as settled (optimistic), memory cells as one capacitor. ${sp ? `ngspice ${esc(spice.ngspice)} with ideal switches of ${num(sp.ron, 0)} Ω, time to e⁻³ of the start (spice/settling.mjs, ${esc(spice.generated)}).` : 'ngspice data not loaded.'}`);
+  fill('tbSteps', table(['Step', 'Weight [LSB]', 'Capacitor', 'On the nodes before', 'Own time constant per kΩ', 'Tolerance and allowed error at the next decision [LSB]', 'Settling per kΩ, redundant', 'Settling per kΩ, to ½ LSB', 'ngspice / model'],
+    st.map((s, j) => [`${j + 1}`, num(s.w, s.w < 1 ? 1 : 0), eng(s.c, 'F'), eng(s.cd, 'F'), ns(s.tau), `${num(s.tolNext, 1)} / ${num(s.level, 2)}`, `<b>${ns(s.tRed)}</b>`, ns(s.tBin), same && sp ? num(sp.steps[j].tSpice / sp.steps[j].tModel, 2) : 'other weights'])),
+    `Own time constant: τ = 2 R C j C d / (C j + C d), the new capacitor with what is on the nodes. ${mode === 'same' ? 'With the same switch everywhere a small step settles much slower than its own time constant: the node first moves too far and then comes back with the time constant of the largest capacitor, which is still connected behind its own switches.' : 'With a switch pair per unit capacitor every branch has the same R C, so no slow tail remains.'} Sum, redundant: ${ns(st.reduce((a, s) => a + s.tRed, 0))} per kΩ; to ½ LSB: ${ns(st.reduce((a, s) => a + s.tBin, 0))} per kΩ. Each step settles to the allowed error of the next decision: its tolerance + ½ LSB minus what mismatch (3σ) and offset already use, the same rule as the redundancy check. Worst case residue, earlier steps taken as settled (optimistic), memory cells as one capacitor. ${sp ? `ngspice ${esc(spice.ngspice)} with ideal switches of ${num(sp.ron, 0)} Ω, time to e⁻³ of the start (spice/settling.mjs, ${esc(spice.generated)}).` : 'ngspice data not loaded.'}`);
 }

@@ -106,6 +106,11 @@ export function design(values, ui) {
   const enob = { enob: budget.enob, sndr: budget.sndr };
   const sigmaU = P.aC / 100 / Math.sqrt(P.cu / 1e-15);
   const tolNeed = toleranceNeeds(P, d, sigmaU);
+  // spare reach at the ends of the range against what shifts or scales the whole result:
+  // the calibrated offset (it moves every code, Rabuske 2017 eq. 4.63) and 3 sigma of the sum of the step errors.
+  // A gain error of the reference charge would add to it; it is not modelled.
+  const overSpare = d.cover.reach - 2 ** (P.bits - 1);
+  const overNeed = (P.vosCal * d.cNode[d.decisions - 1]) / d.qLsb + tolNeed[0].mismatch;
   const timing = memo(key + JSON.stringify([P.tSample, P.tauDac, P.tLogic, P.ibias, P.gmId, P.cload, P.vfinal, P.fs]), () => {
     const rng = createRng(P.seed + 1);
     const traces = [];
@@ -120,7 +125,7 @@ export function design(values, ui) {
   const cdacArea = (d.cdac * P.routing) / P.density;
   const smallest = Math.min(...steps.map((st) => (st.kind === 'cap' || st.kind === 'small' ? st.units * P.cu : P.cu)));
   const ctx = {
-    P, steps, stepsError: s.error, d, tw, tauMax, need, delays, qd, halfSteps, sim, res, budget, enob, timing, vrms, tolNeed,
+    P, steps, stepsError: s.error, d, tw, tauMax, need, delays, qd, halfSteps, sim, res, budget, enob, timing, vrms, tolNeed, overSpare, overNeed,
     tauC: comparatorTau(P), settle: settlingTimes(d, P.tauDac), phaseErr: worstPhaseError(P.f0, P.delayStep),
     memArea, cdacArea, areaTotal: memArea + cdacArea, chipArea: P.chipW * P.chipH, smallest, binCu: binaryMatchingCu(P).cu,
     sigmaU, lambda: P.c / P.f0, ui,

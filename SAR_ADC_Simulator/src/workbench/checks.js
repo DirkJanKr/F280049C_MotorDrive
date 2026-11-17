@@ -48,7 +48,7 @@ function toleranceCheck(ctx) {
   const bad = ctx.tolNeed.filter((r) => !r.ok);
   if (!bad.length) {
     const m = Math.min(...ctx.tolNeed.filter((r) => !r.last).map((r) => r.have + 0.5 - r.need));
-    return { id: 'tol', label: 'Redundancy covers the errors', state: 'ok', value: `margin ${num(m, 2)} LSB`, limit: 'need ≤ tolerance + ½ LSB', why: 'At every decision the tolerance plus half an LSB is larger than what mismatch (3σ) and the offset left after calibration need. Comparator noise is in the noise budget.', fix: '', go: 'sar', f: 'tol' };
+    return { id: 'tol', label: 'Redundancy covers the errors', state: 'ok', value: `margin ${num(m, 2)} LSB`, limit: 'need ≤ tolerance + ½ LSB', why: 'At every decision the tolerance plus half an LSB is larger than what the fixed errors need: mismatch (3σ) and the offset left after calibration, so no code is lost (3σ DNL below ½ LSB). Settling may use what is left. Comparator noise needs no tolerance: it only flips a decision when the residue is within the noise, and then leaves an error of about that size whether repaired or not; it is counted in the ENOB.', fix: '', go: 'sar', f: 'tol' };
   }
   const list = bad.slice(0, 4).map((r) => `decision ${r.i + 1} needs ${num(r.need, 2)} LSB (mismatch ${num(r.mismatch, 2)}, offset ${num(r.offset, 2)}) but has ${num(r.have, 2)} + ½`).join('; ');
   const mis = bad.reduce((a, r) => a + r.mismatch, 0) >= bad.reduce((a, r) => a + r.offset, 0);
@@ -67,6 +67,12 @@ export function runChecks(ctx) {
     id: 'cover', label: 'Steps reach both ends of the range', state: d.cover.ok ? 'ok' : 'bad', value: `${num(d.cover.sum, 1)} LSB`, limit: `${d.cover.need} needed`,
     why: d.cover.ok ? 'The sum of the steps reaches half the codes.' : `The steps add up to ${num(d.cover.sum, 1)} LSB, but ${d.cover.need} are needed to move from mid-scale to either end; inputs near full scale clip.`,
     fix: d.cover.ok ? '' : 'Raise the first step or the radix, or add a step.', go: 'sar', f: 'cover',
+  });
+  const overOk = ctx.overSpare >= ctx.overNeed;
+  out.push({
+    id: 'over', label: 'Spare reach at the ends of the range', state: overOk ? 'ok' : 'warn', value: `${num(ctx.overSpare, 1)} LSB spare`, limit: `${num(ctx.overNeed, 1)} LSB needed`,
+    why: `${overOk ? '' : 'The end codes can clip. '}The steps reach ${num(d.cover.reach, 1)} LSB from mid-scale, ${num(ctx.overSpare, 1)} more than the ${2 ** (P.bits - 1)} the range needs. That spare must absorb what moves or scales the whole result: the shift by the calibrated offset and 3σ of the sum of the step errors (${num(ctx.overNeed, 1)} LSB together). A gain error of the reference charge would need more; it is not modelled. Redundancy does not help here: it repairs decisions, not the total reach.`,
+    fix: overOk ? '' : 'Make the steps add up to a few LSB more than half the codes, for example one unit more in an early step.', go: 'sar', f: 'cover',
   });
   out.push({
     id: 'cells', label: 'Memory cells per channel', state: need.m > P.memCells ? 'bad' : 'ok', value: `${need.m} needed`, limit: `${P.memCells} set`,

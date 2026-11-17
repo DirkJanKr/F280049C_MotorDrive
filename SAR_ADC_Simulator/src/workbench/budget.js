@@ -134,7 +134,10 @@ export function toleranceNeeds(P, d, sigmaU) {
     const offRaw = offsetLsb(d, P.vos, i).differential;
     const noise = (3 * comparatorCharge(P, d, i)) / d.qLsb;
     const need = mismatch + Math.abs(off);
-    rows.push({ i, have: d.tol[i], mismatch, offset: Math.abs(off), offsetRaw: Math.abs(offRaw), noise, need, last: i === n - 1, ok: i === n - 1 || need <= d.tol[i] + 0.5 + 1e-9 });
+    // fixed errors (mismatch, offset) may use the tolerance plus ½ LSB (3 sigma DNL below ½ LSB);
+    // incomplete settling is also a fixed error, so it may use what is left: allow
+    const allow = Math.max(0, d.tol[i] + 0.5 - need);
+    rows.push({ i, have: d.tol[i], mismatch, offset: Math.abs(off), offsetRaw: Math.abs(offRaw), noise, need, allow, last: i === n - 1, ok: i === n - 1 || need <= d.tol[i] + 0.5 + 1e-9 });
   }
   return rows;
 }

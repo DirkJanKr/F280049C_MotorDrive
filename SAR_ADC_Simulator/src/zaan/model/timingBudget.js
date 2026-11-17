@@ -111,15 +111,17 @@ export function settledAfter({ t, e }, level) {
 const memo = new Map();
 
 /** Settling of every step per ohm of switch resistance: { tau (own branch with the node), kRed, kBin } in s per ohm. */
-export function settlingPerOhm(caps, mode = 'same') {
-  const key = JSON.stringify([caps, mode]);
+export function settlingPerOhm(caps, mode = 'same', allow = null) {
+  const key = JSON.stringify([caps, mode, allow]);
   if (memo.has(key)) return memo.get(key);
   const tol = tolerances(caps.map((s) => s.w));
   const cu = Math.min(...caps.map((s) => s.c));
   const out = caps.map((s, j) => {
     const tolNext = Math.max(0.5, tol[j + 1] ?? 0.5);
-    const worst = (tolAt) => Math.max(...[s.w - tolAt, s.w + tolAt].map((r) => settledAfter(deviation(caps, j, r, mode), tolAt)));
-    return { ...s, tolNext, tau: (2 * factor(s, cu, mode) * s.c * s.cd) / (s.c + s.cd), kRed: worst(tolNext), kBin: worst(0.5) };
+    // allowed error at the next decision: what mismatch and offset leave of tolerance + ½ (budget.js), else the tolerance itself
+    const level = allow ? Math.max(1e-3, allow[j + 1] ?? 0.5) : tolNext;
+    const worst = (tolAt, lv) => Math.max(...[s.w - tolAt, s.w + tolAt].map((r) => settledAfter(deviation(caps, j, r, mode), lv)));
+    return { ...s, tolNext, level, tau: (2 * factor(s, cu, mode) * s.c * s.cd) / (s.c + s.cd), kRed: worst(tolNext, level), kBin: worst(0.5, 0.5) };
   });
   if (memo.size > 12) memo.clear();
   memo.set(key, out);
@@ -127,19 +129,20 @@ export function settlingPerOhm(caps, mode = 'same') {
 }
 
 /** Settling of every step for a switch resistance ron [ohm]. */
-export function stepSettling(caps, ron, mode = 'same') {
-  return settlingPerOhm(caps, mode).map((s) => ({ ...s, tau: s.tau * ron, tRed: s.kRed * ron, tBin: s.kBin * ron }));
+export function stepSettling(caps, ron, mode = 'same', allow = null) {
+  return settlingPerOhm(caps, mode, allow).map((s) => ({ ...s, tau: s.tau * ron, tRed: s.kRed * ron, tBin: s.kBin * ron }));
 }
 
 /**
  * One case. d: CDAC design, P: model parameters (fs, bits, channels, cpar, vref, vosCal).
- * o: { ron, scheme: 'pingpong' | 'reservoir', extraHalf, offsetCmp, mode }.
+ * o: { ron, scheme: 'pingpong' | 'reservoir', extraHalf, offsetCmp, mode, allow }. allow: allowed settling error per decision [LSB].
  * Returns the intervals [{ id, label, t, status, source }], the time left and the verdict.
  */
 export function timingCase(d, P, o) {
   const period = 1 / P.fs;
   const caps = stepCaps(d, o.extraHalf);
-  const settle = stepSettling(caps, o.ron, o.mode);
+  // the allowed errors belong to the present weights; with one more half step they do not apply, so the tolerance rule is used
+  const settle = stepSettling(caps, o.ron, o.mode, o.extraHalf ? null : o.allow || null);
   const decisions = caps.length + 1;
   const cycles = decisions + (o.offsetCmp ? 1 : 0);
   const lastCap = caps[caps.length - 1];
@@ -176,8 +179,8 @@ export function timingCase(d, P, o) {
 }
 
 /** The eight cases: two reference schemes, with and without one more half step, with and without the offset comparison. */
-export function timingCases(d, P, ron, mode = 'same') {
+export function timingCases(d, P, ron, mode = 'same', allow = null) {
   const out = [];
-  for (const scheme of ['pingpong', 'reservoir']) for (const extraHalf of [false, true]) for (const offsetCmp of [false, true]) out.push(timingCase(d, P, { ron, scheme, extraHalf, offsetCmp, mode }));
+  for (const scheme of ['pingpong', 'reservoir']) for (const extraHalf of [false, true]) for (const offsetCmp of [false, true]) out.push(timingCase(d, P, { ron, scheme, extraHalf, offsetCmp, mode, allow }));
   return out;
 }

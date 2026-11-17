@@ -156,7 +156,7 @@ function walk(ctx, chip, x) {
   }, w), 'Dashed: the input. Bars: what the remaining steps can still reach; while the input stays inside, a wrong decision is repaired.');
 }
 
-/** Rows per decision: stacked need (mismatch, offset after calibration, noise) against the tolerance + ½ LSB. */
+/** Rows per decision: fixed errors (mismatch, offset after calibration) stacked against the tolerance + ½ LSB; noise apart. */
 function tolerance(ctx) {
   const rows = ctx.tolNeed;
   const w = Math.max(340, widthOf('sTol'));
@@ -175,10 +175,13 @@ function tolerance(ctx) {
     const have = r.have + 0.5;
     p.push(`<text x="8" y="${y + 15}" class="lbl">decision ${r.i + 1}</text>`);
     let acc = 0;
-    for (const [val, cls] of [[r.mismatch, 'tn-mis'], [r.offset, 'tn-off'], [r.noise, 'tn-noise']]) {
-      p.push(`<rect x="${sx(acc)}" y="${y + 3}" width="${Math.max(0, sx(acc + val) - sx(acc))}" height="${rh - 9}" class="${cls}"/>`);
+    // fixed errors stacked: they use the tolerance
+    for (const [val, cls] of [[r.mismatch, 'tn-mis'], [r.offset, 'tn-off']]) {
+      p.push(`<rect x="${sx(acc)}" y="${y + 3}" width="${Math.max(0, sx(acc + val) - sx(acc))}" height="${rh - 13}" class="${cls}"/>`);
       acc += val;
     }
+    // noise drawn apart, as a thin bar from zero: it needs no tolerance
+    p.push(`<rect x="${sx(0)}" y="${y + rh - 9}" width="${Math.max(0, sx(r.noise) - sx(0))}" height="4" class="tn-noise"/>`);
     p.push(`<line x1="${sx(r.mismatch + r.offsetRaw)}" x2="${sx(r.mismatch + r.offsetRaw)}" y1="${y + 1}" y2="${y + rh - 4}" class="tn-raw"/>`);
     if (!r.last) {
       const hx = sx(have);
@@ -189,10 +192,10 @@ function tolerance(ctx) {
   });
   p.push('</svg>');
   // the legend is HTML, so it wraps on a narrow screen instead of running out of the drawing
-  const legend = `<div class="pleg"><span><i style="background:var(--cal)"></i>DAC mismatch 3σ</span><span><i style="background:var(--ref)"></i>offset against the last decision</span><span><i style="background:color-mix(in srgb, var(--clk) 45%, transparent)"></i>comparator noise 3σ</span></div>`;
+  const legend = `<div class="pleg"><span><i style="background:var(--cal)"></i>DAC mismatch 3σ</span><span><i style="background:var(--ref)"></i>offset against the last decision</span><span><i style="background:color-mix(in srgb, var(--clk) 45%, transparent)"></i>comparator noise 3σ, thin bar: needs no tolerance</span></div>`;
   const P = ctx.P;
   const d = ctx.d;
-  fill('sTol', legend + p.join(''), `Green line: the tolerance plus ½ LSB, what the later steps can still repair. The need for the check is ${fv('need', 'mismatch + offset')}; comparator noise is drawn on top but counted in the ${fv('b-comp', 'noise budget')}, since an unrepaired noise error is output noise. Short tick: mismatch + the offset before calibration (${eng(P.vos, 'V')}); calibration brings it to ${eng(P.vosCal, 'V')}. The offset as charge grows with the node, ${num(offsetLsb(d, P.vosCal, 0).total, 2)} LSB at decision 1 to ${num(offsetLsb(d, P.vosCal, d.decisions - 1).total, 2)} LSB at the last; only the difference from the last uses tolerance, the rest shifts every code equally. Comparator noise as charge: ${fq(ctx, comparatorCharge(P, d, 0), true)} at decision 1, ${fq(ctx, comparatorCharge(P, d, d.decisions - 1), true)} at the last.`);
+  fill('sTol', legend + p.join(''), `Green line: the tolerance plus ½ LSB, what the later steps can still repair. The need for the check is ${fv('need', 'mismatch + offset')}; comparator noise is drawn apart because it needs no tolerance: it only flips a decision when the residue is within the noise, and then leaves an error of about that size whether repaired or not. It is counted in the ${fv('b-comp', 'noise budget')}, since an unrepaired noise error is output noise. Short tick: mismatch + the offset before calibration (${eng(P.vos, 'V')}); calibration brings it to ${eng(P.vosCal, 'V')}. The offset as charge grows with the node, ${num(offsetLsb(d, P.vosCal, 0).total, 2)} LSB at decision 1 to ${num(offsetLsb(d, P.vosCal, d.decisions - 1).total, 2)} LSB at the last; only the difference from the last uses tolerance, the rest shifts every code equally. Comparator noise as charge: ${fq(ctx, comparatorCharge(P, d, 0), true)} at decision 1, ${fq(ctx, comparatorCharge(P, d, d.decisions - 1), true)} at the last.`);
 }
 
 function table(ctx) {
