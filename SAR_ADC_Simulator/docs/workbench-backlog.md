@@ -33,3 +33,6 @@ Add new items at the bottom with the date; strike them when done.
 17. Receive focus and cells needed: the plane-wave formula underestimates with a focus (7 cells needed at 0 deg and 5 mm, 1 shown). Formula change needs approval.
 18. Read-side parasitics and reset of the summing node (review feedback): C_par lowers alpha; without a reset leftover charge gives memory between samples (MATLAB step C).
 19. Charge convention note on the Sources page: Q = Q+ - Q- is twice Rabuske's charge; results in LSB are equal.
+
+## Interface with the front end (19 Nov)
+20. Full scale V_FS: 1 to 2 V pp halves the relative ADC noise and offset (or allows C_M 4x smaller for the same kT/C); the cost is front-end linearity (HD3 about +12 dB for +6 dB swing), switch linearity, V_REF = 1 V at alpha 1. Joint decision with Zehou: which swing his output stage gives at HD3 below -60 dBc, and at what power.
