@@ -11,7 +11,8 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 0 | Specification in charge: full scale, one LSB, noise we may add | spec, start value C_M | Q_FS, Q_LSB, noise allowed | done |
 | 1 | Does an ideal binary conversion end within ½ LSB of the input? | 0 | a checked model of the conversion | done |
 | 2a | How small may the memory cell be for its kT/C noise? | 0 | lower limit on C_M | done: 26 fF for 25 % of the other noise |
-| 2b | How large must it be so mismatch between cells gives low enough tones? | 0, 1 | C_M (U), the larger of 2a and 2b | |
+| 2b | How large are the tones from gain mismatch between cells, and what do they cost? | 0 | tone power against C_M | done: total -62.6 dBc at 280 fF, 0.26 bit of ENOB |
+| 2c | Offset charge per cell (switch charge injection): how large are those tones? | Cadence switch | C_M (U), the largest of 2a to 2c | needs Cadence |
 | 3 | Charge balance at alpha = 1: V_REF, total CDAC charge, node growth per decision | 2 | V_REF, C_DAC | |
 | 4 | Noise budget in charge: what is left for the comparator? | 3 | comparator noise target for Cadence | |
 | 5 | CDAC unit and its mismatch: what goes wrong with binary steps? | 3, PDK | unit capacitor, error per step | |
