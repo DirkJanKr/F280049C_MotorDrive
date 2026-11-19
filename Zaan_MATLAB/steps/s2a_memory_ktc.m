@@ -15,7 +15,7 @@ addpath(fullfile(fileparts(here), '1_settings'));
 p = zaan_params();
 d = zaan_derive(p);
 fC = 1e15;  kT = p.k * p.T;
-share = 0.25;     % share of the "other noise" power we give the memory cells   A (my choice)
+share = 0.1;     % share of the "other noise" power we give the memory cells   A (my choice)
 
 %% 1. The noise charge at the start value of C_M
 q_mem = sqrt(2 * p.N_ch * kT * p.C_M);
