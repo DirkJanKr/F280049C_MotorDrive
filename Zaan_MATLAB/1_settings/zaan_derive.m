@@ -1,12 +1,13 @@
 function d = zaan_derive(p)
-% ZAAN_DERIVE  Everything that follows from zaan_params.
+% ZAAN_DERIVE  Everything that follows from zaan_params, worked out in charge.
 %   Charge convention: Q = Q+ - Q-, the difference of the charges on the two
-%   summing nodes. One LSB of input is Q_LSB.
+%   summing nodes. One LSB of input is Q_LSB. Capacitances only serve to find charges.
 
 d.V_REF = p.alpha * p.V_FS / 2;                   % [V]   charge balance with alpha
 d.Q_LSB = 2 * d.V_REF * p.C_u / p.lsb_per_unit;   % [C]   one unit changes Q by 2 V_REF C_u
 d.C_M   = d.Q_LSB * 2^p.N_bits / (p.N_ch * p.V_FS); % [F] from Q_FS = N C_M V_FS
 d.C_TH  = p.N_ch * d.C_M;                         % [F]   sampling capacitance per node
+d.Q_FS  = 2^p.N_bits * d.Q_LSB;                   % [C]   full scale, peak to peak
 
 % Steps: weight in LSB, the charge it adds to Q, and the capacitor it really is
 n = numel(p.w);
