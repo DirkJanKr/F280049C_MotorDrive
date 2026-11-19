@@ -1,24 +1,28 @@
 # Zaan MATLAB design flow
 
-One step at a time. Each step answers one question, works in charge (Q = Q+ - Q-),
-prints the hand calculation next to the simulation, and hands one result to the next
-step. A step is done when its check passes and I can explain every line.
-alpha = 1 throughout.
+One step at a time, in the order a design is decided: specification first, then the
+memory cell, then the charge balance, then the comparator, and only then the CDAC.
+Each step answers one question, works in charge (Q = Q+ - Q-), prints the hand
+calculation next to the simulation, and hands one result to the next step.
+A step is done when its check passes and I can explain every line. alpha = 1.
 
 | Step | Question | Needs | Gives | Status |
 |---|---|---|---|---|
-| 0 | How big is one LSB, the full scale, each step and each memory cell, in charge? | params | Q_LSB, Q_FS, C_M, step charges | done |
-| 1 | Does one ideal conversion, followed decision by decision, end within ½ LSB of the input? | 0 | the conversion function, checked | |
-| 2 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | proof of the tolerance formula by simulation | |
-| 3 | What noise charge does each source give, and what is left for the comparator? | 1 | comparator noise spec for Cadence | |
-| 4 | How large must the memory cells be so their mismatch gives low enough tones? | 0 | C_M (may change step 0) | |
-| 5 | How large is the error charge per step, and what tolerance does each decision need? | 2, 4 | the weight list, incl. overrange | |
-| 6 | What do calibration and rounding to 10 bit leave? | 5 | ENOB, DNL, INL | |
-| 7 | How long must each step settle, given what the errors leave? | 5, Cadence switch | switch size, timing | |
+| 0 | Specification in charge: full scale, one LSB, noise we may add | spec, start value C_M | Q_FS, Q_LSB, noise allowed | done |
+| 1 | Does an ideal binary conversion end within ½ LSB of the input? | 0 | a checked model of the conversion | done |
+| 2 | How large must the memory cell be: kT/C, and tones from mismatch? | 0, 1 | C_M (U) | |
+| 3 | Charge balance at alpha = 1: V_REF, total CDAC charge, node growth per decision | 2 | V_REF, C_DAC | |
+| 4 | Noise budget in charge: what is left for the comparator? | 3 | comparator noise target for Cadence | |
+| 5 | CDAC unit and its mismatch: what goes wrong with binary steps? | 3, PDK | unit capacitor, error per step | |
+| 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | |
+| 7 | Which weights give every decision the tolerance its errors need, with overrange? | 5, 6 | the weight list (U) | |
+| 8 | What do calibration and rounding to 10 bit leave? | 7 | ENOB, DNL, INL | |
+| 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | |
 
 Why this order:
-- 1 and 2 build the model and prove the redundancy idea before it is used for design.
-- 3 comes early because Cadence needs a comparator noise target now.
-- 4 comes before 5: a larger memory cell at alpha = 1 means a larger CDAC, which
-  changes the mismatch of every step.
-- 7 comes last because settling needs a real switch resistance from the PDK.
+- Step 1 uses textbook binary steps on purpose: it checks the model, it does not choose a CDAC.
+- The memory cell (2) comes first because at alpha = 1 everything follows from it:
+  V_REF is fixed, C_DAC = N C_M / 2, and the node capacitance the comparator sees.
+- The comparator target (4) is needed early by Cadence and only needs steps 2 and 3.
+- The CDAC (5 to 7) comes after the charge it has to deliver is known.
+- Settling (9) needs a real switch resistance from the PDK.
