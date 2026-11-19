@@ -1,6 +1,8 @@
-%% s2c_memory_offset_tones.m   STEP 2c: tones from an offset charge per memory cell
-% QUESTION: every cell adds its own small charge, for example from the charge injection
-% of its switches, even with no input. How large may the spread of that charge be
+%% s2c_memory_offset_tones.m   STEP 2c: tones from an extra charge per memory cell
+% QUESTION: every cell adds its own small extra charge that does not depend on the input,
+% for example from the charge injection of its switches. It is called an offset because
+% it shifts the output by a fixed amount (Q = C_M V + q), unlike a gain error, which
+% scales it (Q = C_M V (1 + eps)). With V = 0 a gain error gives nothing, an offset gives q. How large may the spread of that charge be
 % before its tones matter?
 % The size of that charge needs Cadence, so this step turns it around: it gives the
 % largest spread per cell the design can accept. That is a specification for the switch.
@@ -25,7 +27,7 @@ share = 0.25;   % share of the "other noise" power (step 0) given to these tones
 q_allowed = sqrt(share) * d.Q_LSB / sqrt(12);
 sigma_cell_max = q_allowed / sqrt(N * (M - 1) / M);
 fprintf('allowed for the offset tones: %.3f fC rms (%.3f LSB)\n', q_allowed * fC, q_allowed / d.Q_LSB);
-fprintf('so the spread of the offset charge per cell may be at most %.3f fC\n\n', sigma_cell_max * fC);
+fprintf('so the spread (standard deviation over the cells) of the extra charge may be at most %.3f fC\n\n', sigma_cell_max * fC);
 
 %% 2. CHECK by simulation, for a few spreads per cell, no signal (grounded input)
 kdel = round((0:N-1) * p.pitch * sind(p.theta) / p.c * p.fs);   % delays [slots], as step 2b
@@ -34,7 +36,7 @@ fprintf('%14s %16s %16s %18s\n', 'sigma per cell', 'tones, hand', 'tones, sim', 
 for sig_q = [0.05 0.1 0.2 0.5 1] * 1e-15
     tot = 0;  big = 0;  n_chips = 40;
     for chip = 1:n_chips
-        q = sig_q * randn(N, M);                    % offset charge of every cell [C]
+        q = sig_q * randn(N, M);                    % extra charge of every cell [C]
         Q = zeros(1, n_fft);
         for j = 1:N
             Q = Q + q(j, mod(m - kdel(j), M) + 1);  % the cell channel j reads this sample
