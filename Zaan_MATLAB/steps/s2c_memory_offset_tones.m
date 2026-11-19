@@ -19,7 +19,7 @@ p = zaan_params();
 d = zaan_derive(p);
 N = p.N_ch;  M = p.M_cells;  fC = 1e15;
 randn('seed', 3);
-share = 0.25;   % share of the "other noise" power (step 0) given to these tones   A (as step 2a)
+share = 0.10;   % share of the "other noise" power (step 0) given to these tones   A (as step 2a)
 
 %% 1. What may they take: 25 % of the noise power that ENOB 9.5 leaves besides quantisation
 q_allowed = sqrt(share) * d.Q_LSB / sqrt(12);
