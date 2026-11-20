@@ -17,7 +17,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 4 | Noise budget so far: what is left for the comparator? | 0 to 3 | comparator noise target | done: studied sources leave 45 uV; placeholders (CDAC kT/C, extra charge, switch noise, jitter) listed apart with what is needed to check them |
 | 5 | CDAC from real capacitors: mismatch, and which DNL formula is right | 3, PDK | unit 35 fF = 8 LSB, error per step | done: DNL (input width) 0.51 LSB = 2^(B-1) A_C / sqrt(C_DAC); output jump with real weights 1.04 LSB = 2^B A_C / sqrt(C_DAC). Binary 3 sigma < 0.5 LSB needs about 23.5 pF |
 | 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | done: with steps 9 5 3 2 1 1 the largest repaired error equals t_k at every decision |
-| 7 | Which weights give every decision the tolerance its errors need, with overrange? | 5, 6 | the weight list (U) | |
+| 7 | Which weights give every decision the tolerance its mismatch needs, with overrange, and what room is left? | 5, 6 | weight list (U), room per decision for offset and settling | done: four lists compared; candidate + 1 unit (224 128 72 40 24 16 8 4 2 1 ½ ½) covers mismatch everywhere, 8.5 LSB spare reach, 69 units, alpha 0.98. Choice is yours |
 | 8 | What do calibration and rounding to 10 bit leave? | 7 | ENOB, DNL, INL | |
 | 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | |
 
