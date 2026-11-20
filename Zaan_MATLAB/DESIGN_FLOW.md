@@ -19,6 +19,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | done: with steps 9 5 3 2 1 1 the largest repaired error equals t_k at every decision |
 | 7 | Errors per decision against the tolerance; which tolerance each decision needs; what reaches the output | 5, 6 | required tolerance and settling budget per decision | done: tolerance covers mismatch and offset; with 1 % settling the binary tail (d6) is not covered, so the small steps must settle better; output error before rounding 0.354 LSB rms |
 | 7b | Is adding the fixed errors per decision against the tolerance correct? (Monte Carlo proof) | 6, 7 | proof | done: rule met gives 0 of 500 chips failing; root-sum-square lets 5 to 14 % fail; the tolerance is the exact limit; noise needs none. Report in docs/tolerance_proof.md |
+| 7c | Design the weights backwards from the tolerance each decision needs, for a chosen settling allowance | 7, 7b | weight list per settling allowance | done: up to 1 % settling: 12 decisions, 68 units (2.38 pF), 9 LSB spare; 2 %: 13 decisions; 5 % and more: no list, the halving tail (1 LSB tolerance) limits |
 | 8 | Calibration and the second quantisation (rounding to 10 bit) | 7 | ENOB, DNL, INL | |
 | 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | |
 
