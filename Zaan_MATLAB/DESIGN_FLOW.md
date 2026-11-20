@@ -15,7 +15,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 2c | Offset charge per cell (switch charge injection): how much spread may a cell have? | 0 | switch spec: at most 0.16 fC per cell | done; the real value needs Cadence |
 | 3 | Charge balance at alpha = 1: V_REF, total CDAC charge, node growth per decision | 2 | V_REF, C_DAC | done: 0.5 V, 2.24 pF, 1 LSB = 0.98 mV at decision 1, 0.49 mV at the end |
 | 4 | Noise budget so far: what is left for the comparator? | 0 to 3 | comparator noise target | done: studied sources leave 45 uV; placeholders (CDAC kT/C, extra charge, switch noise, jitter) listed apart with what is needed to check them |
-| 5 | CDAC unit and its mismatch: what goes wrong with binary steps? | 3, PDK | unit capacitor, error per step | |
+| 5 | CDAC unit and its mismatch: what goes wrong with binary steps? | 3, PDK | unit 35 fF = 8 LSB, spread per step in fC | done: mid-scale DNL spread 0.54 LSB, about 2 % of chips lose a code; half the old slide formula (see step 5, section 4) |
 | 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | |
 | 7 | Which weights give every decision the tolerance its errors need, with overrange? | 5, 6 | the weight list (U) | |
 | 8 | What do calibration and rounding to 10 bit leave? | 7 | ENOB, DNL, INL | |

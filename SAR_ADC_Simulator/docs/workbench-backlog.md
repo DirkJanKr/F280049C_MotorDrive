@@ -36,3 +36,6 @@ Add new items at the bottom with the date; strike them when done.
 
 ## Interface with the front end (19 Nov)
 20. Full scale V_FS: 1 to 2 V pp halves the relative ADC noise and offset (or allows C_M 4x smaller for the same kT/C); the cost is front-end linearity (HD3 about +12 dB for +6 dB swing), switch linearity, V_REF = 1 V at alpha 1. Joint decision with Zehou: which swing his output stage gives at HD3 below -60 dBc, and at what power.
+
+## Contradiction found in MATLAB step 5 (20 Nov)
+21. Mid-scale DNL of a binary charge-sharing CDAC: simulation and a two-step derivation give sigma = sqrt(sum of step spreads^2) ~ 2^(B-1) A_C / sqrt(C_DAC), half of the formula 2^B A_C / sqrt(C_DAC) used in cdac.js (binaryMatchingCu), the Matching page and backup slides 17, 18 and 51. The first decision needs no capacitor, so the step errors count once. Consequence: 3 sigma < 0.5 LSB needs about 23.5 pF, not 94 pF; at 18 pF 3 sigma is about 0.57 LSB, not 1.1. To verify against literature (Saberi 2011) and the workbench's own Monte Carlo before changing anything.

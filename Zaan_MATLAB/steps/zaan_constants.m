@@ -34,6 +34,7 @@ theta   = 15;        % steering angle used in the studies [deg]                 
 % Capacitor matching (PDK, MIM 2 fF/um^2)
 % -----------------------------
 A_C = 0.0499;        % sigma(C)/C of one capacitor = A_C / sqrt(C in fF)          S (PDK Fig. 16)
+C_u = 35e-15;        % CDAC unit capacitor: the smallest MIM in the PDK [F]       S (PDK)
 
 %% -----------------------------
 % Charge balance
