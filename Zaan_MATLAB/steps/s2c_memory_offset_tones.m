@@ -1,53 +1,73 @@
-%% s2c_memory_offset_tones.m   STEP 2c: tones from an extra charge per memory cell
-% QUESTION: every cell adds its own small extra charge that does not depend on the input,
-% for example from the charge injection of its switches. It is called an offset because
-% it shifts the output by a fixed amount (Q = C_M V + q), unlike a gain error, which
-% scales it (Q = C_M V (1 + eps)). With V = 0 a gain error gives nothing, an offset gives q. How large may the spread of that charge be
-% before its tones matter?
-% The size of that charge needs Cadence, so this step turns it around: it gives the
-% largest spread per cell the design can accept. That is a specification for the switch.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%         STEP 2c: TONES FROM AN EXTRA CHARGE PER MEMORY CELL             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% QUESTION
+% Every cell adds its own small extra charge that does not depend on the
+% input, for example from the charge injection of its switches. How large may
+% its spread over the cells be before its tones matter?
 %
-% In charge: cell i of channel j adds q_ij (the difference between its P and N side).
-% The read sums one cell per channel; the cell changes every sample and repeats every M
-% samples, so the sum is a pattern of period M: tones at k fs/M, with or without signal
-% (Chen 2018 measured these at fs/8 with grounded inputs, p. 3061).
-% Hand estimate (D): the sum has spread sigma_q sqrt(N); its average over the cells is a
-% constant (DC), the rest, a fraction (M-1)/M of the power, goes into the tones.
+% ANSWER (C_M = 280 fF, 25 % share)
+% At most 0.16 fC standard deviation per cell. A specification for the cell
+% switch, to be checked with a Cadence Monte Carlo.
+%
+% It is called an offset because it shifts the output by a fixed amount
+% (Q = C_M V + q), unlike a gain error (Q = C_M V (1 + eps)). With V = 0 a
+% gain error gives nothing, an offset gives q. These tones are there even
+% with the input grounded (Chen 2018 measured them at fs/8, p. 3061).
+%
+% Hand formula: the sum of N cells has spread sigma_q sqrt(N); its average
+% over the M cells is a constant (DC), the rest, (M-1)/M of the power, is tones.
+% ASSUMPTION: the cells of different channels are independent.
 
-clear; clc;
-here = fileparts(mfilename('fullpath')); if isempty(here), here = pwd; end
-addpath(fullfile(fileparts(here), '1_settings'));
-p = zaan_params();
-d = zaan_derive(p);
-N = p.N_ch;  M = p.M_cells;  fC = 1e15;
-randn('seed', 3);
-share = 0.10;   % share of the "other noise" power (step 0) given to these tones   A (as step 2a)
+clear; close all; clc;
+zaan_constants;
+rng(3);
 
-%% 1. What may they take: 25 % of the noise power that ENOB 9.5 leaves besides quantisation
-q_allowed = sqrt(share) * d.Q_LSB / sqrt(12);
-sigma_cell_max = q_allowed / sqrt(N * (M - 1) / M);
-fprintf('allowed for the offset tones: %.3f fC rms (%.3f LSB)\n', q_allowed * fC, q_allowed / d.Q_LSB);
-fprintf('so the spread (standard deviation over the cells) of the extra charge may be at most %.3f fC\n\n', sigma_cell_max * fC);
+share = 0.25;              % share of the "other noise" power for these tones   A
 
-%% 2. CHECK by simulation, for a few spreads per cell, no signal (grounded input)
-kdel = round((0:N-1) * p.pitch * sind(p.theta) / p.c * p.fs);   % delays [slots], as step 2b
-n_fft = M * 512;  m = 0:n_fft-1;
-fprintf('%14s %16s %16s %18s\n', 'sigma per cell', 'tones, hand', 'tones, sim', 'largest tone');
-for sig_q = [0.05 0.1 0.2 0.5 1] * 1e-15
-    tot = 0;  big = 0;  n_chips = 40;
+% from step 0
+Q_LSB = N_ch * C_M * V_FS / 2^N_bits;
+
+%% -----------------------------
+% 1) What may they take, and what spread per cell does that allow?
+% -----------------------------
+q_allowed = sqrt(share) * Q_LSB / sqrt(12);                  % rms [C]
+sig_max   = q_allowed / sqrt(N_ch * (M_cells-1)/M_cells);    % per cell [C]
+fprintf('allowed for these tones: %.3f fC rms (%.3f LSB)\n', q_allowed*1e15, q_allowed/Q_LSB);
+fprintf('so the spread of the extra charge per cell may be at most %.3f fC\n\n', sig_max*1e15);
+
+%% -----------------------------
+% 2) Check by simulation, grounded input, a few spreads per cell
+% -----------------------------
+kdel  = round((0:N_ch-1) * pitch * sind(theta) / c_sound * fs);   % delays, as step 2b
+n_fft = M_cells * 512;
+m     = 0:n_fft-1;
+sig_list = [0.05 0.1 0.2 0.5 1] * 1e-15;   % spread per cell to try [C]
+n_chips  = 40;
+hand = zeros(size(sig_list));  sim = hand;
+
+fprintf(' spread per cell   tones, hand   tones, sim   largest tone (amplitude)\n');
+for i = 1:numel(sig_list)
+    P_tot = 0;  big = 0;
     for chip = 1:n_chips
-        q = sig_q * randn(N, M);                    % extra charge of every cell [C]
+        q = sig_list(i) * randn(N_ch, M_cells);      % extra charge of every cell [C]
         Q = zeros(1, n_fft);
-        for j = 1:N
-            Q = Q + q(j, mod(m - kdel(j), M) + 1);  % the cell channel j reads this sample
+        for j = 1:N_ch
+            Q = Q + q(j, mod(m - kdel(j), M_cells) + 1);   % no signal: just add
         end
-        Q = Q - mean(Q);                            % the DC part is a plain offset, not a tone
-        tot = tot + mean(Q.^2) / n_chips;
-        big = max(big, max(abs(fft(Q))) * 2 / n_fft);   % amplitude of the largest tone
+        Q = Q - mean(Q);                     % the DC part is a plain offset, not a tone
+        P_tot = P_tot + mean(Q.^2)/n_chips;  % average power of the tones
+        big = max(big, max(abs(fft(Q))) * 2/n_fft);   % FFT value -> tone amplitude
     end
-    hand = sig_q * sqrt(N * (M - 1) / M);
-    fprintf('%11.2f fC %13.3f fC %13.3f fC %13.3f fC amp\n', sig_q * fC, hand * fC, sqrt(tot) * fC, big * fC);
+    hand(i) = sig_list(i) * sqrt(N_ch * (M_cells-1)/M_cells);
+    sim(i)  = sqrt(P_tot);
+    fprintf('%12.2f fC %10.3f fC %10.3f fC %12.3f fC\n', sig_list(i)*1e15, hand(i)*1e15, sim(i)*1e15, big*1e15);
 end
-fprintf('\n(tones: total rms charge; largest tone: its amplitude, worst of the chips)\n');
-fprintf('one LSB is %.2f fC; the largest tone of a full-scale sine would be %.0f fC amplitude\n', ...
-        d.Q_LSB * fC, d.Q_FS / 2 * fC);
+fprintf('\none LSB is %.2f fC\n', Q_LSB*1e15);
+
+figure; loglog(sig_list*1e15, hand*1e15, 'b-', 'LineWidth', 1.5); hold on; grid on;
+loglog(sig_list*1e15, sim*1e15, 'ko');
+loglog(sig_list*1e15, q_allowed*1e15*ones(size(sig_list)), 'r--');
+xlabel('spread of the extra charge per cell [fC]'); ylabel('all tones together [fC rms]');
+legend('hand formula', 'simulation', 'allowed');
+title('Extra charge per cell: tones against the allowed share');

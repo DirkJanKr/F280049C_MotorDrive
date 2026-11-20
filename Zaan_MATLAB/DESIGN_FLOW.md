@@ -1,6 +1,6 @@
 # Zaan MATLAB design flow
 
-One step at a time, in the order a design is decided: specification first, then the
+One step at a time (scripts in `steps`, constants in `steps/zaan_constants.m`), in the order a design is decided: specification first, then the
 memory cell, then the charge balance, then the comparator, and only then the CDAC.
 Each step answers one question, works in charge (Q = Q+ - Q-), prints the hand
 calculation next to the simulation, and hands one result to the next step.
