@@ -169,7 +169,7 @@ for kind = 1:2
                 num2str(bad), max(em), max(em - a), 100*mean(em > Wr2(:,n)/2 + tol), 100*mean(act), 100*mean(pred), 100*mean(pred == act));
         d_ex(kind, dd) = mean((em(pred) - a(pred)) - xs(pred));   % predicted excess against measured, failing-by-rule chips
         if dd == 3                                  % where does coverage go, for the worst chip and input?
-            xr_ = {x_c, x_in}{kind};   % the ramp used
+            xr_list = {x_c, x_in};  xr_ = xr_list{kind};   % the ramp used
             [~, cw] = max(em);  ee = ce(Qm2(cw,:), e2, v2);  [~, iw] = max(abs(ee));
             r = xr_(iw);  sp = 0;  lost = 0;  Wc = Qm2(cw,:) / Q_LSB;
             for k = 1:n                              % the same loop as in cs_sar, for ONE input
