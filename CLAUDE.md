@@ -13,6 +13,8 @@ Project: MSc thesis of Dirk-Jan. Charge-sharing SAR ADC with merged delay-and-su
 - Ground truth for formulas: Rabuske 2017 (book). Then Chen 2018, Guo 2024, Malki 2014.
 - Output is 10 bits.
 - Keep usage low: few tool calls, short reports.
+- When explaining code or a method: tell it as a short cause-and-effect story (oorzaak gevolg), top-level idea first, then follow the flow of the code in plain words, without code. Like the architecture review.
+- MATLAB work lives in `Zaan_MATLAB/`: small steps in `steps/`, all in charge (Q = Q+ - Q-), order and status in `DESIGN_FLOW.md`. Workbench changes discussed but not built are listed in `SAR_ADC_Simulator/docs/workbench-backlog.md`.
 
 ## Where things are (all under `SAR_ADC_Simulator/`)
 
