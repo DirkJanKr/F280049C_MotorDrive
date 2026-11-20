@@ -14,12 +14,14 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 2b | How large are the tones from gain mismatch between cells, and what do they cost? | 0 | tone power against C_M | done: total -62.6 dBc at 280 fF, 0.26 bit of ENOB |
 | 2c | Offset charge per cell (switch charge injection): how much spread may a cell have? | 0 | switch spec: at most 0.16 fC per cell | done; the real value needs Cadence |
 | 3 | Charge balance at alpha = 1: V_REF, total CDAC charge, node growth per decision | 2 | V_REF, C_DAC | done: 0.5 V, 2.24 pF, 1 LSB = 0.98 mV at decision 1, 0.49 mV at the end |
-| 4 | Noise budget in charge: what is left for the comparator? | 3 | comparator noise target for Cadence | done: the sum is already 124 % of the 9.5 budget without the comparator (ENOB 9.35); memory gain tones are the largest term. Comparator 50 to 100 uV costs only 0.04 to 0.14 bit |
+| 4 | Noise budget so far: what is left for the comparator? | 0 to 3 | comparator noise target | done: studied sources leave 45 uV; placeholders (CDAC kT/C, extra charge, switch noise, jitter) listed apart with what is needed to check them |
 | 5 | CDAC unit and its mismatch: what goes wrong with binary steps? | 3, PDK | unit capacitor, error per step | |
 | 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | |
 | 7 | Which weights give every decision the tolerance its errors need, with overrange? | 5, 6 | the weight list (U) | |
 | 8 | What do calibration and rounding to 10 bit leave? | 7 | ENOB, DNL, INL | |
 | 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | |
+
+Rule for every step: a noise or error source enters the model only in its own step, where it is explained and checked. Until then it may appear only as a placeholder, with its assumption and what is needed to check it.
 
 Why this order:
 - Step 1 uses textbook binary steps on purpose: it checks the model, it does not choose a CDAC.
