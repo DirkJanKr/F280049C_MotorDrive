@@ -24,7 +24,7 @@
 
 clear; close all; clc;
 zaan_constants;
-rng(2);
+rng(2, 'twister');        % fixed random numbers: the same chips every run
 
 %% -----------------------------
 % 1) Delays: which cell each channel reads (whole 25 ns slots)

@@ -16,7 +16,7 @@
 
 clear; close all; clc;
 zaan_constants;
-rng(1);
+rng(1, 'twister');        % fixed random numbers: the same chips every run
 
 share = 0.25;              % share of the "other noise" power we give these cells   A
 

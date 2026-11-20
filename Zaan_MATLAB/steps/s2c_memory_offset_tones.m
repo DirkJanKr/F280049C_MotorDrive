@@ -21,7 +21,7 @@
 
 clear; close all; clc;
 zaan_constants;
-rng(3);
+rng(3, 'twister');        % fixed random numbers: the same chips every run
 
 share = 0.25;              % share of the "other noise" power for these tones   A
 

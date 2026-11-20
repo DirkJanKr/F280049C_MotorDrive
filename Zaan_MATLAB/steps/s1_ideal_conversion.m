@@ -21,7 +21,8 @@
 
 clear; close all; clc;
 zaan_constants;
-rng(1);                    % fixed random numbers: the same inputs every run
+rng(1, 'twister');         % fixed random numbers: the same inputs every run
+% 'twister' names the generator, so this also works after an old rand('seed') call
 
 % from step 0
 C_TH  = N_ch * C_M;
