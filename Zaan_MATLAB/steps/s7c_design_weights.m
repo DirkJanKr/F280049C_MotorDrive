@@ -3,8 +3,18 @@
 %                               NEEDS                                     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % QUESTION
-% Given how much settling error we allow, which weight list gives every
-% decision the tolerance its fixed errors need, with the fewest decisions?
+% If we wait n_tau time constants after every step, which weight list gives
+% every decision the tolerance its fixed errors need, with the fewest decisions?
+%
+% SETTLING IN TIME CONSTANTS
+% A step settles as e^(-t/tau): after waiting n_tau time constants, the part of
+% the step not yet on the node is eps = e^(-n_tau) (1 % after 4.6 tau).
+% A BINARY converter must let its largest step (half the full scale, 2^(B-1) LSB)
+% settle to ½ LSB:  e^(-n_tau) <= ½ / 2^(B-1)  ->  n_tau = ln(2^B) = 6.9 tau, and
+% with the usual extra factor 2 margin (¼ LSB) ln(2^(B+1)) = 7.6 tau. With one
+% delay for all steps, every step then waits 7.6 tau. Redundancy lets the large
+% steps settle only partly: that is where the time is won.
+% tau itself = R_switch x C, needs the PDK switch (Cadence); here everything is in tau.
 %
 % ANSWER: see the printed table (it depends on the settling allowed).
 %
@@ -34,7 +44,9 @@ zaan_constants;
 %% -----------------------------
 % 1) Values to fill in
 % -----------------------------
-eps_list = [0 0.002 0.005 0.01 0.02 0.05 0.1];   % settling allowed: part of a step not yet settled   A
+n_tau_list = [2.5 3 3.5 4 4.6 5.3 6.2 7.6];   % time constants waited after every step   A (to choose)
+eps_list   = exp(-n_tau_list);                 % part of a step not yet settled
+% exp(x) = e^x
 v_os     = 0.15e-3;     % comparator offset left after calibration [V]          S (Malki 2014, p. 1174)
 tail     = [4 2 1 1];   % halving tail [LSB]                                    A (halving sequence)
 
@@ -57,7 +69,9 @@ shift   = v_os * (C_TH + 2*C_DAC) / Q_LSB;         % the offset as a shift of th
 % 3) Build the list backwards, for every settling allowance
 % -----------------------------
 fprintf('offset uses at most %.2f LSB of every tolerance (upper bound)\n\n', off_max);
-fprintf('%9s %10s %7s %8s %8s %8s   %s\n', 'settling', 'decisions', 'units', 'C [pF]', 'spare', 'margin', 'weights [LSB]');
+fprintf('binary needs ln(2^(B+1)) = %.1f tau per step (largest step to ¼ LSB)\n\n', log(2^(N_bits+1)));
+% log(x) is the natural logarithm ln(x)
+fprintf('%6s %9s %10s %7s %8s %8s %8s   %s\n', 'n_tau', 'unsettled', 'decisions', 'units', 'C [pF]', 'spare', 'margin', 'weights [LSB]');
 % spare: reach beyond full scale [LSB]; margin: smallest tolerance minus need over the decisions [LSB]
 n_dec = zeros(size(eps_list));
 for e = 1:numel(eps_list)
@@ -103,7 +117,7 @@ for e = 1:numel(eps_list)
     end
     spare = sum(w) + w(end) - 2^(N_bits-1);
     if ~ok
-        fprintf('%8.1f %% %10s   no list: a step cannot leave enough tolerance\n', eps_s*100, '-');
+        fprintf('%6.1f %8.2f %% %10s   no list: the decision after a step cannot absorb what is left\n', n_tau_list(e), eps_s*100, '-');
         n_dec(e) = NaN;  continue
     end
     % exact check: every decision with tolerance, with the real step before it
@@ -116,19 +130,22 @@ for e = 1:numel(eps_list)
     n_whole = sum(w(w >= lsb_u)) / lsb_u;
     n_units = n_whole + 4;                         % + the halving chain: source and 3 units
     n_dec(e) = numel(w) + 1;
-    fprintf('%8.1f %% %10d %7d %8.2f %8.1f %8.2f   %s\n', eps_s*100, n_dec(e), n_units, n_units*C_u*1e12, ...
+    fprintf('%6.1f %8.2f %% %10d %7d %8.2f %8.1f %8.2f   %s\n', n_tau_list(e), eps_s*100, n_dec(e), n_units, n_units*C_u*1e12, ...
             spare, margin, num2str(w));
 end
 
 %% -----------------------------
 % 4) Summary
 % -----------------------------
+% Settling time of one conversion = decisions x n_tau (one delay for all steps).
 % The more settling error a step may leave, the more tolerance the decision
 % after it needs, so the steps must shrink faster than binary: more decisions.
 % With no settling error the rule only has to cover mismatch and offset, which
 % is about the same at every decision: then a few repeated steps are enough.
 % Each list is a candidate: check it with step 7 (part A and B) and step 7b,
 % and count its decisions against the 25 ns.
-figure; plot(eps_list*100, n_dec, 'o-', 'LineWidth', 1.5); grid on;
-xlabel('settling error allowed per step [%]'); ylabel('decisions');
-title('More settling error allowed costs more decisions');
+figure; plot(n_tau_list, n_dec, 'o-', 'LineWidth', 1.5); grid on;
+xlabel('time constants waited after every step'); ylabel('decisions');
+title('Waiting fewer time constants costs more decisions');
+% time per conversion, in tau, for the settling alone: decisions x n_tau.
+% Binary: 10 decisions x 7.6 tau = 76 tau. Compare that with each line above.
