@@ -49,21 +49,3 @@ alpha_check = d.C_TH / (2 * C_DAC);
 fprintf('alpha back from the capacitances: C_TH / (2 C_DAC) = %.3f\n', alpha_check);
 if abs(alpha_check - p.alpha) < 1e-9, disp('CHECK OK'), else, disp('CHECK FAILED'), end
 
-%% 4. Plot: the spectrum of one chip at 280 fF, relative to the signal
-C_M = 280e-15;  sig = p.A_C / sqrt(C_M * 1e15);
-g = 1 + sig * randn(N, M);                       % one chip
-Q = zeros(1, n_fft);
-for j = 1:N
-    Q = Q + g(j, mod(m - kdel(j), M) + 1) .* s;
-end
-P  = abs(fft(Q)).^2;  P = P(1:n_fft/2);          % power per bin, 0 .. fs/2
-Ps = P(k_sig + 1);                               % the signal
-f  = (0:n_fft/2 - 1) * p.fs / n_fft / 1e6;       % frequency of every bin [MHz]
-figure;
-plot(f, 10 * log10(P / Ps + 1e-30), 'b');        % 1e-30: empty bins would give log of 0
-hold on;
-plot([0 f(end)], [1 1] * (ADC_noise_dBc - 10 * log10(n_fft / 2)), 'r--');  % ADC noise per bin
-grid on;  ylim([-130 5]);
-xlabel('frequency [MHz]');  ylabel('power relative to the signal [dBc]');
-title(sprintf('one chip, C_M = %.0f fF: tones from cell mismatch', C_M * 1e15));
-legend('signal and tones', 'ADC noise at ENOB 9.5, per bin');
