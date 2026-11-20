@@ -40,3 +40,8 @@ C_u = 35e-15;        % CDAC unit capacitor: the smallest MIM in the PDK [F]     
 % Charge balance
 % -----------------------------
 alpha = 1;           % alpha = N C_M / (2 C_DAC), fixed at 1 for now              U (review 18 Nov)
+
+%% -----------------------------
+% The weight list in use (steps 7 onward)
+% -----------------------------
+w_design = [184 160 72 48 24 16 8 4 2 1 1];   % step weights [LSB]: designed in step 7b   A (until you choose)

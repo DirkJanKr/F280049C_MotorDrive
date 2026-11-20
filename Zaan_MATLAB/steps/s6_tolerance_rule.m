@@ -1,96 +1,94 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%   STEP 6: IS A WRONG DECISION REPAIRED EXACTLY WITHIN THE TOLERANCE?    %
+%            STEP 6: HOW LARGE A MISTAKE CAN REDUNDANCY REPAIR?           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% QUESTION
-% The tolerance of decision k is
-%     t_k = (sum of the later steps) + (last step) - w_k          (slide 22)
-% It claims: an error at decision k up to t_k is repaired completely by the
-% later steps. Is that true, and is it exactly the limit?
+% THE STORY
+% A SAR finds the input by steps: at every decision it adds or subtracts the
+% next step, moving the charge on the nodes towards zero. If one decision goes
+% the wrong way, the converter is now on the wrong side of the input. In a
+% binary converter the steps that are left add up to exactly the gap that is
+% still to be closed, so after a wrong turn they can never get back: the code
+% is wrong. With redundancy the later steps add up to MORE than needed. That
+% spare reach lets them walk back over a wrong turn. The spare reach of
+% decision k is its tolerance:
+%       t_k = (sum of the later steps) + (last step) - w_k
+% The last step counts twice: once as a step, once because the last comparison
+% still sorts the input into one of two intervals, each one last step wide.
+% CLAIM: a mistake at decision k is repaired completely if it is at most t_k.
 %
-% ANSWER
-% Yes. For every decision, the largest error that still gives the right
-% result (within ½ LSB) is exactly t_k. Binary steps have t_k = 0 everywhere.
-% Beyond it, the result is off by ½ + (error - t_k) LSB, until the error is
-% larger than any charge that can be left at that decision (see the plot).
+% HAND CHECK (do it on paper), steps 9 5 3 2 1 1, input 4 LSB:
+%   decision 1 should say "up" (4 > 0) but says "down": level 0 - 9 = -9.
+%   The later steps can climb at most 5+3+2+1+1 = 12: level -9 + 12 = 3.
+%   The last comparison adds one interval of 1 above that: inputs up to 4 are
+%   still coded right. t_1 = 12 + 1 - 9 = 4. An input of 4.5 is out of reach.
 %
-% A small converter on purpose, the one of slide 22: steps 9, 5, 3, 2, 1, 1 LSB
-% (6 steps, 7 decisions), in charge (multiples of Q_LSB). The weights of Zaan
-% come in step 7; this step only proves the rule they will be designed with.
-%
-% How an error is made: at decision k only, the comparator sees the charge
-% left PLUS an error charge e. That is what an offset, noise or a step that
-% has not settled yet does to that one decision.
+% WHAT THE CODE DOES
+%   1) the steps and their tolerance from the formula
+%   2) the hand check: one conversion with a forced wrong first decision
+%   3) for every decision: give it an error of growing size and find the
+%      largest one that still gives every input the right result
+%   4) compare with the formula
 
 clear; close all; clc;
-zaan_constants;
-Q_LSB = N_ch * C_M * V_FS / 2^N_bits;     % from step 0 [C]
 
 %% -----------------------------
-% 1) The steps and their tolerances
+% 1) The steps and their tolerance (all in LSB)
 % -----------------------------
-w = [9 5 3 2 1 1];                        % step weights [LSB]
-n = numel(w);                             % 6 steps, 7 decisions
-t = zeros(1, n+1);                        % tolerance per decision; the last one has 0
+w = [9 5 3 2 1 1];                          % step weights
+n = numel(w);                               % 6 steps, so 7 decisions
+t = zeros(1, n+1);                          % the last decision has no later steps: t = 0
 for k = 1:n
     t(k) = sum(w(k+1:end)) + w(end) - w(k);
 end
-fprintf('steps [LSB]:  %s\n', num2str(w));
-fprintf('tolerance:    %s   (decisions 1 to %d)\n\n', num2str(t), n+1);
-% num2str turns a list of numbers into text, for printing
+fprintf('steps:     %s\ntolerance: %s\n\n', num2str(w), num2str(t));
 
 %% -----------------------------
-% 2) For every decision and every error size: the worst result over all inputs
+% 2) The hand check: input 4 LSB, decision 1 forced the wrong way
 % -----------------------------
-x     = -18 : 0.01 : 18;                  % input charge [LSB], inside the range
-e_list = 0 : 0.05 : 6;                    % error sizes to try [LSB]
-worst = zeros(n+1, numel(e_list));        % largest |output - input| [LSB]
+x = 4;  level = 0;  out = 0;
+fprintf('decision  sees    says   step   level after\n');
+for k = 1:n+1
+    s = sign(x - level);  if s == 0, s = 1; end     % the right answer
+    if k == 1, s = -s; end                          % decision 1 goes the wrong way
+    if k <= n
+        level = level + s*w(k);  out = out + s*w(k);
+        fprintf('%8d %6.1f %+6d %6.1f %10.1f\n', k, x - level + s*w(k), s, w(k), level);
+    else
+        out = out + s*w(n)/2;                       % last comparison: middle of the last interval
+        fprintf('%8d %6.1f %+6d   (no step)\n', k, x - level, s);
+    end
+end
+fprintf('result %.1f for input %.1f: error %.1f LSB (½ LSB or less is right)\n\n', out, x, out - x);
 
-for k = 1:n+1                             % decision that gets the error
-    for i = 1:numel(e_list)
-        for sgn = [-1 1]                  % the error can push either way
-            r = x * Q_LSB;  Q_out = zeros(size(x));
+%% -----------------------------
+% 3) Every decision, errors of growing size, all inputs
+% -----------------------------
+% The error is added to what the comparator sees at that one decision. That is
+% what an offset, noise or an unsettled step does to it.
+xs     = -20 : 0.01 : 20;                   % many inputs
+e_list = 0 : 0.05 : 6;                      % error sizes
+e_max  = zeros(1, n+1);                     % largest error still repaired, per decision
+for k = 1:n+1
+    for e = e_list
+        worst = 0;
+        for sgn = [-1 1]                    % the error can push either way
+            level = zeros(size(xs));  out = zeros(size(xs));
             for j = 1:n+1
-                seen = r;                                 % what the comparator sees
-                if j == k, seen = r + sgn*e_list(i)*Q_LSB; end
+                seen = xs - level;  if j == k, seen = seen + sgn*e; end
                 s = 2*(seen >= 0) - 1;
-                if j <= n
-                    r = r - s * w(j)*Q_LSB;               % connect step j
-                    Q_out = Q_out + s * w(j)*Q_LSB;
-                else
-                    Q_out = Q_out + s * w(n)*Q_LSB/2;     % last decision
-                end
+                if j <= n, level = level + s*w(j); out = out + s*w(j);
+                else, out = out + s*w(n)/2; end
             end
-            err = max(abs(Q_out/Q_LSB - x));
-            worst(k, i) = max(worst(k, i), err);
+            worst = max(worst, max(abs(out - xs)));
         end
+        if worst <= 0.5 + 1e-9, e_max(k) = e; end   % still right everywhere
     end
 end
 
 %% -----------------------------
-% 3) The largest error that is still fully repaired, per decision
+% 4) Compare with the formula
 % -----------------------------
-fprintf(' decision   tolerance t_k   largest error repaired\n');
-e_max = zeros(1, n+1);
+fprintf('decision   tolerance (formula)   largest error repaired (simulated)\n');
 for k = 1:n+1
-    ok = find(worst(k, :) <= 0.5 + 1e-9);    % error sizes that keep the result within ½ LSB
-    e_max(k) = e_list(ok(end));
-    fprintf('%9d %13.2f %20.2f\n', k, t(k), e_max(k));
+    fprintf('%8d %15.2f %25.2f\n', k, t(k), e_max(k));
 end
 if all(abs(e_max - t) < 0.05 + 1e-9), disp('CHECK OK: repaired exactly up to the tolerance'), else, disp('CHECK FAILED'), end
-
-figure; hold on; grid on;
-for k = 1:n+1
-    plot(e_list, worst(k, :), 'LineWidth', 1.5);
-end
-plot([0 6], [0.5 0.5], 'k--');
-xlabel('error at the decision [LSB]'); ylabel('worst result error [LSB]');
-legend('d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'quantisation, ½ LSB');
-title('An error is repaired until it exceeds the tolerance of its decision');
-
-%% -----------------------------
-% 4) Contrast: binary steps 8, 4, 2, 1 have no tolerance
-% -----------------------------
-wb = [8 4 2 1];
-tb = zeros(1, numel(wb));
-for k = 1:numel(wb), tb(k) = sum(wb(k+1:end)) + wb(end) - wb(k); end
-fprintf('\nbinary 8 4 2 1: tolerance %s: any error at those decisions is not repaired\n', num2str(tb));

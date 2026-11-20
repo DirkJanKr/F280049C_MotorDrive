@@ -16,10 +16,12 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 3 | Charge balance at alpha = 1: V_REF, total CDAC charge, node growth per decision | 2 | V_REF, C_DAC | done: 0.5 V, 2.24 pF, 1 LSB = 0.98 mV at decision 1, 0.49 mV at the end |
 | 4 | Noise budget so far: what is left for the comparator? | 0 to 3 | comparator noise target | done: studied sources leave 45 uV; placeholders (CDAC kT/C, extra charge, switch noise, jitter) listed apart with what is needed to check them |
 | 5 | CDAC from real capacitors: mismatch, and which DNL formula is right | 3, PDK | unit 35 fF = 8 LSB, error per step | done: DNL (input width) 0.51 LSB = 2^(B-1) A_C / sqrt(C_DAC); output jump with real weights 1.04 LSB = 2^B A_C / sqrt(C_DAC). Binary 3 sigma < 0.5 LSB needs about 23.5 pF |
-| 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | done: with steps 9 5 3 2 1 1 the largest repaired error equals t_k at every decision |
-| 7 | Errors per decision against the tolerance; which tolerance each decision needs; what reaches the output | 5, 6 | required tolerance and settling budget per decision | done: tolerance covers mismatch and offset; with 1 % settling the binary tail (d6) is not covered, so the small steps must settle better; output error before rounding 0.354 LSB rms |
-| 7b | Is adding the fixed errors per decision against the tolerance correct? (Monte Carlo proof) | 6, 7 | proof | done: rule met gives 0 of 500 chips failing; root-sum-square lets 5 to 14 % fail; the tolerance is the exact limit; noise needs none. Report in docs/tolerance_proof.md |
-| 7c | Design the weights backwards from the tolerance each decision needs, for a chosen settling allowance | 7, 7b | weight list per settling allowance | done: up to 1 % settling: 12 decisions, 68 units (2.38 pF), 9 LSB spare; 2 %: 13 decisions; 5 % and more: no list, the halving tail (1 LSB tolerance) limits |
+| 6 | How large a mistake can redundancy repair? | 1 | the tolerance t_k, proven | done (story + hand check + simulation) |
+| 7a | Which fixed errors must each decision absorb? | 5, 6 | need per decision: mismatch + offset + settling | done |
+| 7b | Design the weights backwards from that need | 7a | weight list (put it in zaan_constants as w_design) | done: 4.6 tau gives 12 decisions |
+| 7c | Proof 1: rule met, does every chip convert right? | 7a | proof | done: every chip that meets its own rule converts right |
+| 7d | Proof 2: rule broken, do chips fail where and as much as predicted? | 7a | proof | done |
+| 7e | Proof 3: must the errors be added, or is root-sum-square enough? | 7a | proof | done: root-sum-square lets 19 % of chips fail |
 | 8 | Calibration and the second quantisation (rounding to 10 bit) | 7 | ENOB, DNL, INL | |
 | 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | |
 

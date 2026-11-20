@@ -7,6 +7,8 @@ Behavioural model of the Zaan charge-sharing SAR ADC, built step by step, all in
 - `steps/sN_....m`: one script per design step, run with F5 or section by section (Ctrl+Enter).
   Each starts with its question and answer, works the idea out in numbered sections,
   and ends with a check against a hand calculation.
+- Helper functions (one job each, explained in their header): `cs_sar.m` one conversion, `fixed_errors.m` tolerance and fixed errors per decision, `chip_errors.m` many random chips on a ramp.
+- From step 6 on, every script starts with THE STORY (the idea, cause and effect), a hand check you can do on paper, and WHAT THE CODE DOES; the sections follow the story.
 - `DESIGN_FLOW.md`: the order of the steps and their status.
 
 Rule: a noise or error source enters the model only in its own step, where it is
