@@ -18,6 +18,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 5 | CDAC from real capacitors: mismatch, and which DNL formula is right | 3, PDK | unit 35 fF = 8 LSB, error per step | done: DNL (input width) 0.51 LSB = 2^(B-1) A_C / sqrt(C_DAC); output jump with real weights 1.04 LSB = 2^B A_C / sqrt(C_DAC). Binary 3 sigma < 0.5 LSB needs about 23.5 pF |
 | 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | done: with steps 9 5 3 2 1 1 the largest repaired error equals t_k at every decision |
 | 7 | Errors per decision against the tolerance; which tolerance each decision needs; what reaches the output | 5, 6 | required tolerance and settling budget per decision | done: tolerance covers mismatch and offset; with 1 % settling the binary tail (d6) is not covered, so the small steps must settle better; output error before rounding 0.354 LSB rms |
+| 7b | Is adding the fixed errors per decision against the tolerance correct? (Monte Carlo proof) | 6, 7 | proof | done: rule met gives 0 of 500 chips failing; root-sum-square lets 5 to 14 % fail; the tolerance is the exact limit; noise needs none. Report in docs/tolerance_proof.md |
 | 8 | Calibration and the second quantisation (rounding to 10 bit) | 7 | ENOB, DNL, INL | |
 | 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | |
 
