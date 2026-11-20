@@ -24,6 +24,10 @@ p.pitch   = 200e-6;   % element pitch [m]                                 U
 p.c       = 1540;     % speed of sound [m/s]                              S
 p.theta   = 15;       % steering angle used in the studies [deg]          U
 
+% Signal band and clock
+p.f_max  = 13e6;      % highest signal frequency, band edge [Hz]          U
+p.jitter = 1e-12;     % clock jitter on the memory write [s rms]          A
+
 % Charge balance
 p.alpha  = 1;         % alpha = N C_M / (2 C_DAC), fixed at 1 for now     U (review 18 Nov)
 end
