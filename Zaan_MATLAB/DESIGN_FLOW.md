@@ -17,7 +17,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 4 | Noise budget so far: what is left for the comparator? | 0 to 3 | comparator noise target | done: studied sources leave 45 uV; placeholders (CDAC kT/C, extra charge, switch noise, jitter) listed apart with what is needed to check them |
 | 5 | CDAC from real capacitors: mismatch, and which DNL formula is right | 3, PDK | unit 35 fF = 8 LSB, error per step | done: DNL (input width) 0.51 LSB = 2^(B-1) A_C / sqrt(C_DAC); output jump with real weights 1.04 LSB = 2^B A_C / sqrt(C_DAC). Binary 3 sigma < 0.5 LSB needs about 23.5 pF |
 | 6 | Is a wrong decision repaired exactly when its error is within the tolerance? | 1 | the tolerance rule, proven | done: with steps 9 5 3 2 1 1 the largest repaired error equals t_k at every decision |
-| 7 | All errors against the tolerance: what redundancy repairs, what reaches the output, which SNDR is left | 5, 6 | SNDR with your filled-in values | done: mismatch, offset and settling repaired; input errors, precharge kT/C and last-decision noise remain; 59.7 dB, ENOB 9.62 before rounding |
+| 7 | Errors per decision against the tolerance; which tolerance each decision needs; what reaches the output | 5, 6 | required tolerance and settling budget per decision | done: tolerance covers mismatch and offset; with 1 % settling the binary tail (d6) is not covered, so the small steps must settle better; output error before rounding 0.354 LSB rms |
 | 8 | Calibration and the second quantisation (rounding to 10 bit) | 7 | ENOB, DNL, INL | |
 | 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | |
 
