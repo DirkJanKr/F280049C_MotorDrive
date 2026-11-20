@@ -38,7 +38,7 @@ t_start = tic;                % tic / toc = stopwatch
 %% -----------------------------
 % 1) Values to fill in
 % -----------------------------
-w       = [224 128 72 40 24 16 8 4 2 1 0.5 0.5];   % weight list [LSB]            A (step 7)
+w       = [ 184  160   72   48   24   16    8    4    2    1    1];   % weight list [LSB]            A (step 7)
 w_bin   = [256 128 64 32 16 8 4 2 1];              % binary list, 9 steps [LSB]   A (T4 only)
 n_chip  = 500;          % chips in T1                                             A
 n_chip2 = 200;          % chips in T2 and T3 (more cases, so fewer chips)         A
