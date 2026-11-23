@@ -44,4 +44,4 @@ alpha = 1;           % alpha = N C_M / (2 C_DAC), fixed at 1 for now            
 %% -----------------------------
 % The weight list in use (steps 7 onward)
 % -----------------------------
-w_design = [184 160 72 48 24 16 8 4 2 1 1];   % step weights [LSB]: designed in step 7b   A (until you choose)
+w_design = [176  168   72   48   24   16    8    4    2    1    1];   % step weights [LSB]: designed in step 7b   A (until you choose)

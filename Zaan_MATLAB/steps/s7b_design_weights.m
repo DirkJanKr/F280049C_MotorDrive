@@ -29,7 +29,7 @@ zaan_constants;
 %% -----------------------------
 % 1) Values
 % -----------------------------
-n_tau = 4.6;                 % time constants waited after every step             A
+n_tau = 3.7;                 % time constants waited after every step             A
 eps_s = exp(-n_tau);
 v_os  = 0.15e-3;             % comparator offset left after calibration [V]        S (Malki 2014)
 tail  = [4 2 1 1];           % halving tail [LSB]                                  A
