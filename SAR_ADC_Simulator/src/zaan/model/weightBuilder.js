@@ -113,3 +113,17 @@ export function timeTable(opts, K, nTauList = [7.6, 6, 4.6, 4, 3.7, 3.4, 3.2, 3,
   });
   return { rows, rList, best };
 }
+
+/**
+ * Shortest wait after every step, in time constants (MATLAB step 7b2): the unsettled part w_k e^(-n)
+ * must fit in the room the next decision has left, room = t - mismatch - offset - margin
+ * (last decisions without tolerance: lastErr). n = max(minWait, ln(w_k / room)); null where there is no room.
+ */
+export function stepWaits(w, { vos, dMargin = 0, lastErr = 0.1, minWait = 0 }, K) {
+  const e = fixedErrors(w, 0, vos, K);
+  return w.map((wk, k) => {
+    const j = k + 1;
+    const room = e.t[j] > 0 ? e.t[j] - e.mis[j] - e.off[j] - dMargin : lastErr;
+    return room > 0 ? { room, n: Math.max(minWait, Math.log(wk / room)) } : { room, n: null };
+  });
+}

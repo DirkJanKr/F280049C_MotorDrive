@@ -11,7 +11,8 @@ function [y, S] = cs_sar(x, Q_real, Q_read, C_node, q_dec, q_off, eps_settle, q_
 %   q_dec      rms noise charge at every decision [C] (comparator, switches)
 %   q_off      fixed error charge at every decision [C] (offset: v_os * C_node)
 %   eps_settle part of the previous step's charge not yet on the node when the
-%              next decision is made (0 = fully settled)
+%              next decision is made (0 = fully settled); one number for every
+%              step, or a list with one value per step (step 7b2: a wait per step)
 %   q_pre      rms precharge (kT/C) noise of every step [C]
 %   y          output charge [C]: the steps taken plus half the last step
 %   S          (optional) every decision, +1 or -1, one row per decision (step 8)
@@ -23,7 +24,7 @@ s_prev = zeros(size(x));
 S = zeros(n+1, numel(x));
 for k = 1:n+1
     seen = r + q_off(k) + q_dec(k) * randn(size(x));     % what the comparator sees
-    if k > 1, seen = seen + eps_settle * s_prev * Q_real(k-1); end   % not yet arrived
+    if k > 1, seen = seen + eps_settle(min(k-1, numel(eps_settle))) * s_prev * Q_real(k-1); end   % not yet arrived
     s = 2*(seen >= 0) - 1;                               % decision
     S(k, :) = s;
     if k <= n

@@ -3,7 +3,7 @@
 
 import { card, fill, widthOf, plot, explain, eng, num, esc, COL } from '../kit.js';
 import { timingCase, timingCases, stepCaps, stepSettling, PRIOR, cycleOf, MARGINAL } from '../../zaan/model/timingBudget.js';
-import { timeTable, builderConstants } from '../../zaan/model/weightBuilder.js';
+import { timeTable, builderConstants, stepWaits } from '../../zaan/model/weightBuilder.js';
 import { changed } from '../store.js';
 
 // ngspice run of the settling (spice/settling.mjs); loaded like the data of the Conversion page
@@ -44,6 +44,7 @@ export const page = {
   title: 'Timing budget',
   main() {
     return `${card('tbTable', 'Settling per step against decisions and conversion time (MATLAB step 7b)', '', 'wide')}
+      ${card('tbWaits', 'The wait after every step of the weights in use (MATLAB step 7b2)', '', 'wide')}
       ${card('tbSwitch', 'Unit switch: the largest on-resistance the settling allows', '', 'wide')}
       ${card('tbBars', 'How one clock period is spent, per case', '', 'wide')}
       ${card('tbVerdict', 'Time left per decision for comparator plus logic, and the verdict', '', 'wide')}
@@ -154,16 +155,27 @@ function drawTable(store, ctx) {
   const tauU = P.ron ? 2 * P.ron * P.cu : null; // a unit step settles through two switches, one per plate (A)
   const tc = P.tComp != null ? P.tComp + (P.tLogic || 0) : null;
   const rNow = tauU && tc != null ? tc / tauU : null;
-  const head = ['n τ', 'left', 'decisions', 'settling', ...tt.rList.map((r) => `T / τ at r = ${r}`), ...(rNow ? [`T with your numbers (r = ${num(rNow, 1)})`] : []), 'weights [LSB]', ''];
+  const wOpts = { vos: P.vosCal, dMargin: P.decMargin, lastErr: P.lastSettle, minWait: P.minWait };
+  const per = tt.rows.map((row) => {
+    if (!row.w) return null;
+    const ws = stepWaits(row.w, wOpts, K);
+    if (ws.some((x) => x.n === null)) return null;
+    const sum = ws.reduce((a, x) => a + x.n, 0);
+    return { sum, T: tt.rList.map((r) => row.decisions * r + sum) };
+  });
+  const bestPer = tt.rList.map((_, j) => { let bi = -1; per.forEach((p, i) => { if (p && (bi < 0 || p.T[j] < per[bi].T[j])) bi = i; }); return bi; });
+  const head = ['n τ (one wait)', 'left', 'decisions', 'settling: one wait / a wait per step', ...tt.rList.map((r) => `T / τ at r = ${r}: one wait / per step`), ...(rNow ? [`T with your numbers (r = ${num(rNow, 1)}), per step`] : []), 'weights [LSB]', ''];
   const body = tt.rows.map((row, i) => {
     if (!row.w) return `<tr><td class="num">${num(row.nTau, 1)}</td><td class="num">${num(Math.exp(-row.nTau) * 100, 1)} %</td><td colspan="${head.length - 2}" class="dim">no list: the bottom steps cannot hold the unsettled part</td></tr>`;
-    const tCells = row.T.map((t, j) => `<td class="num">${num(t, 1)}${tt.best[j] === i ? ' <b>*</b>' : ''}</td>`).join('');
-    const mine = rNow ? `<td class="num">${eng((row.decisions * tc) + row.w.length * row.nTau * tauU, 's')}</td>` : '';
+    const p = per[i];
+    const tCells = row.T.map((t, j) => `<td class="num">${num(t, 1)} / ${p ? `<b>${num(p.T[j], 1)}</b>${bestPer[j] === i ? ' *' : ''}` : '–'}</td>`).join('');
+    const mine = rNow ? `<td class="num">${p ? eng(row.decisions * tc + p.sum * tauU, 's') : '–'}</td>` : '';
     const now = Math.abs(row.nTau - P.nTau) < 1e-9;
-    return `<tr${now ? ' class="grp"' : ''}><td class="num">${num(row.nTau, 1)}${now ? ' (set)' : ''}</td><td class="num">${num(Math.exp(-row.nTau) * 100, 1)} %</td><td class="num">${row.decisions}</td><td class="num">${num(row.settle, 1)} τ</td>${tCells}${mine}<td>${row.w.join(' ')}</td><td><button class="btn" data-ttuse="${i}">use</button></td></tr>`;
+    return `<tr${now ? ' class="grp"' : ''}><td class="num">${num(row.nTau, 1)}${now ? ' (set)' : ''}</td><td class="num">${num(Math.exp(-row.nTau) * 100, 1)} %</td><td class="num">${row.decisions}</td><td class="num">${num(row.settle, 1)} τ / ${p ? `<b>${num(p.sum, 1)} τ</b>` : '–'}</td>${tCells}${mine}<td>${row.w.join(' ')}</td><td><button class="btn" data-ttuse="${i}">use</button></td></tr>`;
   }).join('');
   fill('tbTable', `<div class="tablewrap"><table class="tbl"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`,
-    `Each row: the weights designed backwards from what every decision needs (mismatch, offset ${eng(P.vosCal, 'V')}, settling e^(−n τ), plus ${num(P.decMargin, 2)} LSB margin and ${num(P.gainMargin * 100, 1)} % gain margin), the same builder as MATLAB step 7b. Conversion time in units of τ: T / τ = N dec · r + N steps · n τ, with r = (comparator + logic delay) / τ. <b>*</b>: shortest for that r. ${rNow ? `With your switch (${num(P.ron, 0)} Ω, τ = 2 R on C u = ${eng(tauU, 's')}) and comparator plus logic ${eng(tc, 's')}, r = ${num(rNow, 1)}.` : 'Set the switch resistance (side panel) and the comparator delay (Comparator page) to see T in ns.'} "use" puts the list in SAR ADC › Weights and sets n τ.`);
+    `Each row: the weights designed backwards from what every decision needs (mismatch, offset ${eng(P.vosCal, 'V')}, settling e^(−n τ), plus ${num(P.decMargin, 2)} LSB margin and ${num(P.gainMargin * 100, 1)} % gain margin), the same builder as MATLAB step 7b, designed for one wait n τ after every step. Bold: the same list with a wait per step instead (MATLAB step 7b2): each step waits only ln(w / room) τ, at least ${num(P.minWait, 1)} τ, the last decisions ${num(P.lastSettle, 2)} LSB. Conversion time in units of τ: T / τ = N dec · r + the waits, with r = (comparator + logic delay) / τ. <b>*</b>: shortest with a wait per step for that r. ${rNow ? `With your switch (${num(P.ron, 0)} Ω, τ = 2 R on C u = ${eng(tauU, 's')}) and comparator plus logic ${eng(tc, 's')}, r = ${num(rNow, 1)}.` : 'Set the switch resistance (side panel) and the comparator delay (Comparator page) to see T in ns.'} "use" puts the list in SAR ADC › Weights and sets n τ.`);
+  drawWaits(ctx, K, wOpts, tauU);
   document.querySelectorAll('[data-ttuse]').forEach((b) => {
     b.onclick = () => {
       const row = tt.rows[+b.dataset.ttuse];
@@ -191,4 +203,15 @@ function drawSwitch(ctx) {
     ['Largest R on of one unit switch', rMax > 0 ? eng(rMax, 'Ω') : 'no time left', `t settle / (2 n τ C u) = ${eng(tSettle, 's')} / (2 × ${num(P.nTau, 1)} × ${eng(P.cu, 'F')}); two switches per unit, one per plate (A)`],
     ['Set in the side panel', P.ron ? `${eng(P.ron, 'Ω')} ${P.ron <= rMax ? '(fits)' : '(too large)'}` : '<span class="dim">not set</span>', 'from the gm/ID table at V DS near 0 (R on · W), kept in local-data'],
   ]), 'The unit capacitor with its own switches is the cell every step is built from (one switch pair per unit capacitor), so every step has the same τ = 2 R on C u. The width follows from R on · W of the lookup table at V DS ≈ 0.');
+}
+
+/** The wait after every step of the weights in use: what the self-timed delay of each decision must be. */
+function drawWaits(ctx, K, wOpts, tauU) {
+  const { P, d } = ctx;
+  const w = d.weights;
+  const ws = stepWaits(w, wOpts, K);
+  const sum = ws.reduce((a, x) => a + (x.n ?? 0), 0);
+  const rows = w.map((wk, k) => [`${k + 1}`, `${num(wk, 2)} LSB`, `${num(ws[k].room, 2)} LSB${ws[k + 1] === undefined ? '' : ''}`, ws[k].n === null ? '<b class="bad">no room</b>' : `${num(ws[k].n, 2)} τ`, ws[k].n !== null && tauU ? eng(ws[k].n * tauU, 's') : '']);
+  fill('tbWaits', table(['Step', 'Weight', 'Room at the next decision', 'Wait', 'Wait with your switch'], rows),
+    `The unsettled part of a step, w e^(−n), must fit in the room the next decision has left: room = tolerance − mismatch − offset − margin (the last decisions: ${num(P.lastSettle, 2)} LSB). So n = ln(w / room), at least ${num(P.minWait, 1)} τ. In total ${num(sum, 1)} τ, against ${num(w.length * P.nTau, 1)} τ with ${num(P.nTau, 1)} τ after every step. Every step has the same τ (one unit cell with its own switch); only the wait differs, set by the self-timed delay of each decision. ${tauU ? '' : 'Set the switch resistance in the side panel to see the waits in ns.'}`);
 }

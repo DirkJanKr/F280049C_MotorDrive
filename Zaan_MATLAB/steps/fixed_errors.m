@@ -29,6 +29,6 @@ for k = 1:n
     mis(k) = 3 * sqrt(sum(sig_w(k:end).^2));
 end
 off  = v_os * (C_node(end) - C_node) / Q_LSB;
-setl = [0, eps_settle * w];  setl = setl(1:n+1);
+setl = [0, eps_settle .* w];  setl = setl(1:n+1);    % eps may be one value or one per step (7b2)
 need = mis + off + setl;
 end

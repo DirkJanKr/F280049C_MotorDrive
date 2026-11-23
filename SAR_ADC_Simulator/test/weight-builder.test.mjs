@@ -22,3 +22,11 @@ test('fixed errors: decision 6 of the old w_design as in MATLAB 7a', () => {
   assert.ok(Math.abs(e.setl[5] - 0.24) < 0.01);
   assert.ok(Math.abs(e.t[0] - 153) < 1e-9);
 });
+
+test('wait per step: the same as MATLAB step 7b2 for w design', async () => {
+  const { stepWaits } = await import('../src/zaan/model/weightBuilder.js');
+  const n = stepWaits([200, 160, 80, 40, 16, 16, 8, 4, 2, 1, 1], { vos, dMargin: 0.2, lastErr: 0.1, minWait: 1 }, K).map((x) => x.n);
+  const matlab = [3.30, 3.02, 2.29, 1.00, 3.66, 3.36, 2.48, 1.70, 1.00, 2.30, 2.30];
+  n.forEach((x, i) => assert.ok(Math.abs(x - matlab[i]) < 0.01, `step ${i + 1}: ${x} against ${matlab[i]}`));
+  assert.ok(Math.abs(n.reduce((a, b) => a + b, 0) - 26.4) < 0.05);
+});

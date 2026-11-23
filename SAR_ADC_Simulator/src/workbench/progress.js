@@ -34,6 +34,7 @@ export const PHASES = [
       ['Tolerance rule t k = later steps + w last − w k, proven', 'done', [['Conversion', '#sar'], ['MATLAB s6', m('s6_tolerance_rule.m')]]],
       ['Fixed errors per decision, added linearly (root-sum-square lets 19 % of chips fail)', 'done', [['Conversion', '#sar'], ['MATLAB s7a', m('s7a_errors_per_decision.m')], ['s7e', m('s7e_linear_vs_rss.m')]]],
       ['Weights from the needs: w design = 200 160 80 40 16 16 8 4 2 1 1 at 3.7 τ', 'done', [['Weights', '#redundancy'], ['Timing table', '#timing'], ['MATLAB s7b', m('s7b_design_weights.m')]]],
+      ['A wait per step instead of one wait for all: settling 26.4 τ instead of 40.7 τ, 200 chips convert right', 'done', [['Timing: wait per step', '#timing'], ['MATLAB s7b2', m('s7b2_wait_per_step.m')]]],
       ['Offset limit: 4.2 mV at 4.6 τ without margin, only 0.39 mV with w design at 3.7 τ and 0.2 LSB margin; parasitics (gain only); noise sources simulated', 'done', [['Offset', '#offset'], ['MATLAB s7f', m('s7f_offset.m')], ['s7g', m('s7g_parasitics.m')], ['s7h', m('s7h_noise_sources.m')]]],
       ['Calibration and rounding: ENOB 9.26 (12 decisions) or 9.42 (13), with memory tones', 'done', [['Noise budget', '#budget'], ['Levels and rounding', '#levels'], ['MATLAB s8', m('s8_calibration.m')]]],
     ],
@@ -94,7 +95,8 @@ export const DECIDED = [
 ];
 
 export const OPEN = [
-  ['12 or 13 decisions', 'waits for r from Cadence; break-even about r = 6', '#timing'],
+  ['12 or 13 decisions', 'with a wait per step they are about equally fast (86 τ at r = 5); waits for r from Cadence', '#timing'],
+  ['Delay per decision in the self-timed logic', 'a wait per step saves about 35 % of the settling; needs a delay per decision, or at least two (short for the big steps, long for the bottom)', '#timing'],
   ['Comparator noise target', '45 µV needs about 5 times the energy of 100 µV; 100 µV costs about 0.1 bit', '#comparator'],
   ['Offset room of w design', 'only 0.39 mV after calibration at 3.7 τ with the 0.2 LSB margin; Chen leaves about 0.2 mV (D). More room: more tolerance in the small steps or more settling time', '#comparator'],
   ['Double-tail or StrongArm', 'Chen uses double-tail; fits the offset calibration pair', '#comparator'],

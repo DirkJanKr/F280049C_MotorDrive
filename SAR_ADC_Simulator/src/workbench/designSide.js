@@ -9,7 +9,7 @@ const GROUPS = [
   ['target', 'Target', ['enobAim', 'bits', 'fs', 'fullScale']],
   ['balance', 'Charge balance', ['cm', 'alpha', 'lsbPerUnit', 'cpar']],
   ['caps', 'Capacitors', ['pairSigma', 'density', 'cuMin', 'routing', 'slotCal']],
-  ['weights', 'Weight design (MATLAB 7b)', ['nTau', 'gainMargin', 'decMargin']],
+  ['weights', 'Weight design (MATLAB 7b)', ['nTau', 'minWait', 'lastSettle', 'gainMargin', 'decMargin']],
   ['comparator', 'Comparator', ['compNoise', 'vosCal', 'vos', 'tComp', 'tauReg', 'kick', 'vinCm', 'calRange', 'gmId', 'tLogic']],
   ['beam', 'Beamformer', ['channels', 'pitch', 'steer', 'delayStep', 'memCells', 'cellQ']],
   ['reference', 'Reference and supply', ['tIntShare', 'rsvRatio', 'vdd']],

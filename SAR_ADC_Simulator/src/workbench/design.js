@@ -45,7 +45,7 @@ export function modelParams(values) {
     channels: g('channels'), pitch: g('pitch'), steer: g('steer'), focus: g('rxFocus') ?? Infinity, delayStep: g('delayStep'), c: g('c'), memCells: g('memCells'),
     vref: bal.vref, cu: bal.cu, density: g('density'), aC: mismatchCoefficient(pair, g('density')), routing: g('routing'), cuMin: g('cuMin'),
     radix: g('radix'), topUnits: g('topUnits'), lsbPerUnit: g('lsbPerUnit'), halvings: g('halvings'), halvingOn: g('halvingOn'),
-    vos: g('vos'), vosCal: g('vosCal'), compNoise: g('compNoise'), nTau: g('nTau'), gainMargin: g('gainMargin') ?? 0, decMargin: g('decMargin') ?? 0, cellQ: g('cellQ') ?? 0, tComp: g('tComp'), tauReg: g('tauReg'), kick: g('kick'), vinCm: g('vinCm'), calRange: g('calRange'), ibias: g('ibias'), gmId: g('gmId'), cload: g('cload'), vfinal: g('vfinal'),
+    vos: g('vos'), vosCal: g('vosCal'), compNoise: g('compNoise'), nTau: g('nTau'), minWait: g('minWait') ?? 0, lastSettle: g('lastSettle') ?? 0.1, gainMargin: g('gainMargin') ?? 0, decMargin: g('decMargin') ?? 0, cellQ: g('cellQ') ?? 0, tComp: g('tComp'), tauReg: g('tauReg'), kick: g('kick'), vinCm: g('vinCm'), calRange: g('calRange'), ibias: g('ibias'), gmId: g('gmId'), cload: g('cload'), vfinal: g('vfinal'),
     iqTaps: g('iqTaps'), iqDecim: g('iqDecim'), iqCut: g('iqCut'), iqTest: g('iqTest'), ron: g('ron'), swMode: g('swSize') === 'one pair per unit capacitor' ? 'unit' : 'same', tSample: g('tSample'), tauDac: g('tauDac'), tLogic: g('tLogic'), temperature: g('temperature'), jitter: g('jitter'), chips: g('chips'), seed: g('seed'),
     tIntShare: g('tIntShare'), rsvRatio: g('rsvRatio'), vdd: g('vdd'), chipW: g('chipW'), chipH: g('chipH'),
   };

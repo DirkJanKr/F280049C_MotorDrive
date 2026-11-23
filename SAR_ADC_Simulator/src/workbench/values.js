@@ -70,6 +70,8 @@ export const SEED = [
   num('halvings', 'cdac', 'Steps below one unit', 3, '', 1, '1', [0, 5, 1], 'A', '29 Oct example array; Chen 2018 has 3 (p. 3056)'),
   choice('slotCal', 'cdac', 'Gain of each read slot', 'not calibrated', ['calibrated', 'not calibrated'], 'A', 'open decision; not calibrated counts the memory gain tones as in MATLAB steps 2b and 4', 'each read slot uses another set of memory cells (Rabuske 2017, eq. 4.42)'),
   num('nTau', 'cdac', 'Settling per step n tau (eps = e^-n tau)', 3.7, 'tau', 1, '1', [1.5, 8, 0.1], 'U', 'MATLAB step 7b, 23 Nov: w design is built for 3.7 tau'),
+  num('minWait', 'cdac', 'Shortest wait of any step', 1, 'tau', 1, '1', [0, 4, 0.1], 'A', 'MATLAB step 7b2: switch drivers and logic need some time per step'),
+  num('lastSettle', 'cdac', 'Settling error allowed at the last decisions', 0.1, 'LSB', 1, 'LSB', [0.01, 0.5, 0.01], 'A', 'MATLAB step 7b2: the last decisions have no tolerance, so it goes to the output'),
   num('gainMargin', 'cdac', 'Gain margin of the reach beyond full scale', 2, '%', 0.01, '1', [0, 10, 0.5], 'A', 'MATLAB step 7b: parasitics (step 7g), C TH against C DAC (Rabuske 4.4.2), V REF accuracy'),
   num('decMargin', 'cdac', 'Margin every decision keeps free', 0.2, 'LSB', 1, 'LSB', [0, 1, 0.05], 'A', 'MATLAB step 7b: for one tau per step, offset drift, corners'),
   choice('calMethod', 'cdac', 'Weights in the LUT from', 'measured externally (ideal)', ['measured externally (ideal)', 'on-chip least squares, ramp', 'on-chip LMS'], 'A', 'not decided'),

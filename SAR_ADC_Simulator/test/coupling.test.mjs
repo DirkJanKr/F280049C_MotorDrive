@@ -40,7 +40,7 @@ function nudge(v) {
 
 // Values that change nothing in the context because only one page reads them; checked by grep in the audit.
 const PAGE_ONLY = {
-  radix: 'Weights page generator', topUnits: 'Weights page generator', halvings: 'Weights page generator', tComp: 'Comparator page', tauReg: 'Comparator page', kick: 'Comparator page', vinCm: 'Comparator page', calRange: 'Comparator page', iqTaps: 'IQ page', iqDecim: 'IQ page and System page', iqCut: 'IQ page', iqTest: 'IQ page', chips: 'Monte Carlo page',
+  minWait: 'Timing page (wait per step)', lastSettle: 'Timing page (wait per step)', radix: 'Weights page generator', topUnits: 'Weights page generator', halvings: 'Weights page generator', tComp: 'Comparator page', tauReg: 'Comparator page', kick: 'Comparator page', vinCm: 'Comparator page', calRange: 'Comparator page', iqTaps: 'IQ page', iqDecim: 'IQ page and System page', iqCut: 'IQ page', iqTest: 'IQ page', chips: 'Monte Carlo page',
 };
 
 test('snapshot: with untouched values the key outputs are the ones taken before the audit edits', () => {

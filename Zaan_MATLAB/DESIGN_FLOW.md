@@ -19,6 +19,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 6 | How large a mistake can redundancy repair? | 1 | the tolerance t_k, proven | done (story + hand check + simulation) |
 | 7a | Which fixed errors must each decision absorb? | 5, 6 | need per decision: mismatch + offset + settling | done |
 | 7b | Design the weights backwards from that need, for every settling time | 7a | weight list and time table | done: exact per decision (build_weights.m, verbose option), gain margin 2 % and decision margin 0.2 LSB (A); greedy checked against an exhaustive search (same decision count). 12 decisions down to 3.7 tau, 13 down to 2.8 tau; which is faster depends on comparator delay / tau (Cadence) |
+| 7b2 | A wait per step instead of one wait for all | 7a, 7b | wait per step, time | done: w_design needs 3.3 3.0 2.3 1.0 3.7 3.4 2.5 1.7 1.0 2.3 2.3 tau (at least 1 tau, A); settling 26.4 tau instead of 40.7; 200 chips convert right |
 | 7c | Proof 1: rule met, does every chip convert right? | 7a | proof | done: every chip that meets its own rule converts right |
 | 7d | Proof 2: rule broken, do chips fail where and as much as predicted? | 7a | proof | done |
 | 7e | Proof 3: must the errors be added, or is root-sum-square enough? | 7a | proof | done: root-sum-square lets 19 % of chips fail |

@@ -28,7 +28,7 @@ Specs from MATLAB: 1 LSB at the last node = 0.49 mV; about 1.8 to 2.1 ns per dec
 
 ## Still to do: MATLAB teach-back (one step per day, next to Cadence)
 
-Done together: 5, 6, 7a, 7b.
+Done together: 5, 6, 7a, 7b. New: 7b2 (a wait per step: 26.4 tau instead of 40.7 tau of settling).
 - [ ] 7c rule met: does every chip convert right?
 - [ ] 7d rule broken: do chips fail as predicted?
 - [ ] 7e added versus root-sum-square
