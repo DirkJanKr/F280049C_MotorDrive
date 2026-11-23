@@ -1,6 +1,6 @@
 # Zaan workbench: map for a new session
 
-Project: MSc thesis of Dirk-Jan. Charge-sharing SAR ADC with merged delay-and-sum beamformer, 180 nm BCD, tape-out 31 March 2027. App in `SAR_ADC_Simulator/`. Develop on branch `claude/sar-adc-charge-simulator-tb6qdh`; no pull request unless asked.
+Project: MSc thesis of Dirk-Jan. Current state and to-do list: `WHERE_WE_ARE.md` (read first, keep it updated). Charge-sharing SAR ADC with merged delay-and-sum beamformer, 180 nm BCD, tape-out 31 March 2027. App in `SAR_ADC_Simulator/`. Develop on branch `claude/sar-adc-charge-simulator-tb6qdh`; no pull request unless asked.
 
 ## Rules that always hold
 
