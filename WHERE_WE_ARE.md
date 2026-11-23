@@ -41,7 +41,7 @@ How: read the story, do the hand check on paper, run it, tell the story back.
 
 Made: alpha = 1; Guo reservoir; external V_REF; LUT calibration; Chen-style offset calibration; ENOB below 9.5 accepted;
 w_design = 200 160 80 40 16 16 8 4 2 1 1 (7b, 3.7 tau, 2 % gain margin, 0.2 LSB decision margin).
-Open: 12 or 13 decisions (waits for r from Cadence; break-even r about 6); new ENOB target; StrongArm or double-tail.
+Open: comparator noise target (45 uV needs about 5 times the comparator energy of 100 uV, and 100 uV costs only 0.12 bit); 12 or 13 decisions (waits for r from Cadence; break-even r about 6); new ENOB target; StrongArm or double-tail.
 
 ## Ask at the office
 
