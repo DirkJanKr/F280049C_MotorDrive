@@ -2,16 +2,16 @@
 
 One page. Tick a box when done. If you get lost: come back here.
 
-## Now: gm/ID slides (ET4252 deck, `gmid_all.pdf`)
+## Done: gm/ID slides (ET4252 deck, `gmid_all.pdf`)
 
-- [ ] Slides 7 to 10: DC sweep, lookup tables, `look_up` function
-- [ ] Slides 12 to 20: cost of gm, gm/ID, fT, gm/gds, VDsat
-- [ ] Slides 21 to 28: design flow, sizing a differential pair (your input pair)
-- [ ] Slides 29 to 31: gm/ID x fT peaks in moderate inversion (12 to 18 1/V)
-- [ ] Slides 32 and 33: find the course scripts (techsweep, look_up); need a Spectre setup
+- [x] Slides 7 to 10: DC sweep, lookup tables, `look_up` function
+- [x] Slides 12 to 20: cost of gm, gm/ID, fT, gm/gds, VDsat
+- [x] Slides 21 to 28: design flow, sizing a differential pair (your input pair)
+- [x] Slides 29 to 31: gm/ID x fT peaks in moderate inversion (12 to 18 1/V)
+- [x] Slides 32 and 33: find the course scripts (techsweep, look_up); need a Spectre setup
 - Skip slides 34 to 87 (OTA, feedback, OTA noise, project). Slide 58 only: 1 % settling = 4.6 tau.
 
-## Next: Cadence comparator (in this order)
+## Now: Cadence comparator (in this order)
 
 1. [ ] gm/ID lookup tables: one NMOS, one PMOS, VDS = VDD/2, sweep VGS, L = Lmin, 2 Lmin, 4 Lmin. Save ID, gm, gds, Cgg. Store in `SAR_ADC_Simulator/local-data/` (NDA).
    Check: gm/ID about 30 1/V at low current, about 10 at high current.
