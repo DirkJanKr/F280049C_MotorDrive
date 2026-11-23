@@ -42,3 +42,8 @@ How: read the story, do the hand check on paper, run it, tell the story back.
 Made: alpha = 1; Guo reservoir; external V_REF; LUT calibration; Chen-style offset calibration; ENOB below 9.5 accepted;
 w_design = 200 160 80 40 16 16 8 4 2 1 1 (7b, 3.7 tau, 2 % gain margin, 0.2 LSB decision margin).
 Open: 12 or 13 decisions (waits for r from Cadence; break-even r about 6); new ENOB target; StrongArm or double-tail.
+
+## Ask at the office
+
+- [ ] Company MATLAB: is there a company licence or in-house scripts? Use that for anything with PDK data (NDA), not the school licence.
+- [ ] PDK model files for Spectre: in ADE, Setup > Model Libraries shows the include path and corner section; Simulation > Netlist > Display shows the device model names. Copy those into techsweep.scs and the config.
