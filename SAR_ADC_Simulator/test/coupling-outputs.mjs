@@ -6,7 +6,7 @@ import { powerEstimate } from '../src/workbench/pages/power.js';
 
 /** The case the summary bar shows (the same as mainCase in pages/timing.js), for a given switch resistance. */
 export function timingMain(ctx, ron = ctx.P.ron || 0) {
-  return timingCase(ctx.d, ctx.P, { ron, scheme: 'pingpong', extraHalf: false, offsetCmp: false, mode: ctx.P.swMode });
+  return timingCase(ctx.d, ctx.P, { ron, scheme: 'reservoir', extraHalf: false, offsetCmp: true, mode: ctx.P.swMode });
 }
 
 /** The power estimate of pages/power.js, at the supply of the values or at another one. */

@@ -26,6 +26,8 @@ import { page as matchingPage } from './pages/matching.js';
 import { page as offsetPage } from './pages/offset.js';
 import { page as sourcesPage } from './pages/sources.js';
 import { page as redPage } from './pages/redundancy.js';
+import { page as progressPage } from './pages/progress.js';
+import { page as comparatorPage } from './pages/comparator.js';
 
 /** Several pages behind one entry of the rail, as tabs. The address of a tab is the id of its page. */
 function tabs(id, title, subs) {
@@ -42,20 +44,21 @@ function tabs(id, title, subs) {
   };
 }
 const PAGES = [
+  progressPage,
   system,
   balancePage,
   tabs('g-budget', 'Noise and power', [[budgetPage, 'Noise budget'], [powerPage, 'Power estimate']]),
   tabs('g-sar', 'SAR ADC', [[redPage, 'Weights'], [sar, 'Conversion'], [levelsPage, 'Levels and rounding']]),
   tabs('g-mismatch', 'Mismatch', [[matchingPage, 'The 3σ rule'], [mismatch, 'Monte Carlo and area']]),
-  offsetPage, beamformer,
+  offsetPage, comparatorPage, beamformer,
   tabs('g-timing', 'Timing', [[chenPage, 'Clock sequence after Chen'], [logic, 'Self-timed logic'], [timing, 'Timing budget']]),
   refPage, iqPage, valuesPage, sourcesPage,
 ];
 // The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
 const NAV = [
-  ['Overview', [['system', []]]],
+  ['Overview', [['progress', []], ['system', []]]],
   ['Design', [['balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['g-mismatch', []], ['offset', []]]],
-  ['Blocks', [['beamformer', ['cells']], ['g-timing', []], ['reference', []], ['iq', []]]],
+  ['Blocks', [['comparator', []], ['beamformer', ['cells']], ['g-timing', []], ['reference', []], ['iq', []]]],
   ['Record', [['values', []], ['sources', []]]],
 ];
 const TAPEOUT = Date.UTC(2027, 2, 31);
@@ -121,7 +124,7 @@ function layout() {
 /** The inspector of the page (or tab) on screen. System and Values keep their own. */
 function sideHtml() {
   const leaf = current.cur ? current.cur() : current;
-  return ['system', 'values'].includes(leaf.id) ? leaf.side(store, store.ctx) : designSide(store, leaf.id);
+  return ['system', 'values', 'progress'].includes(leaf.id) ? leaf.side(store, store.ctx) : designSide(store, leaf.id);
 }
 
 function renderPage() {
@@ -177,7 +180,7 @@ subscribe((reason) => {
 });
 
 window.addEventListener('hashchange', () => {
-  store.ui.page = location.hash.replace('#', '') || 'system';
+  store.ui.page = location.hash.replace('#', '') || 'progress';
   renderPage();
   window.scrollTo(0, 0);
 });
@@ -212,7 +215,8 @@ document.addEventListener('change', (e) => {
   }
   if (t.id === 'preset' && PRESETS[t.value]) {
     const p = PRESETS[t.value];
-    for (const k of ['radix', 'topUnits', 'halvings', 'halvingOn']) store.values.find((v) => v.id === k).value = p[k];
+    if (p.list) store.ui.customWeights = p.list;
+    else for (const k of ['radix', 'topUnits', 'halvings', 'halvingOn']) store.values.find((v) => v.id === k).value = p[k];
     store.ui.weightMode = p.mode;
     changed('values');
     setTimeout(() => changed('side'), 0);

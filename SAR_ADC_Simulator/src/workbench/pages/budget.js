@@ -7,7 +7,7 @@ import { designCdac, chargeBalance } from '../../zaan/model/cdac.js';
 import { chargeBudget } from '../budget.js';
 import { changed } from '../store.js';
 
-const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', tint: 'b-tint', slot: 'b-slot', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' };
+const FID = { sar: 'b-sar', round: 'b-round', lut: 'b-lut', quant: 'b-quant', comp: 'b-comp', tint: 'b-tint', slot: 'b-slot', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit', cell: 'b-cell', swn: 'b-swn' };
 const SWEEPS = {
   compNoise: { label: 'Comparator input noise', unit: 'mV rms', si: 1e-3, lo: 0, hi: 0.2 },
   alpha: { label: 'alpha, input', unit: '', si: 1, lo: 0.1, hi: 3 },

@@ -77,6 +77,12 @@ export function chargeLines(P, d, { arrayGain = true, res = null, split = true, 
     // N fresh cells on each side; only their common part (e p + e n) / 2 changes the gain, so sigma G = sigma(C M) / sqrt(2 N).
     // The difference between the sides is second order (eq. 4.30, 4.33).
     { id: 'slot', label: `Read-slot gain variation${P.slotCal ? ' (calibrated)' : ', at full scale'}`, sigma: P.slotCal ? 0 : ((P.aC / 100 / Math.sqrt(d.cm * 1e15) / Math.sqrt(2 * N)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
+    // MATLAB step 2c: extra charge per memory cell from switch injection; a cell is read in M - 1 of M slots,
+    // so N cells give sigma sqrt(N (M - 1) / M). Placeholder until a Cadence Monte Carlo of the cell switch.
+    { id: 'cell', label: 'Extra charge per memory cell (switch injection, placeholder)', sigma: (P.cellQ || 0) * Math.sqrt((N * (P.memCells - 1)) / P.memCells), perChannel: true },
+    // backlog 7, MATLAB step 4: switch thermal noise while the steps are connected, about sqrt(2 kT C node) at the last decision.
+    // Upper-bound estimate (Rabuske p. 99 names it, no formula); needs a Cadence noise run of the switched CDAC with the comparator.
+    { id: 'swn', label: 'Switch noise during the conversion (estimate, upper bound)', sigma: Math.sqrt(2 * kT * d.cNode[d.decisions - 1]), perChannel: false },
     { id: 'jit', label: 'Sampling clock jitter', sigma: N * d.cm * 2 * Math.PI * fJ * P.jitter * vrms, perChannel: false },
   ];
 }
@@ -120,10 +126,15 @@ export function chargeBudget(P, d, opts = {}) {
  * offset: the part of the comparator offset that differs from the last decision;
  * noise: 3σ of the comparator noise referred to charge at that decision (shown, but not in
  * the check: noise that is not repaired appears as output noise and is in the noise budget).
- * Check: mismatch + offset ≤ tolerance + 0.5 LSB, so an unrepaired error stays below half a code.
+ * settling: the part of the step before that has not arrived, eps w(k-1), eps = e^(-n tau).
+ * Check (Zaan MATLAB steps 7a and 7c, proven by simulation): mismatch + offset + settling + margin <= tolerance.
+ * A decision without tolerance passes its error straight to the output (7c): there it must stay below ½ LSB.
+ * allow: what mismatch, offset and the margin leave of the tolerance, the error the settling may have.
  */
 export function toleranceNeeds(P, d, sigmaU) {
   const n = d.decisions;
+  const eps = Math.exp(-(P.nTau ?? 4.6));
+  const m = P.decMargin ?? 0;
   const sw = d.steps.map((st, i) => (st.kind === 'cap' || st.kind === 'small' ? (d.weights[i] * sigmaU) / Math.sqrt(st.units) : (d.weights[i] * sigmaU) / Math.SQRT2));
   const rows = [];
   for (let i = 0; i < n; i++) {
@@ -133,11 +144,10 @@ export function toleranceNeeds(P, d, sigmaU) {
     const off = offsetLsb(d, P.vosCal, i).differential;
     const offRaw = offsetLsb(d, P.vos, i).differential;
     const noise = (3 * comparatorCharge(P, d, i)) / d.qLsb;
-    const need = mismatch + Math.abs(off);
-    // fixed errors (mismatch, offset) may use the tolerance plus ½ LSB (3 sigma DNL below ½ LSB);
-    // incomplete settling is also a fixed error, so it may use what is left: allow
-    const allow = Math.max(0, d.tol[i] + 0.5 - need);
-    rows.push({ i, have: d.tol[i], mismatch, offset: Math.abs(off), offsetRaw: Math.abs(offRaw), noise, need, allow, last: i === n - 1, ok: i === n - 1 || need <= d.tol[i] + 0.5 + 1e-9 });
+    const settling = i > 0 ? eps * d.weights[i - 1] : 0;
+    const need = mismatch + Math.abs(off) + settling;
+    const allow = Math.max(0, d.tol[i] - mismatch - Math.abs(off) - m);
+    rows.push({ i, have: d.tol[i], mismatch, offset: Math.abs(off), offsetRaw: Math.abs(offRaw), noise, settling, need, allow, margin: m, last: i === n - 1, ok: i === n - 1 || (d.tol[i] > 0 ? need + m <= d.tol[i] + 1e-9 : need <= 0.5 + 1e-9) });
   }
   return rows;
 }

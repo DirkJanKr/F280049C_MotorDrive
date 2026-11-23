@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createValues } from '../src/workbench/values.js';
 import { design } from '../src/workbench/design.js';
-import { stepsFromList } from '../src/workbench/weights.js';
+import { stepsFromList, W_DESIGN } from '../src/workbench/weights.js';
+import { legacyValues } from './legacy.mjs';
 
 const ui = { weightMode: 'generator', customWeights: '' };
 
@@ -68,14 +69,14 @@ test('tolerance check: binary weights fail at decision 1, the default redundant 
   const bin = design(createValues(), { weightMode: 'custom', customWeights: '256, 128, 64, 32, 16, 8, 4, 2, 1' });
   assert.equal(bin.tolNeed[0].ok, false);
   assert.equal(bin.checks.find((k) => k.id === 'tol').state, 'bad');
-  const def = design(createValues(), ui);
-  assert.equal(def.checks.find((k) => k.id === 'tol').state, 'ok');
+  const def = design(createValues(), { weightMode: 'custom', customWeights: W_DESIGN });
+  assert.equal(def.checks.find((k) => k.id === 'tol').state, 'ok', 'w design (MATLAB 7b) passes');
   assert.ok(def.checks.every((k) => typeof k.why === 'string' && k.why.length > 10));
 });
 
 test('needs-driven optimizer: every step is covered, range reached, no more units than the radix design', async () => {
   const { optimise } = await import('../src/workbench/optimizer.js');
-  const c = design(createValues(), ui);
+  const c = design(legacyValues(), ui); // the optimizer (not in the menu) predates the 7b builder and the margins
   for (const o of [{ smallest: 1 }, { smallest: 0.5 }, { smallest: 1, noise: true }]) {
     const r = optimise(c.P, c.P.memCells, { sigmaU: c.sigmaU, arrayGain: true, ...o });
     assert.ok(r.steps, 'builds');
@@ -115,7 +116,7 @@ test('every formula renders for the default design, with no NaN', async () => {
     assert.ok(h, id);
     assert.ok(!/NaN|undefined/.test(h), id);
   }
-  for (const l of c.budget.lines) assert.ok(formulaHtml({ sar: 'b-sar', round: 'b-round', lut: 'b-lut', comp: 'b-comp', tint: 'b-tint', slot: 'b-slot', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit' }[l.id], c), l.id);
+  for (const l of c.budget.lines) assert.ok(formulaHtml({ sar: 'b-sar', round: 'b-round', lut: 'b-lut', comp: 'b-comp', tint: 'b-tint', slot: 'b-slot', samp: 'b-samp', pre: 'b-pre', jit: 'b-jit', cell: 'b-cell', swn: 'b-swn' }[l.id], c), l.id);
 });
 
 test('Item 1, charge balance (Chen eq. 3, Rabuske alpha): algebra, Chen numbers, and the defaults', async () => {
@@ -127,13 +128,13 @@ test('Item 1, charge balance (Chen eq. 3, Rabuske alpha): algebra, Chen numbers,
   assert.ok(Math.abs(chen.vref - 0.1596) < 1e-4, 'V REF 159.6 mV, paper: approximately 160 mV');
   assert.ok(Math.abs(chen.cdac - 1.5e-12) < 1e-18);
   assert.ok(Math.abs(9 * 0.8 * 133e-15 - 4 * chen.vref * chen.cdac) < 1e-24, 'eq. 3 holds');
-  // defaults: C M 112 fF and alpha 0.40 give the earlier working figures
+  // defaults (review 18 Nov, MATLAB zaan_constants): C M 280 fF and alpha 1 give V REF 0.5 V, C u 35 fF, Q LSB 4.375 fC
   const c = design(createValues(), ui);
-  assert.ok(Math.abs(c.P.vref - 0.2) < 1e-12);
+  assert.ok(Math.abs(c.P.vref - 0.5) < 1e-12);
   assert.ok(Math.abs(c.P.cu - 35e-15) < 1e-21);
-  assert.ok(Math.abs(c.d.cm - 112e-15) < 1e-21, 'the model returns the C M that was put in');
-  assert.ok(Math.abs(c.d.qLsb - 1.75e-15) < 1e-21);
-  assert.ok(Math.abs(c.d.qFs - 16 * 112e-15 * 1) < 1e-21, 'Q FS = N C M V in,max, as Q+ - Q-');
+  assert.ok(Math.abs(c.d.cm - 280e-15) < 1e-21, 'the model returns the C M that was put in');
+  assert.ok(Math.abs(c.d.qLsb - 4.375e-15) < 1e-21);
+  assert.ok(Math.abs(c.d.qFs - 16 * 280e-15 * 1) < 1e-21, 'Q FS = N C M V in,max, as Q+ - Q-');
 });
 
 test('Item 1: eq. 3 in the charge model. A binary array spans 2^B - 2 LSB; redundant weights span 2 sum(w)', () => {

@@ -2,7 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createValues } from '../src/workbench/values.js';
+import { legacyValues as createValues } from './legacy.mjs';
 import { design } from '../src/workbench/design.js';
 import { stepCaps, stepSettling, timingCase, timingCases, PRIOR, cycleOf } from '../src/zaan/model/timingBudget.js';
 import { ngspiceVersion, runTransient } from '../spice/ngspice.mjs';

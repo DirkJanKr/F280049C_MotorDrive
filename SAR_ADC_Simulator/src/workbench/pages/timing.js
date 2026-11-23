@@ -3,6 +3,8 @@
 
 import { card, fill, widthOf, plot, explain, eng, num, esc, COL } from '../kit.js';
 import { timingCase, timingCases, stepCaps, stepSettling, PRIOR, cycleOf, MARGINAL } from '../../zaan/model/timingBudget.js';
+import { timeTable, builderConstants } from '../../zaan/model/weightBuilder.js';
+import { changed } from '../store.js';
 
 // ngspice run of the settling (spice/settling.mjs); loaded like the data of the Conversion page
 let spice = null;
@@ -22,9 +24,9 @@ const CLS = { fits: 'ok', marginal: 'warn', 'not shown': 'bad' };
 const GUO = cycleOf(PRIOR.guo);
 const CHEN = cycleOf(PRIOR.chen);
 
-/** The case the summary bar and the lead show: the present weights, ping-pong reference, no offset comparison. */
+/** The case the summary bar and the lead show: the present weights, the reservoir (Guo, decided 18 Nov) and Chen's offset comparison (decided 23 Nov). */
 export function mainCase(ctx) {
-  return timingCase(ctx.d, ctx.P, { ron: ctx.P.ron || 0, scheme: 'pingpong', extraHalf: false, offsetCmp: false, mode: ctx.P.swMode, allow: allowOf(ctx) });
+  return timingCase(ctx.d, ctx.P, { ron: ctx.P.ron || 0, scheme: 'reservoir', extraHalf: false, offsetCmp: true, mode: ctx.P.swMode, allow: allowOf(ctx) });
 }
 
 /** What mismatch and offset leave of tolerance + ½ LSB at every decision: the error the settling may have (budget.js). */
@@ -41,7 +43,9 @@ export const page = {
   id: 'timing',
   title: 'Timing budget',
   main() {
-    return `${card('tbBars', 'How one clock period is spent, per case', '', 'wide')}
+    return `${card('tbTable', 'Settling per step against decisions and conversion time (MATLAB step 7b)', '', 'wide')}
+      ${card('tbSwitch', 'Unit switch: the largest on-resistance the settling allows', '', 'wide')}
+      ${card('tbBars', 'How one clock period is spent, per case', '', 'wide')}
       ${card('tbVerdict', 'Time left per decision for comparator plus logic, and the verdict', '', 'wide')}
       ${card('tbSweep', 'Time left per decision against switch resistance', '', 'wide')}
       ${card('tbPrior', 'What Chen and Guo measured in 180 nm', '', 'wide')}
@@ -60,6 +64,8 @@ export const page = {
     const unset = !P.ron;
     const swText = mode === 'unit' ? 'one switch pair per unit capacitor' : 'the same switch for every capacitor';
     const cases = timingCases(d, P, ron, mode, allowOf(ctx));
+    drawTable(store, ctx);
+    drawSwitch(ctx);
 
     // 1. bars
     const w = widthOf('tbBars', 1000);
@@ -138,4 +144,51 @@ function drawSteps(ctx) {
   fill('tbSteps', table(['Step', 'Weight [LSB]', 'Capacitor', 'On the nodes before', 'Own time constant per kΩ', 'Tolerance and allowed error at the next decision [LSB]', 'Settling per kΩ, redundant', 'Settling per kΩ, to ½ LSB', 'ngspice / model'],
     st.map((s, j) => [`${j + 1}`, num(s.w, s.w < 1 ? 1 : 0), eng(s.c, 'F'), eng(s.cd, 'F'), ns(s.tau), `${num(s.tolNext, 1)} / ${num(s.level, 2)}`, `<b>${ns(s.tRed)}</b>`, ns(s.tBin), same && sp ? num(sp.steps[j].tSpice / sp.steps[j].tModel, 2) : 'other weights'])),
     `Own time constant: τ = 2 R C j C d / (C j + C d), the new capacitor with what is on the nodes. ${mode === 'same' ? 'With the same switch everywhere a small step settles much slower than its own time constant: the node first moves too far and then comes back with the time constant of the largest capacitor, which is still connected behind its own switches.' : 'With a switch pair per unit capacitor every branch has the same R C, so no slow tail remains.'} Sum, redundant: ${ns(st.reduce((a, s) => a + s.tRed, 0))} per kΩ; to ½ LSB: ${ns(st.reduce((a, s) => a + s.tBin, 0))} per kΩ. Each step settles to the allowed error of the next decision: its tolerance + ½ LSB minus what mismatch (3σ) and offset already use, the same rule as the redundancy check. Worst case residue, earlier steps taken as settled (optimistic), memory cells as one capacitor. ${sp ? `ngspice ${esc(spice.ngspice)} with ideal switches of ${num(sp.ron, 0)} Ω, time to e⁻³ of the start (spice/settling.mjs, ${esc(spice.generated)}).` : 'ngspice data not loaded.'}`);
+}
+
+/** The 7b time table: for every n tau the cheapest weight list, its decisions and T / tau; with the Cadence numbers also in ns. */
+function drawTable(store, ctx) {
+  const { P, d } = ctx;
+  const K = builderConstants(P, d);
+  const tt = timeTable({ vos: P.vosCal, gMargin: P.gainMargin, dMargin: P.decMargin }, K);
+  const tauU = P.ron ? 2 * P.ron * P.cu : null; // a unit step settles through two switches, one per plate (A)
+  const tc = P.tComp != null ? P.tComp + (P.tLogic || 0) : null;
+  const rNow = tauU && tc != null ? tc / tauU : null;
+  const head = ['n τ', 'left', 'decisions', 'settling', ...tt.rList.map((r) => `T / τ at r = ${r}`), ...(rNow ? [`T with your numbers (r = ${num(rNow, 1)})`] : []), 'weights [LSB]', ''];
+  const body = tt.rows.map((row, i) => {
+    if (!row.w) return `<tr><td class="num">${num(row.nTau, 1)}</td><td class="num">${num(Math.exp(-row.nTau) * 100, 1)} %</td><td colspan="${head.length - 2}" class="dim">no list: the bottom steps cannot hold the unsettled part</td></tr>`;
+    const tCells = row.T.map((t, j) => `<td class="num">${num(t, 1)}${tt.best[j] === i ? ' <b>*</b>' : ''}</td>`).join('');
+    const mine = rNow ? `<td class="num">${eng((row.decisions * tc) + row.w.length * row.nTau * tauU, 's')}</td>` : '';
+    const now = Math.abs(row.nTau - P.nTau) < 1e-9;
+    return `<tr${now ? ' class="grp"' : ''}><td class="num">${num(row.nTau, 1)}${now ? ' (set)' : ''}</td><td class="num">${num(Math.exp(-row.nTau) * 100, 1)} %</td><td class="num">${row.decisions}</td><td class="num">${num(row.settle, 1)} τ</td>${tCells}${mine}<td>${row.w.join(' ')}</td><td><button class="btn" data-ttuse="${i}">use</button></td></tr>`;
+  }).join('');
+  fill('tbTable', `<div class="tablewrap"><table class="tbl"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`,
+    `Each row: the weights designed backwards from what every decision needs (mismatch, offset ${eng(P.vosCal, 'V')}, settling e^(−n τ), plus ${num(P.decMargin, 2)} LSB margin and ${num(P.gainMargin * 100, 1)} % gain margin), the same builder as MATLAB step 7b. Conversion time in units of τ: T / τ = N dec · r + N steps · n τ, with r = (comparator + logic delay) / τ. <b>*</b>: shortest for that r. ${rNow ? `With your switch (${num(P.ron, 0)} Ω, τ = 2 R on C u = ${eng(tauU, 's')}) and comparator plus logic ${eng(tc, 's')}, r = ${num(rNow, 1)}.` : 'Set the switch resistance (side panel) and the comparator delay (Comparator page) to see T in ns.'} "use" puts the list in SAR ADC › Weights and sets n τ.`);
+  document.querySelectorAll('[data-ttuse]').forEach((b) => {
+    b.onclick = () => {
+      const row = tt.rows[+b.dataset.ttuse];
+      store.ui.weightMode = 'custom';
+      store.ui.customWeights = row.w.join(', ');
+      const v = store.values.find((x) => x.id === 'nTau');
+      if (v) v.value = row.nTau;
+      changed('values');
+      changed('side');
+    };
+  });
+}
+
+/** Largest unit switch resistance for the settling time per step: R on <= t settle / (2 n tau C u). */
+function drawSwitch(ctx) {
+  const { P, d } = ctx;
+  const k = mainCase(ctx);
+  const tDec = (1 / P.fs - (P.tSample || 0)) / k.cycles;
+  const tSettle = tDec - (P.tComp ?? 0) - (P.tLogic || 0);
+  const rMax = tSettle > 0 ? tSettle / (2 * P.nTau * P.cu) : 0;
+  fill('tbSwitch', table(['', 'Value', 'How'], [
+    ['Time per cycle', eng(tDec, 's'), `(1 / fs − sampling ${eng(P.tSample || 0, 's')}) / ${k.cycles} cycles (${d.decisions} decisions + Chen's offset comparison)`],
+    ['Comparator and logic', P.tComp != null ? `${eng(P.tComp, 's')} + ${eng(P.tLogic || 0, 's')}` : `<span class="dim">comparator not measured yet</span> + ${eng(P.tLogic || 0, 's')} logic`, 'Comparator page; logic delay in the side panel'],
+    ['Left for settling', eng(tSettle, 's'), P.tComp != null ? 'per step' : 'upper bound: the comparator delay is still missing'],
+    ['Largest R on of one unit switch', rMax > 0 ? eng(rMax, 'Ω') : 'no time left', `t settle / (2 n τ C u) = ${eng(tSettle, 's')} / (2 × ${num(P.nTau, 1)} × ${eng(P.cu, 'F')}); two switches per unit, one per plate (A)`],
+    ['Set in the side panel', P.ron ? `${eng(P.ron, 'Ω')} ${P.ron <= rMax ? '(fits)' : '(too large)'}` : '<span class="dim">not set</span>', 'from the gm/ID table at V DS near 0 (R on · W), kept in local-data'],
+  ]), 'The unit capacitor with its own switches is the cell every step is built from (one switch pair per unit capacitor), so every step has the same τ = 2 R on C u. The width follows from R on · W of the lookup table at V DS ≈ 0.');
 }

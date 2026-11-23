@@ -1,6 +1,7 @@
 # Where we are (updated 23 Nov 2026)
 
 One page. Tick a box when done. If you get lost: come back here.
+The same list with links to every page and script: workbench page Progress (first page, `#progress`).
 
 ## Done: gm/ID slides (ET4252 deck, `gmid_all.pdf`)
 
@@ -20,7 +21,7 @@ One page. Tick a box when done. If you get lost: come back here.
 4. [ ] Delay testbench: sweep dVin 0.1 mV to 100 mV, plot delay against ln(dVin). Slope = tau_reg. Hand estimate: 0.3 to 0.5 ns (generic values).
    Gives r = (comparator + logic delay) / tau_switch for the 7b time table.
 5. [ ] Noise testbench (probability of a 1 against input, Rabuske ch. 5). Target 45 uV; 100 uV costs only 0.12 bit.
-6. [ ] Offset Monte Carlo: the range Chen's calibration must cover. Left after calibration may be up to 4.2 mV.
+6. [ ] Offset Monte Carlo: the range Chen's calibration must cover. Left after calibration: at most 0.39 mV with w design at 3.7 tau and 0.2 LSB margin (4.2 mV was at 4.6 tau without margin).
 7. [ ] Kickback onto 4.48 pF and 8.96 pF nodes, in LSB (1 LSB = 4.375 fC).
 
 Specs from MATLAB: 1 LSB at the last node = 0.49 mV; about 1.8 to 2.1 ns per decision in total.

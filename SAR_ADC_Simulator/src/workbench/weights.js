@@ -4,7 +4,10 @@
 
 import { buildSteps } from '../zaan/model/steps.js';
 
+export const W_DESIGN = '200, 160, 80, 40, 16, 16, 8, 4, 2, 1, 1';
+
 export const PRESETS = {
+  'w design (MATLAB 7b, 3.7 tau, 23 Nov)': { mode: 'custom', list: W_DESIGN },
   'radix 1.9, halving (29 Oct example)': { mode: 'generator', radix: 1.9, topUnits: 32, halvings: 3, halvingOn: 'charge halving' },
   'radix 1.9, small capacitors': { mode: 'generator', radix: 1.9, topUnits: 32, halvings: 3, halvingOn: 'small capacitors' },
   'binary, halving (review slide 16)': { mode: 'generator', radix: 2, topUnits: 32, halvings: 3, halvingOn: 'charge halving' },

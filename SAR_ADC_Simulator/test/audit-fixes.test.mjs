@@ -3,7 +3,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createValues } from '../src/workbench/values.js';
+import { legacyValues as createValues } from './legacy.mjs';
 import { design } from '../src/workbench/design.js';
 import { referenceCharge, prechargeCharge } from '../src/zaan/model/reference.js';
 import { timingCase } from '../src/zaan/model/timingBudget.js';

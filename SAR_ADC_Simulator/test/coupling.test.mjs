@@ -10,8 +10,9 @@ import { createValues } from '../src/workbench/values.js';
 import { design } from '../src/workbench/design.js';
 import { cellsNeeded } from '../src/zaan/model/beamformer.js';
 import { outputs, timingMain, powerOf } from './coupling-outputs.mjs';
+import { W_DESIGN } from '../src/workbench/weights.js';
 
-const ui = { weightMode: 'generator', customWeights: '' };
+const ui = { weightMode: 'custom', customWeights: W_DESIGN };
 const BASE = JSON.parse(readFileSync(new URL('./fixtures/coupling-baseline.json', import.meta.url), 'utf8'));
 
 /** Values with some of them changed: { id: value in the unit of values.js }. */
@@ -39,7 +40,7 @@ function nudge(v) {
 
 // Values that change nothing in the context because only one page reads them; checked by grep in the audit.
 const PAGE_ONLY = {
-  iqTaps: 'IQ page', iqDecim: 'IQ page and System page', iqCut: 'IQ page', iqTest: 'IQ page', chips: 'Monte Carlo page',
+  radix: 'Weights page generator', topUnits: 'Weights page generator', halvings: 'Weights page generator', tComp: 'Comparator page', tauReg: 'Comparator page', kick: 'Comparator page', vinCm: 'Comparator page', calRange: 'Comparator page', iqTaps: 'IQ page', iqDecim: 'IQ page and System page', iqCut: 'IQ page', iqTest: 'IQ page', chips: 'Monte Carlo page',
 };
 
 test('snapshot: with untouched values the key outputs are the ones taken before the audit edits', () => {
@@ -68,7 +69,8 @@ test('every value reaches the model parameters P', () => {
 
 test('C M follows into Q FS, Q LSB, C DAC, C u, the kT/C of the cells and the area', () => {
   const a = run();
-  const b = run({ cm: 224 });
+  const cm0 = a.P.cmIn * 1e15;
+  const b = run({ cm: 2 * cm0 });
   assert.ok(close(b.d.qFs, 2 * a.d.qFs));
   assert.ok(close(b.d.qLsb, 2 * a.d.qLsb));
   assert.ok(close(b.P.cdacBalance, 2 * a.P.cdacBalance));
@@ -91,9 +93,10 @@ test('channels N follow into Q FS, Q LSB, C DAC, C u, the kT/C of the cells and 
 
 test('alpha sets V REF = alpha V in,max / 2 and C DAC = N C M / (2 alpha), and moves comparator noise and offset in LSB', () => {
   const a = run();
-  const b = run({ alpha: 0.8 });
-  assert.ok(close(b.P.vref, (0.8 * 1) / 2));
-  assert.ok(close(b.P.cdacBalance, (16 * 112e-15) / (2 * 0.8)));
+  const al = a.P.alphaIn * 2;
+  const b = run({ alpha: al });
+  assert.ok(close(b.P.vref, (al * a.P.fullScale) / 2));
+  assert.ok(close(b.P.cdacBalance, (a.P.channels * a.P.cmIn) / (2 * al)));
   assert.ok(close(b.d.qLsb, a.d.qLsb), 'Q LSB does not depend on alpha');
   assert.ok(line(b, 'comp').lsb < line(a, 'comp').lsb, 'a smaller CDAC is a smaller node');
   assert.ok(b.tolNeed[0].offset < a.tolNeed[0].offset);

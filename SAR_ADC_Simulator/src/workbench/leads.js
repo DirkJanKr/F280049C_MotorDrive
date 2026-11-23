@@ -5,7 +5,11 @@
 import { NAME } from './names.js';
 import { eng, num, esc } from './kit.js';
 import { absorbedOffset } from './pages/offset.js';
+import { offsetLimit } from './pages/comparator.js';
 import { mainCase } from './pages/timing.js';
+import { NOW } from './progress.js';
+
+const NOW_T = NOW.title;
 
 /** The first readout the page drew, as [value, note]: for pages whose key number lives on the page. */
 const firstReadout = (id) => () => {
@@ -16,6 +20,8 @@ const firstReadout = (id) => () => {
 };
 
 const LEADS = {
+  progress: { q: 'Where am I in the design, and what comes next?', a: () => [NOW_T, 'the step on the critical path; why it is now: see below'] },
+  comparator: { q: 'What does the system ask of the comparator?', a: firstReadout('cpRo') },
   system: { q: 'Does the design reach the ENOB it aims for?', a: (c) => [`${num(c.budget.enob, 2)} bit`, `aim ${num(c.P.enobAim, 1)} bit, from the noise budget`] },
   balance: { q: 'Which reference voltage and CDAC follow from C M and alpha?', a: (c) => [`V REF = ${eng(c.P.vref, 'V')}`, `${NAME.cdacBalance} ${eng(c.P.cdacBalance, 'F')}, ${NAME.alphaIn} ${num(c.P.alphaIn, 2)} (Chen 2018 eq. 3, Rabuske 2017 eq. 4.58)`] },
   budget: {
@@ -35,9 +41,9 @@ const LEADS = {
     },
   },
   levels: { q: 'How much does rounding to 10 bits cost?', a: (c) => [`${num(c.res.round, 3)} LSB rms`, `added on top of ${num(c.res.sar, 3)} LSB rms of the converter itself`] },
-  matching: { q: 'How much CDAC capacitance does matching need without calibration?', a: (c) => [eng((6 * 2 ** c.P.bits * (c.P.aC / 100)) ** 2 * 1e-15, 'F'), 'in total, for 3σ below ½ LSB with the PDK matching'] },
+  matching: { q: 'How much CDAC capacitance does matching need without calibration?', a: (c) => [eng((6 * 2 ** (c.P.bits - 1) * (c.P.aC / 100)) ** 2 * 1e-15, 'F'), 'in total, binary without calibration, for 3σ DNL below ½ LSB with the PDK matching (2^(B−1) A C / √C DAC, MATLAB step 5)'] },
   mismatch: { q: 'What does mismatch do to a real chip, before and after calibration?', a: firstReadout('mmro') },
-  offset: { q: 'How much comparator offset can the redundancy repair?', a: (c) => [eng(absorbedOffset(c.d), 'V'), `with the present weights; a binary search allows α · V LSB = ${eng(c.dBin.alpha * (c.P.fullScale / 2 ** c.P.bits), 'V')}, α the ${NAME.alphaBin} (Rabuske 2017, eq. 4.60)`] },
+  offset: { q: 'How much comparator offset can the redundancy repair?', a: (c) => [eng(offsetLimit(c), 'V'), `after calibration, with mismatch, settling and the decision margin (MATLAB 7f); the tolerance alone would allow ${eng(absorbedOffset(c.d), 'V')}`] },
   beamformer: { q: 'How many memory cells does the longest delay need?', a: (c) => [`${c.need.m} cells`, `longest delay ${eng(c.tauMax, 's')}, ${c.P.memCells} set`] },
   chen: { q: 'How does the clock sequence of Chen 2018 fit in one 25 ns period?', a: firstReadout() },
   logic: { q: 'What must the self-timed logic do for every decision?', a: () => null },

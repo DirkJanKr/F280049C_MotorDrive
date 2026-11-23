@@ -449,3 +449,17 @@ td.fx, .fx { font-family: var(--math); font-size: 14.5px; }
 .tb-rst { fill: var(--muted); }
 .tbv { display: inline-block; white-space: nowrap; font-size: 12.5px; } .tbv b { font: 600 13px var(--mono); margin-right: 4px; }
 .tbv.ok b { color: var(--ok); } .tbv.warn b { color: var(--warn); } .tbv.bad b { color: var(--bad); }
+
+/* Progress page */
+.pg-steps { list-style: none; margin: 0; padding: 0; }
+.pg-steps li { padding: 5px 0; border-bottom: 1px solid var(--line, rgba(127,127,127,.18)); line-height: 1.45; }
+.pg-steps li:last-child { border-bottom: 0; }
+.pg-links { font-size: 0.9em; opacity: 0.85; }
+.pg-links a { white-space: nowrap; }
+.pg-tag { display: inline-block; min-width: 3.6em; text-align: center; font-size: 0.78em; font-weight: 600; border-radius: 4px; padding: 1px 5px; margin-right: 4px; border: 1px solid currentColor; }
+.pg-done .pg-tag, .pg-tag.pg-done { color: var(--ok, #2e7d32); }
+.pg-now .pg-tag, .pg-tag.pg-now { color: var(--an, #1565c0); }
+.pg-next .pg-tag, .pg-tag.pg-next { color: var(--warn, #b26a00); }
+.pg-later .pg-tag, .pg-tag.pg-later { color: var(--muted, #777); }
+.pg-now > header h3 { color: var(--an, #1565c0); }
+section.pg-now { border-left: 3px solid var(--an, #1565c0); }

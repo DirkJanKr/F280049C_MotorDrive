@@ -26,6 +26,9 @@ Project: MSc thesis of Dirk-Jan. Current state and to-do list: `WHERE_WE_ARE.md`
 | Values to model parameters, the context every page reads | `src/workbench/design.js` (`design(values, ui)`) |
 | Side panel groups per page | `src/workbench/designSide.js` |
 | Question and answer at the top of each page | `src/workbench/leads.js` |
+| Progress page content (where the design stands, with links); keep in step with `WHERE_WE_ARE.md` | `src/workbench/progress.js`, page `pages/progress.js` |
+| Comparator specification and Cadence results | `pages/comparator.js` |
+| Weights from the needs (port of MATLAB 7b), time table | `src/zaan/model/weightBuilder.js`; test `test/weight-builder.test.mjs` |
 | One set of names for alpha, C DAC, C node | `src/workbench/names.js` |
 | Noise budget lines | `src/workbench/budget.js` |
 | Checks (pass, warn, fail) | `src/workbench/checks.js` |
@@ -44,13 +47,13 @@ Project: MSc thesis of Dirk-Jan. Current state and to-do list: `WHERE_WE_ARE.md`
 
 ## Page ids (URL hash)
 
-system, balance, budget, power, redundancy, sar, levels, matching, mismatch, offset, beamformer, chen, logic, timing, reference, iq, values, sources.
+progress, system, balance, budget, power, redundancy, sar, levels, matching, mismatch, offset, comparator, beamformer, chen, logic, timing, reference, iq, values, sources.
 
 ## How to work
 
 - Start the server: `(node tools/serve.mjs >/dev/null 2>&1 &)`, then http://localhost:8080/zaan_workbench.html#timing. It can die between calls; restart it before a browser run.
 - Run tests quietly: `npm test 2>&1 | grep -E "^# (pass|fail|todo)"`.
-- Test first for model code. Existing tests must keep passing; `test/fixtures/coupling-baseline.json` guards the default numbers.
+- Test first for model code. Existing tests must keep passing; `test/fixtures/coupling-baseline.json` guards the default numbers (regenerated 23 Nov for the new defaults). `test/matlab-sync.test.mjs` keeps the defaults equal to `Zaan_MATLAB/steps/zaan_constants.m`; audited numbers are tested with `test/legacy.mjs` (alpha 0.4, C M 112 fF).
 - Source texts: extracts in the scratchpad `papers/`; PDFs in the uploads folder. Read only the pages a question needs.
 
 ## Looking at the page (screenshots)

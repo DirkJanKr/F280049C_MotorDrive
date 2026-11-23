@@ -47,13 +47,13 @@ function enobCheck(ctx) {
 function toleranceCheck(ctx) {
   const bad = ctx.tolNeed.filter((r) => !r.ok);
   if (!bad.length) {
-    const m = Math.min(...ctx.tolNeed.filter((r) => !r.last).map((r) => r.have + 0.5 - r.need));
-    return { id: 'tol', label: 'Redundancy covers the errors', state: 'ok', value: `margin ${num(m, 2)} LSB`, limit: 'need ≤ tolerance + ½ LSB', why: 'At every decision the tolerance plus half an LSB is larger than what the fixed errors need: mismatch (3σ) and the offset left after calibration, so no code is lost (3σ DNL below ½ LSB). Settling may use what is left. Comparator noise needs no tolerance: it only flips a decision when the residue is within the noise, and then leaves an error of about that size whether repaired or not; it is counted in the ENOB.', fix: '', go: 'sar', f: 'tol' };
+    const m = Math.min(...ctx.tolNeed.filter((r) => !r.last && r.have > 0).map((r) => r.have - r.need));
+    return { id: 'tol', label: 'Redundancy covers the errors', state: 'ok', value: `margin ${num(m, 2)} LSB`, limit: `need + ${num(ctx.P.decMargin ?? 0, 2)} LSB margin ≤ tolerance`, why: 'At every decision the tolerance is larger than what the fixed errors need, added up (MATLAB steps 7a, 7c and 7e): mismatch (3σ), the offset left after calibration and the unsettled part of the step before, plus the decision margin. So no code is lost. Comparator noise needs no tolerance: it only flips a decision when the residue is within the noise, and then leaves an error of about that size whether repaired or not; it is counted in the ENOB.', fix: '', go: 'sar', f: 'tol' };
   }
-  const list = bad.slice(0, 4).map((r) => `decision ${r.i + 1} needs ${num(r.need, 2)} LSB (mismatch ${num(r.mismatch, 2)}, offset ${num(r.offset, 2)}) but has ${num(r.have, 2)} + ½`).join('; ');
+  const list = bad.slice(0, 4).map((r) => `decision ${r.i + 1} needs ${num(r.need, 2)} LSB (mismatch ${num(r.mismatch, 2)}, offset ${num(r.offset, 2)}, settling ${num(r.settling, 2)}) plus ${num(r.margin, 2)} margin but has ${num(r.have, 2)}`).join('; ');
   const mis = bad.reduce((a, r) => a + r.mismatch, 0) >= bad.reduce((a, r) => a + r.offset, 0);
   return {
-    id: 'tol', label: 'Redundancy covers the errors', state: 'bad', value: `${bad.length} decision${bad.length > 1 ? 's' : ''} short`, limit: 'need ≤ tolerance + ½ LSB',
+    id: 'tol', label: 'Redundancy covers the errors', state: 'bad', value: `${bad.length} decision${bad.length > 1 ? 's' : ''} short`, limit: 'need + margin ≤ tolerance',
     why: `${list}. A wrong decision there cannot be repaired by the later steps, so codes are lost.`,
     fix: mis ? 'Mostly mismatch: a smaller radix (more redundancy) or a larger Cu. The search on SAR ADC › Weights finds a list that covers it.' : 'Mostly offset: lower the offset left after calibration, or add redundancy.',
     go: 'sar', f: 'tol',
