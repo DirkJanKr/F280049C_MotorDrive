@@ -10,6 +10,8 @@ function [t, mis, off, setl, need, C_node] = fixed_errors(w, eps_settle, v_os)
 %   setl  settling: the unsettled part of the step before
 %   need  mis + off + setl, the tolerance this decision needs
 %   C_node the node capacitance at every decision [F]
+alpha = [];      % MATLAB has a built-in function alpha(); naming it here first tells MATLAB
+                 % it is a variable in this function, so the script below can fill it
 zaan_constants;
 n     = numel(w);
 Q_LSB = N_ch * C_M * V_FS / 2^N_bits;

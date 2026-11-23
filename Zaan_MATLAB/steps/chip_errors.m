@@ -4,6 +4,8 @@ function [err, W_real] = chip_errors(w, eps_settle, v_os, n_chips, seed)
 % ramp over the whole range with cs_sar.m, and is read with its own real
 % weights (perfect calibration). Returns the largest |output - input| per chip,
 % and every chip's real step weights in LSB (one row per chip).
+alpha = [];      % MATLAB has a built-in function alpha(); naming it here first tells MATLAB
+                 % it is a variable in this function, so the script below can fill it
 zaan_constants;
 rng(seed, 'twister');
 n     = numel(w);
