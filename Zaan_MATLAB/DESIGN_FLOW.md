@@ -18,7 +18,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 5 | CDAC from real capacitors: mismatch, and which DNL formula is right | 3, PDK | unit 35 fF = 8 LSB, error per step | done: full range, DNL and INL ladder. DNL (input width) 0.50 LSB = 2^(B-1) A_C / sqrt(C_DAC); output jump with real weights 1.02 LSB = 2^B A_C / sqrt(C_DAC); INL about 0.5 LSB. Binary 3 sigma < 0.5 LSB needs about 23.5 pF |
 | 6 | How large a mistake can redundancy repair? | 1 | the tolerance t_k, proven | done (story + hand check + simulation) |
 | 7a | Which fixed errors must each decision absorb? | 5, 6 | need per decision: mismatch + offset + settling | done |
-| 7b | Design the weights backwards from that need | 7a | weight list (put it in zaan_constants as w_design) | done: 4.6 tau gives 12 decisions |
+| 7b | Design the weights backwards from that need, for every settling time | 7a | weight list and time table | done: exact per decision (build_weights.m, verbose option), gain margin 2 % and decision margin 0.2 LSB (A); greedy checked against an exhaustive search (same decision count). 12 decisions down to 3.7 tau, 13 down to 2.8 tau; which is faster depends on comparator delay / tau (Cadence) |
 | 7c | Proof 1: rule met, does every chip convert right? | 7a | proof | done: every chip that meets its own rule converts right |
 | 7d | Proof 2: rule broken, do chips fail where and as much as predicted? | 7a | proof | done |
 | 7e | Proof 3: must the errors be added, or is root-sum-square enough? | 7a | proof | done: root-sum-square lets 19 % of chips fail |

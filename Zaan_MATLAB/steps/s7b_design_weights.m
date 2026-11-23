@@ -32,6 +32,18 @@
 %    the step above it (not chosen yet) it keeps at least eps * w_k free.
 %    It stops at full scale plus the spare reach the errors need, then shrinks
 %    the top steps while every decision still copes.
+% 6. Two safety inputs (A until Cadence):
+%    gain margin: the gain may be off (parasitics, step 7g; C_TH against C_DAC,
+%      Rabuske 4.4.2; V_REF accuracy), so the steps must reach 512 (1 + g) LSB.
+%    decision margin: every decision keeps d LSB free for what the model does
+%      not know (one tau for all steps, offset drift, corners).
+% 7. The time table. Fewest decisions is not the goal; the conversion time is:
+%        T = N_dec x t_comp + N_steps x n_tau x tau          [s]
+%    In units of tau, with r = t_comp / tau (comparator plus logic delay over
+%    the settling time constant):
+%        T / tau = N_dec x r + N_steps x n_tau
+%    r comes from Cadence, so the table shows a few values; the best n_tau
+%    for each r is marked.
 %
 % HAND CHECK
 %   n_tau = 4.6: eps = e^-4.6 = 0.010. Decision 2 after a 184 LSB step misses
@@ -54,11 +66,14 @@ zaan_constants;
 n_tau = 4.6;                 % time constants waited after every step (as 7a)     A
 v_os  = 0.15e-3;             % comparator offset left after calibration [V]        S (Malki 2014)
 tail  = [4 2 1 1];           % halving tail [LSB]                                  A
+g_mar = 0.02;                % gain margin: reach 2 % beyond full scale            A
+d_mar = 0.2;                 % margin every decision keeps free [LSB]              A
+r_list = [2 5 10];           % comparator + logic delay / tau, to compare          A
 
 %% -----------------------------
 % 2) One list at the chosen settling time
 % -----------------------------
-w = build_weights(n_tau, v_os, tail);
+w = build_weights(n_tau, v_os, tail, false, g_mar, d_mar);
 [t, mis, off, setl, need] = fixed_errors(w, exp(-n_tau), v_os);
 fprintf('settling %.1f tau (%.1f %% left); binary would need %.1f tau\n', n_tau, exp(-n_tau)*100, log(2^(N_bits+1)));
 fprintf('weights: %s\n', num2str(w));
@@ -66,12 +81,29 @@ fprintf('decisions %d, reach beyond full scale %.1f LSB, smallest margin %.2f LS
         sum(w) + w(end) - 2^(N_bits-1), min(t(t > 0) - need(t > 0)));
 
 %% -----------------------------
-% 3) The sweep: fewer tau per step against more decisions
+% 3) The time table: settling per step against decisions and conversion time
 % -----------------------------
-fprintf(' n_tau  left    decisions  total settling   weights\n');
-for nt = [7.6 6 4.6 3.7 3 2.4 2]
-    v = build_weights(nt, v_os, tail);
-    if isempty(v), fprintf('%5.1f  %4.1f %%   no list: the tolerance cannot hold the unsettled part\n', nt, exp(-nt)*100); continue, end
-    fprintf('%5.1f  %4.1f %%  %6d  %10.1f tau      %s\n', nt, exp(-nt)*100, numel(v)+1, nt*numel(v), num2str(v));
+nt_list = [7.6 6 4.6 4 3.7 3.4 3.2 3 2.8 2.6 2.4];
+T = nan(numel(nt_list), numel(r_list));  lists = cell(1, numel(nt_list));
+for i = 1:numel(nt_list)
+    v = build_weights(nt_list(i), v_os, tail, false, g_mar, d_mar);
+    lists{i} = v;
+    if ~isempty(v), T(i, :) = (numel(v)+1) * r_list + numel(v) * nt_list(i); end
 end
+[~, ibest] = min(T);                       % best row for every r
+fprintf('gain margin %.0f %%, decision margin %.1f LSB\n', g_mar*100, d_mar);
+fprintf(' n_tau  left    dec  settling | conversion time T/tau for r = t_comp/tau:');
+fprintf('%5g', r_list);  fprintf('\n');
+for i = 1:numel(nt_list)
+    v = lists{i};
+    if isempty(v), fprintf('%5.1f  %4.1f %%   no list\n', nt_list(i), exp(-nt_list(i))*100); continue, end
+    fprintf('%5.1f  %4.1f %%  %4d  %6.1f tau |                              ', nt_list(i), exp(-nt_list(i))*100, numel(v)+1, numel(v)*nt_list(i));
+    for j = 1:numel(r_list)
+        mark = ' ';  if ibest(j) == i, mark = '*'; end
+        fprintf('%6.1f%s', T(i, j), mark);
+    end
+    fprintf('   %s\n', num2str(v));
+end
+fprintf('* = shortest conversion for that r. Example: tau = 0.1 ns and r = 5 means\n');
+fprintf('    a comparator plus logic of 0.5 ns; T/tau = 80 would be 8 ns.\n');
 fprintf('\nput the chosen list in zaan_constants.m (w_design) to use it in the later steps\n');
