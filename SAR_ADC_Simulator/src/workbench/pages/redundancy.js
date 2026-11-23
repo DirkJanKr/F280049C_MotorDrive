@@ -14,6 +14,8 @@ import { buildSteps } from '../../zaan/model/steps.js';
 import { chargeBudget, toleranceNeeds } from '../budget.js';
 import { residualEstimate } from '../residual.js';
 import { changed } from '../store.js';
+import { stepsFromList } from '../weights.js';
+import { buildWeights, builderConstants } from '../../zaan/model/weightBuilder.js';
 
 /**
  * Search for the weight list with the highest ENOB at a 10-bit output.
@@ -27,13 +29,24 @@ function searchLists(ctx, maxDec) {
   const P10 = { ...P, outBits: P.bits };
   const seen = new Set();
   const out = [];
-  for (let top = 16; top <= 36; top++) for (let r = 1.5; r <= 2.001; r += 0.05) for (const h of [3, 4]) {
-    const d = designCdac(P, P.memCells, buildSteps({ topUnits: top, radix: r, halvings: h, halvingOn: true }));
+  const keep = (d, how) => {
     const key = d.weights.join(' ');
-    if (seen.has(key) || !d.cover.ok || d.decisions > maxDec) continue;
+    if (seen.has(key) || !d.cover.ok || d.decisions > maxDec) return;
     seen.add(key);
-    if (toleranceNeeds(P, d, ctx.sigmaU).some((x) => !x.ok)) continue;
-    out.push({ d, enob: chargeBudget(P10, d, { arrayGain: budget.arrayGain, res: residualEstimate(d, P10) }).enob });
+    if (toleranceNeeds(P, d, ctx.sigmaU).some((x) => !x.ok)) return;
+    out.push({ d, how, enob: chargeBudget(P10, d, { arrayGain: budget.arrayGain, res: residualEstimate(d, P10) }).enob });
+  };
+  // 1. built from the needs of every decision (MATLAB step 7b) at the settling time set, and with the
+  //    last step halved once more (½ LSB, one decision more: less rounding error, step 8)
+  const K = builderConstants(P, ctx.d);
+  for (const tail of [[4, 2, 1, 1], [4, 2, 1, 0.5, 0.5]]) {
+    const w = buildWeights({ nTau: P.nTau, vos: P.vosCal, tail, gMargin: P.gainMargin, dMargin: P.decMargin }, K);
+    const s = w && stepsFromList(w.join(', '), P.lsbPerUnit, 'charge halving');
+    if (s && s.steps) keep(designCdac(P, P.memCells, s.steps), `from the needs, ${num(P.nTau, 1)} τ${tail.length > 4 ? ', last step ½' : ''}`);
+  }
+  // 2. the radix family, kept only where every decision copes with the same rule
+  for (let top = 16; top <= 36; top++) for (let r = 1.5; r <= 2.001; r += 0.05) for (const h of [3, 4]) {
+    keep(designCdac(P, P.memCells, buildSteps({ topUnits: top, radix: r, halvings: h, halvingOn: true })), `radix ${num(r, 2)}, first step ${top} units`);
   }
   return out.sort((a, b) => b.enob - a.enob || a.d.decisions - b.d.decisions).slice(0, 8);
 }
@@ -74,8 +87,8 @@ export const page = {
       store.ui.rdRan = true;
       const best = searchLists(ctx, store.ui.rdMax);
       const now = ctx.budget.enob;
-      const tr = best.map(({ d, enob }, i) => `<tr><td class="num">${d.weights.map((w) => num(w, 2)).join(' ')}</td><td class="num">${d.decisions}</td><td class="num">${num(d.sumW, 1)}</td><td class="num">${num(d.alpha, 3)}</td><td class="num">${num(Math.min(...d.tol.slice(0, -1)), 1)}</td><td class="num"><b>${num(enob, 2)}</b></td><td><button class="mini" data-rduse="${i}">use</button></td></tr>`).join('');
-      fill('rdBest', best.length ? `<div class="tablewrap"><table class="tbl"><thead><tr><th>Weights [LSB]</th><th>Decisions</th><th>Σw</th><th>alpha with the weights of the list</th><th>Smallest tolerance [LSB]</th><th>ENOB (estimate)</th><th></th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="cap">No list in the family passes. Allow more decisions, or lower the mismatch or the offset.</p>',
+      const tr = best.map(({ d, enob, how }, i) => `<tr><td class="num">${d.weights.map((w) => num(w, 2)).join(' ')}</td><td>${how}</td><td class="num">${d.decisions}</td><td class="num">${num(d.sumW, 1)}</td><td class="num">${num(d.alpha, 3)}</td><td class="num">${num(Math.min(...d.tol.slice(0, -1)), 1)}</td><td class="num"><b>${num(enob, 2)}</b></td><td><button class="mini" data-rduse="${i}">use</button></td></tr>`).join('');
+      fill('rdBest', best.length ? `<div class="tablewrap"><table class="tbl"><thead><tr><th>Weights [LSB]</th><th>How</th><th>Decisions</th><th>Σw</th><th>alpha with the weights of the list</th><th>Smallest tolerance [LSB]</th><th>ENOB (estimate)</th><th></th></tr></thead><tbody>${tr}</tbody></table></div>` : '<p class="cap">No list passes. Allow more decisions, give more settling time (n τ), or lower the offset or the margins.</p>',
         `The present weights give ENOB ${num(now, 2)} in the budget. What moves the ENOB: a last step of ½ LSB halves the quantisation by the levels; every LSB of extra Σw is extra capacitance on the node, which makes the comparator noise and the precharge noise larger in LSB. So the best list is the one with a ½ LSB last step and the least redundancy that still covers the errors. The first step does not have to be 256: it only may not be larger than all later steps together plus the last step, and the whole list must reach 511. A smaller first step gives the first decision more tolerance but needs more or larger later steps. "use" loads the list as custom weights.`);
       document.querySelectorAll('[data-rduse]').forEach((b) => {
         b.onclick = () => {
