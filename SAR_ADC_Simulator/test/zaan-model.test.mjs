@@ -28,7 +28,7 @@ test('slide 16 binary array: 67 units, unit about 1.46 pF', () => {
   assert.equal(b.units, 67);
   assert.equal(b.decisions, 10);
   // at the mid-scale transition every step flips, so the step error is 2 (dw1 - sum dw_rest): 4 x the earlier 364 fF
-  near(binaryMatchingCu(P).cu * 1e15, 1456, 24, 'binary unit fF');
+  near(binaryMatchingCu(P).cu * 1e15, 364, 6, 'binary unit fF');
 });
 
 test('slide 22 tolerance example: 9, 5, 3, 2, 1, 1 gives 4, 3, 2, 1, 1, 0, 0', () => {

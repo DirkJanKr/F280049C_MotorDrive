@@ -1,4 +1,4 @@
-function y = cs_sar(x, Q_real, Q_read, C_node, q_dec, q_off, eps_settle, q_pre)
+function [y, S] = cs_sar(x, Q_real, Q_read, C_node, q_dec, q_off, eps_settle, q_pre)
 % CS_SAR  One charge-sharing SAR conversion for many samples at once, in charge.
 % A function file (not a script) because step 7 runs the same conversion many
 % times, each with other errors switched on.
@@ -14,15 +14,18 @@ function y = cs_sar(x, Q_real, Q_read, C_node, q_dec, q_off, eps_settle, q_pre)
 %              next decision is made (0 = fully settled)
 %   q_pre      rms precharge (kT/C) noise of every step [C]
 %   y          output charge [C]: the steps taken plus half the last step
+%   S          (optional) every decision, +1 or -1, one row per decision (step 8)
 
 n = numel(Q_real);
 r = x;                                      % charge left on the nodes
 y = zeros(size(x));
 s_prev = zeros(size(x));
+S = zeros(n+1, numel(x));
 for k = 1:n+1
     seen = r + q_off(k) + q_dec(k) * randn(size(x));     % what the comparator sees
     if k > 1, seen = seen + eps_settle * s_prev * Q_real(k-1); end   % not yet arrived
     s = 2*(seen >= 0) - 1;                               % decision
+    S(k, :) = s;
     if k <= n
         q_k = Q_real(k) + q_pre(k) * randn(size(x));      % this conversion's step charge
         r = r - s .* q_k;                                % connect step k

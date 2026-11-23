@@ -85,12 +85,14 @@ export function binarySteps(bits, lsbPerUnit) {
 
 /**
  * Unit capacitor that binary matching needs for 3 sigma DNL < 0.5 LSB at mid-code (hand estimate).
- * At the mid-scale transition every step changes sign, so the code step is off by
- * 2 (dw_1 - sum of dw_rest): sigma = 2 * n_u * sigma_u * sqrt(units of the first step + units of the rest)
- * = 2 * n_u * sigma_u * sqrt(2 * topUnits) LSB. Checked against 4000 simulated chips (1.14 against 1.13 LSB).
+ * DNL is the width of a code on the input axis. At mid-scale the width of the code is
+ * (w_1 - sum of w_rest); its lower edge is the first decision, which needs no capacitor,
+ * so every unit error counts ONCE: sigma = n_u * sigma_u * sqrt(2 * topUnits) LSB
+ * = 2^(B-1) A_C / sqrt(C_DAC). Checked in Zaan_MATLAB step 5 (0.50 against 0.54 LSB).
+ * Twice this (2^B A_C / sqrt(C_DAC)) is the jump of the output read with real weights, not a DNL.
  */
 export function binaryMatchingCu(P) {
-  const sigmaU = 0.5 / (3 * 2 * P.lsbPerUnit * Math.sqrt(2 * P.topUnits));
+  const sigmaU = 0.5 / (3 * P.lsbPerUnit * Math.sqrt(2 * P.topUnits));
   const cuF = (P.aC / 100 / sigmaU) ** 2 * 1e-15;
   return { sigmaU, cu: cuF };
 }
