@@ -10,7 +10,7 @@ const m = (file) => GH + 'Zaan_MATLAB/steps/' + file;
 export const NOW = {
   title: 'Comparator in Cadence (gm/ID sizing first)',
   why: 'MATLAB has given the comparator its specification (smallest input, noise, offset, kickback, time per decision). The open choices that remain (12 or 13 decisions, switch size, noise target) all wait for real comparator numbers, so the comparator is the bottleneck of the design now.',
-  links: [['Comparator specification', '#comparator'], ['Timing table', '#timing'], ['gm/ID tables', GH + 'Zaan_MATLAB/gmid/README.md']],
+  links: [['Weight design method (supervisor meeting)', 'https://claude.ai/artifact/6Gu4HmfiHjnYApi2Lp8x7b'], ['Comparator specification', '#comparator'], ['Timing table', '#timing'], ['gm/ID tables', GH + 'Zaan_MATLAB/gmid/README.md']],
 };
 
 export const PHASES = [

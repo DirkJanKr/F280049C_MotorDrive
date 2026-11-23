@@ -38,6 +38,11 @@ Done together: 5, 6, 7a, 7b. New: 7b2 (a wait per step: 26.4 tau instead of 40.7
 - [ ] 8 calibration and rounding (ENOB 9.26 with 12 decisions, 9.42 with 13, with memory tones)
 How: read the story, do the hand check on paper, run it, tell the story back.
 
+## Supervisor meeting (24 Nov)
+
+- [ ] Weight design method and questions: https://claude.ai/artifact/6Gu4HmfiHjnYApi2Lp8x7b
+- [ ] After the meeting: read Hotta 2010, Chang 2011 and the 2014 IEICE methodology paper in full
+
 ## Decisions
 
 Made: alpha = 1; Guo reservoir; external V_REF; LUT calibration; Chen-style offset calibration; ENOB below 9.5 accepted;
