@@ -13,7 +13,7 @@ One page. Tick a box when done. If you get lost: come back here.
 
 ## Now: Cadence comparator (in this order)
 
-1. [ ] gm/ID lookup tables: one NMOS, one PMOS, VDS = VDD/2, sweep VGS, L = Lmin, 2 Lmin, 4 Lmin. Save ID, gm, gds, Cgg. Store in `SAR_ADC_Simulator/local-data/` (NDA).
+1. [ ] gm/ID lookup tables (generic 180 nm tables from Murmann used for now, see `Zaan_MATLAB/gmid/README.md`; PDK tables when at the office): one NMOS, one PMOS, VDS = VDD/2, sweep VGS, L = Lmin, 2 Lmin, 4 Lmin. Save ID, gm, gds, Cgg. Store in `SAR_ADC_Simulator/local-data/` (NDA).
    Check: gm/ID about 30 1/V at low current, about 10 at high current.
 2. [ ] Choose StrongArm or double-tail (Chen 2018 uses double-tail, Schinkel 2007, with an extra input pair for the offset calibration). Read Razavi "The StrongARM latch" (SSC Magazine 2015) and Schinkel ISSCC 2007 first.
 3. [ ] First schematic, sized from the tables.
