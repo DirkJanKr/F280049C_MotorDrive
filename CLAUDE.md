@@ -64,6 +64,10 @@ system, balance, budget, power, redundancy, sar, levels, matching, mismatch, off
 - Published copy: https://claude.ai/artifact/YAcP1X72rA5CthqjLP7jK8 (republish with the Artifact tool, same URL; list its files first if refused). Frozen copy, never touch: https://claude.ai/artifact/RuUJNq4TD6BAGHhbX5SA2p.
 - The publish folder and its steps live in the session scratchpad and may be gone; rebuild from `zaan_workbench.html`, inlining `css/workbench.css`.
 
+## Decided (owner)
+
+alpha = 1 (V REF 0.5 V); Guo reservoir reference, V REF external; C M 280 fF start value (A); no MOS CDAC; external calibration with LUT (review 18 Nov). Comparator offset: background calibration as Chen 2018 (extra comparison and charge pump), decided 23 Nov. ENOB below 9.5 accepted; the new target is not set.
+
 ## Open decisions (owner's, not decided)
 
-alpha 0.4 or 1; 12 or 13 decisions; offset comparison or not; two CDACs (Chen) or reservoir (Guo); read-slot gain calibration; receive focus and cells needed (known link not wired, formula change needs approval); switch resistance and sizing (needs the PDK); comparator architecture (timing leaves about 1.8 to 2.1 ns per decision on average; comparator and logic delay not set).
+12 or 13 decisions (MATLAB step 8: 12 gives missing codes from the rounding, 13 does not); read-slot gain calibration; receive focus and cells needed (known link not wired, formula change needs approval); switch resistance and sizing (needs the PDK); comparator architecture and its noise per decision (timing leaves about 1.8 to 2.1 ns per decision on average; comparator and logic delay not set).
