@@ -7,18 +7,22 @@
 % and how much do they cost?
 %
 % ANSWER (full-scale sine)
-% 280 fF: all tones together -62.6 dBc (1.18 fC rms), largest -65 to -68 dBc.
-% Hand formula sigma^2 / N agrees within 0.5 dB. Each doubling of C_M: -3 dB.
+% 280 fF: all tones together about -65.6 dBc (differential cell), see printout.
+% Hand formula sigma^2 / (2 N) agrees within 0.5 dB. Each doubling of C_M: -3 dB.
 %
 % This is not kT/C: the error of a cell is drawn ONCE per chip and stays.
 % In charge: a cell writes Q = C_M,i V, so a cell eps_i too large gives eps_i
 % too much charge (a gain error). No ADC here: the output is the exact summed
 % charge, so everything that is not the signal comes from the mismatch.
 %
-% Hand formula: one cell has spread sigma = A_C / sqrt(C_M). One channel puts
-% sigma^2 (relative to the signal) into tones. N channels with INDEPENDENT
-% cells add the signal coherently (beamformer gain) and the tones in power:
-% total sigma^2 / N.
+% Hand formula: one capacitor has spread sigma = A_C / sqrt(C_M). A cell is
+% DIFFERENTIAL: one capacitor on P, one on N. The differential charge is
+% (C_P + C_N) V / 2, so the gain error of a cell is the average (e_P + e_N) / 2,
+% spread sigma / sqrt(2). (The difference e_P - e_N divides out in the voltage
+% the comparator sees, Rabuske eq. 4.30.) One channel puts sigma^2 / 2 into
+% tones; N channels with INDEPENDENT cells add the signal coherently and the
+% tones in power: total sigma^2 / (2 N). (Before 24 Nov this step used one
+% capacitor per cell, sigma^2 / N: 3 dB pessimistic.)
 % ASSUMPTION: the cells of different channels are independent. A layout
 % gradient shared by equal cell numbers would remove the 1/N.
 
@@ -56,7 +60,7 @@ for i = 1:numel(C_list)
     tot = zeros(1, n_chips);                 % all tones per chip [dBc]
     big = zeros(1, n_chips);                 % largest tone per chip [dBc]
     for chip = 1:n_chips
-        g = 1 + sig*randn(N_ch, M_cells);    % gain of every cell, drawn once
+        g = 1 + sig*(randn(N_ch, M_cells) + randn(N_ch, M_cells))/2;   % cell gain: average of its P and N capacitor
         Q = zeros(1, n_fft);                 % summed output charge (relative)
         for j = 1:N_ch
             cell = mod(m - kdel(j), M_cells) + 1;   % the cell channel j uses
@@ -70,7 +74,7 @@ for i = 1:numel(C_list)
         tot(chip) = 10*log10(sum(P)/Ps);
         big(chip) = 10*log10(max(P)/Ps);
     end
-    hand = 10*log10(sig^2 / N_ch);
+    hand = 10*log10(sig^2 / (2*N_ch));
     t    = 10*log10(mean(10.^(tot/10)));     % average the POWER, then back to dB
     loss = log2(sqrt(1 + 10^((t - ADC_noise_dBc)/10)));   % ENOB lost by adding the tones
     fprintf('%8.0f %11.2f %10.1f dBc %10.1f dBc %10.1f dBc %10.3f bit\n', ...
@@ -81,7 +85,7 @@ end
 % 4) Plot: the spectrum of one chip at 280 fF
 % -----------------------------
 sig = A_C / sqrt(280);
-g   = 1 + sig*randn(N_ch, M_cells);
+g   = 1 + sig*(randn(N_ch, M_cells) + randn(N_ch, M_cells))/2;
 Q   = zeros(1, n_fft);
 for j = 1:N_ch
     Q = Q + g(j, mod(m - kdel(j), M_cells) + 1) .* s;

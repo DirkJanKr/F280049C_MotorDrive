@@ -40,7 +40,7 @@ sig_cell = A_C / sqrt(C_M*1e15);           % gain spread of one cell (step 2b)
 Q_sig    = Q_FS / (2*sqrt(2));             % rms charge of a full-scale sine [C]
 
 st_name = {'quantisation, ideal 10 bit', 'kT/C of the memory cells', 'memory gain tones, full scale'};
-st_q    = [Q_LSB/sqrt(12), sqrt(2*N_ch*kB*T*C_M), sig_cell/sqrt(N_ch)*Q_sig];
+st_q    = [Q_LSB/sqrt(12), sqrt(2*N_ch*kB*T*C_M), sig_cell/sqrt(2*N_ch)*Q_sig];   % tones: differential cell (step 2b, 24 Nov)
 st_from = {'step 0', 'step 2a (simulated)', 'step 2b (simulated)'};
 
 %% -----------------------------

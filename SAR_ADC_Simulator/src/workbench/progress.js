@@ -36,7 +36,7 @@ export const PHASES = [
       ['Weights from the needs: w design = 200 160 80 40 16 16 8 4 2 1 1 at 3.7 τ', 'done', [['Weights', '#redundancy'], ['Timing table', '#timing'], ['MATLAB s7b', m('s7b_design_weights.m')]]],
       ['A wait per step instead of one wait for all: settling 26.4 τ instead of 40.7 τ, 200 chips convert right', 'done', [['Timing: wait per step', '#timing'], ['MATLAB s7b2', m('s7b2_wait_per_step.m')]]],
       ['Offset limit: 4.2 mV at 4.6 τ without margin, only 0.39 mV with w design at 3.7 τ and 0.2 LSB margin; parasitics (gain only); noise sources simulated', 'done', [['Offset', '#offset'], ['MATLAB s7f', m('s7f_offset.m')], ['s7g', m('s7g_parasitics.m')], ['s7h', m('s7h_noise_sources.m')]]],
-      ['Calibration and rounding: ENOB 9.26 (12 decisions) or 9.42 (13), with memory tones', 'done', [['Noise budget', '#budget'], ['Levels and rounding', '#levels'], ['MATLAB s8', m('s8_calibration.m')]]],
+      ['Calibration and rounding: ENOB 9.38 (12 decisions) or 9.58 (13), with memory tones of a differential cell', 'done', [['Noise budget', '#budget'], ['Levels and rounding', '#levels'], ['MATLAB s8', m('s8_calibration.m')]]],
     ],
   },
   {

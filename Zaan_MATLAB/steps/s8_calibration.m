@@ -72,7 +72,7 @@ v_os  = 1e-3;                     % comparator offset after its own trim [V]    
 eps_s = exp(-4.6);                % settling, 4.6 tau (step 7b)                 A
 v_n   = 45e-6;                    % comparator noise [V rms] (step 4)            A (target)
 q_mem = sqrt(2 * N_ch * kB * T * C_M);   % memory kT/C on the input [C rms] (step 2a)
-tone_dBc = -62.6;                 % memory gain tones, full scale (step 2b)      D
+tone_dBc = 10*log10((A_C/sqrt(C_M*1e15))^2 / (2*N_ch));   % memory gain tones, differential cell (step 2b): -65.6 dBc at 280 fF   D
 n_chips = 10;
 N_fft = 4096;  cyc = 1301;        % coherent sine: 1301 periods in 4096 samples
 f_in  = cyc / N_fft * fs;         % 12.7 MHz, near f_max

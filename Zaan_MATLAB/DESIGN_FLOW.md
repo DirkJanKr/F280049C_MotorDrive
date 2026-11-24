@@ -11,7 +11,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 0 | Specification in charge: full scale, one LSB, noise we may add | spec, start value C_M | Q_FS, Q_LSB, noise allowed | done |
 | 1 | Does an ideal binary conversion end within ½ LSB of the input? | 0 | a checked model of the conversion | done |
 | 2a | How small may the memory cell be for its kT/C noise? | 0 | lower limit on C_M | done: 26 fF for 25 % of the other noise |
-| 2b | How large are the tones from gain mismatch between cells, and what do they cost? | 0 | tone power against C_M | done: total -62.6 dBc at 280 fF, 0.26 bit of ENOB |
+| 2b | How large are the tones from gain mismatch between cells, and what do they cost? | 0 | tone power against C_M | done: total -65.6 dBc at 280 fF for a differential cell (two capacitors averaged; was -62.6 dBc with one capacitor per cell until 24 Nov) |
 | 2c | Offset charge per cell (switch charge injection): how much spread may a cell have? | 0 | switch spec: at most 0.16 fC per cell | done; the real value needs Cadence |
 | 3 | Charge balance at alpha = 1: V_REF, total CDAC charge, node growth per decision | 2 | V_REF, C_DAC | done: 0.5 V, 2.24 pF, 1 LSB = 0.98 mV at decision 1, 0.49 mV at the end |
 | 4 | Noise budget so far: what is left for the comparator? | 0 to 3 | comparator noise target | done: studied sources leave 45 uV; placeholders (CDAC kT/C, extra charge, switch noise, jitter) listed apart with what is needed to check them |
@@ -26,7 +26,7 @@ A step is done when its check passes and I can explain every line. alpha = 1.
 | 7f | Comparator offset: how much may it have? | 7a | offset limit | done: binary needs v_os < alpha V_LSB = 0.98 mV (Rabuske eq. 4.60, simulated); w_design allows 3.5 mV, set by decision 6. 15 mV would need more tolerance in the small steps |
 | 7g | Plate parasitics of the CDAC (Rabuske 4.5) | 7b | parasitic limits | done: no nonlinearity (< 0.1 bit) even fully unbalanced; they change the gain (range lost or codes unused), set by V_REF trim or C_TH. Real C_p from the PDK |
 | 7h | The placeholder noise sources of step 4, simulated | 7b | noise per source | done: CDAC kT/C 0.19 fC, comparator 45 uV = 0.41 fC at the last node, jitter 1 ps 0.13 fC; all match their formula. Switch noise stays a placeholder (Cadence) |
-| 8 | Calibration and the second quantisation (rounding to 10 bit) | 7 | ENOB, DNL, INL | done: calibrated 12 decisions ENOB 9.53 with 13 missing codes from the rounding; 13 decisions (extra 0.5 LSB step) ENOB 9.79, no missing codes. With the memory tones: 9.26 and 9.43, below 9.5. Contradicts step 4, which counted the quantisation once |
+| 8 | Calibration and the second quantisation (rounding to 10 bit) | 7 | ENOB, DNL, INL | done: calibrated 12 decisions ENOB 9.53 with missing codes from the rounding; 13 decisions (extra 0.5 LSB step) 9.79. With the memory tones of a differential cell: 9.38 and 9.58. Options (24 Nov): C_M 560 fF gives 9.52 and 9.70; V_FS 2 V gives 9.39 and 9.62 |
 | 9 | How long must each step settle, given what the errors leave? | 7, Cadence switch | switch size, timing | moved to Cadence (comparator and switches) |
 
 Rule for every step: a noise or error source enters the model only in its own step, where it is explained and checked. Until then it may appear only as a placeholder, with its assumption and what is needed to check it.
