@@ -47,6 +47,7 @@ export const PHASES = [
       ['gm/ID slides (ET4252) read', 'done', [['gm/ID notes', GH + 'Zaan_MATLAB/gmid/README.md']]],
       ['gm/ID lookup tables: generic 180 nm now, PDK tables at the office', 'now', [['gm/ID README', GH + 'Zaan_MATLAB/gmid/README.md']]],
       ['Choose double-tail (as Chen 2018, Schinkel 2007) or StrongArm; read Razavi 2015 and Schinkel', 'next', [['Comparator', '#comparator']]],
+      ['C1 hand model of the double-tail (Schinkel 2007, Razavi 2015): about 0.4 ns at 1 LSB, generic values', 'done', [['Comparator flow', GH + 'Zaan_MATLAB/comparator/README.md']]],
       ['First schematic, sized from the tables', 'next', [['Comparator', '#comparator']]],
       ['Delay against input: τ reg and r for the time table', 'next', [['Timing table', '#timing'], ['Comparator', '#comparator']]],
       ['Noise (probability of a 1, or PSS and PNOISE), offset Monte Carlo, kickback', 'next', [['Comparator', '#comparator'], ['Noise budget', '#budget']]],
