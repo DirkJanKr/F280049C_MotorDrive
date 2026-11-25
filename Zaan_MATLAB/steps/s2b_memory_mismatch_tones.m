@@ -8,6 +8,9 @@
 % ANSWER (full-scale sine, differential cells, 40 chips per size)
 % 280 fF: all tones together about -65.6 dBc. Each doubling of C_M: -3 dB.
 % The simulation agrees with the hand formula sigma^2 / (2 N) within 0.5 dB.
+% The total does not depend on the signal frequency (7, 10, 13 MHz). Inside
+% the echo band 7 to 13 MHz about -71 dBc is left: the tones spread evenly
+% over 0 to 20 MHz, and the band is 6 of those 20 MHz (-5.2 dB).
 %
 % THE STORY (in three sentences)
 % 1. A memory cell is two capacitors (one on P, one on N). Each is a little
@@ -111,3 +114,31 @@ figure; grid on;
 plot(f/1e6, 10*log10(P / P(k_sig+1) + 1e-30));   % 1e-30 avoids log of 0
 xlabel('Frequency [MHz]'); ylabel('Power relative to the signal [dBc]');
 title('Memory cell tones, one chip, 280 fF: signal at 7.3 MHz, tones every fs / 22');
+
+%% -----------------------------
+% 6) Does the signal frequency matter? Total tones, and the part inside the echo band
+% -----------------------------
+% The total tone power does not depend on the signal frequency: the gain error
+% multiplies the signal, whatever its frequency. But WHERE the tones land does:
+% after the IQ demodulator only the echo band (7 to 13 MHz) is left.
+% Frequencies on exact bins (whole number of periods), 280 fF, 40 chips each.
+sigma = A_C / sqrt(280);
+f_try = [7 10 13] * 1e6;
+fprintf('\n signal    all tones    tones inside 7 to 13 MHz\n');
+for f_t = f_try
+    k   = round(f_t / fs * n_fft);  if mod(k, 2) == 0, k = k + 1; end   % odd bin: never a multiple of fs / 22
+    sig = sin(2*pi*k*m/n_fft);
+    f   = (0 : n_fft/2-1) * fs / n_fft;
+    band = f >= 7e6 & f <= 13e6;
+    t_all = 0;  t_band = 0;
+    for chip = 1:n_chips
+        gain = 1 + sigma * (randn(N_ch, M_cells) + randn(N_ch, M_cells)) / 2;
+        out  = zeros(1, n_fft);
+        for j = 1:N_ch, out = out + gain(j, cell_of(j, :)) .* sig; end
+        P = abs(fft(out)).^2;   P = P(1 : n_fft/2);
+        P_sig = P(k + 1);   P(k + 1) = 0;   P(1) = 0;
+        t_all  = t_all  + sum(P) / P_sig / n_chips;
+        t_band = t_band + sum(P(band)) / P_sig / n_chips;
+    end
+    fprintf('%6.2f MHz  %7.1f dBc   %7.1f dBc\n', k/n_fft*fs/1e6, 10*log10(t_all), 10*log10(t_band));
+end
