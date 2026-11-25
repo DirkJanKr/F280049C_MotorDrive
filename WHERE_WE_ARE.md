@@ -16,6 +16,13 @@ The same list with links to every page and script: workbench page Progress (firs
 
 - [ ] Remove the two MOM test capacitors, sources and ground from `zaan_analog / sub_ana_rx_adc_abf` after the Monte Carlo (do not check them in). Next time build tests in the TB library.
 
+## New (25 Nov): MOM matching
+
+- PDK Monte Carlo (MOM, mismatch only, 200 points): A C is below the binary limit for C DAC 2.24 pF (value kept in `local-data/`, NDA). Chen 2018 uses MOM for the CDAC (symmetric plate parasitics, p. 3055).
+- [ ] Check: twice-larger cap gives the same A C; same Monte Carlo for MIM (where does 0.0499 come from?)
+- [ ] Rerun steps 5, 7b and 8 locally with the PDK A C: fewer tolerances? calibration still needed? (no calibration means no second rounding)
+- [ ] Decide (owner): MOM for the CDAC
+
 ## Now: Cadence comparator (in this order)
 
 1. [ ] gm/ID lookup tables (generic 180 nm tables from Murmann used for now, see `Zaan_MATLAB/gmid/README.md`; PDK tables when at the office): one NMOS, one PMOS, VDS = VDD/2, sweep VGS, L = Lmin, 2 Lmin, 4 Lmin. Save ID, gm, gds, Cgg. Store in `SAR_ADC_Simulator/local-data/` (NDA).
