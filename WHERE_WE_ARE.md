@@ -21,7 +21,9 @@ The same list with links to every page and script: workbench page Progress (firs
 - PDK Monte Carlo (MOM, mismatch only, 200 points): A C is below the binary limit for C DAC 2.24 pF (value kept in `local-data/`, NDA). Chen 2018 uses MOM for the CDAC (symmetric plate parasitics, p. 3055).
 - [ ] Check: twice-larger cap gives the same A C; same Monte Carlo for MIM (where does 0.0499 come from?)
 - [ ] Rerun steps 5, 7b and 8 locally with the PDK A C: fewer tolerances? calibration still needed? (no calibration means no second rounding)
-- [ ] Decide (owner): MOM for the CDAC
+- MIM Monte Carlo: matches worse than MOM (value local).
+- [ ] Rerun step 2b (memory tones) locally with the PDK MIM A C: the budget uses 0.0499; if MIM is worse, the tones are larger than -65.6 dBc. MOM memory cells would lower the tones (tones scale with A C squared), at an area cost.
+- [ ] Decide (owner): MOM for the CDAC; memory cells MIM or MOM
 
 ## Now: Cadence comparator (in this order)
 
