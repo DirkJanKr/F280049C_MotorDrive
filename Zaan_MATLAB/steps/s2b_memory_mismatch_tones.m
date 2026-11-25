@@ -2,102 +2,112 @@
 %        STEP 2b: TONES FROM GAIN MISMATCH BETWEEN MEMORY CELLS           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % QUESTION
-% Every channel uses its 22 cells in turn. The cells differ slightly, so the
-% gain of the beamformer repeats every 22 samples. How large are the tones,
-% and how much do they cost?
+% The memory cells are not exactly equal. How large are the tones this gives
+% in the beamformer output, and how does that change with the cell size C_M?
 %
-% ANSWER (full-scale sine)
-% 280 fF: all tones together about -65.6 dBc (differential cell), see printout.
-% Hand formula sigma^2 / (2 N) agrees within 0.5 dB. Each doubling of C_M: -3 dB.
+% ANSWER (full-scale sine, differential cells, 40 chips per size)
+% 280 fF: all tones together about -65.6 dBc. Each doubling of C_M: -3 dB.
+% The simulation agrees with the hand formula sigma^2 / (2 N) within 0.5 dB.
 %
-% This is not kT/C: the error of a cell is drawn ONCE per chip and stays.
-% In charge: a cell writes Q = C_M,i V, so a cell eps_i too large gives eps_i
-% too much charge (a gain error). No ADC here: the output is the exact summed
-% charge, so everything that is not the signal comes from the mismatch.
+% THE STORY (in three sentences)
+% 1. A memory cell is two capacitors (one on P, one on N). Each is a little
+%    off its design value, so each cell has a slightly different gain.
+% 2. A channel uses its 22 cells in turn, so its gain repeats the same
+%    pattern every 22 samples. A gain that repeats every 22 samples
+%    multiplies the signal by a pattern, and that creates tones at the
+%    signal frequency +- multiples of fs / 22.
+% 3. The 16 channels add the signal in phase (beamformer gain), but their
+%    cell errors are independent, so the tones add only in power: the total
+%    tone power relative to the signal drops by a factor N.
 %
-% Hand formula: one capacitor has spread sigma = A_C / sqrt(C_M). A cell is
-% DIFFERENTIAL: one capacitor on P, one on N. The differential charge is
-% (C_P + C_N) V / 2, so the gain error of a cell is the average (e_P + e_N) / 2,
-% spread sigma / sqrt(2). (The difference e_P - e_N divides out in the voltage
-% the comparator sees, Rabuske eq. 4.30.) One channel puts sigma^2 / 2 into
-% tones; N channels with INDEPENDENT cells add the signal coherently and the
-% tones in power: total sigma^2 / (2 N). (Before 24 Nov this step used one
-% capacitor per cell, sigma^2 / N: 3 dB pessimistic.)
-% ASSUMPTION: the cells of different channels are independent. A layout
-% gradient shared by equal cell numbers would remove the 1/N.
+% Why sigma / sqrt(2): the cell stores charge on both capacitors, so its gain
+% is the AVERAGE of the two errors, (e_P + e_N) / 2. Averaging two
+% independent errors divides the spread by sqrt(2). (Their difference
+% divides out in the voltage the comparator sees, Rabuske eq. 4.30.)
+% Assumption (A): cells of different channels mismatch independently.
+%
+% HAND CHECK (do this on paper)
+% One capacitor of 280 fF: sigma = A_C / sqrt(280) = 0.0499 / 16.7 = 0.30 %
+% One cell (average of two):   0.30 % / sqrt(2) = 0.21 %
+% Tones, all together:   sigma_cell^2 / N = (0.0021)^2 / 16 = 2.8e-7  ->  -65.6 dBc
+%
+% WHAT THE CODE DOES
+%   1) values
+%   2) which cell each channel uses at each sample
+%   3) one chip: draw the cell gains, add the 16 channels, look at the spectrum
+%   4) repeat for 40 chips and 5 cell sizes, compare with the hand formula
+%   5) plot the spectrum of one chip
 
 clear; close all; clc;
 zaan_constants;
-rng(2, 'twister');        % fixed random numbers: the same chips every run
+rng(2, 'twister');            % the same random chips every run
 
 %% -----------------------------
-% 1) Delays: which cell each channel reads (whole 25 ns slots)
+% 1) Values
 % -----------------------------
-tau  = (0:N_ch-1) * pitch * sind(theta) / c_sound;   % delay per channel [s]
-kdel = round(tau * fs);                              % the same in slots
-% sind = sine of an angle in degrees; round = to the nearest whole number
-
-%% -----------------------------
-% 2) Test signal: a sine exactly on one FFT bin
-% -----------------------------
-n_fft = M_cells * 512;     % record length; fs/M_cells is then exactly bin 512
-k_sig = 2063;              % the sine makes 2063 periods: about 7.3 MHz
-m = 0:n_fft-1;             % sample number
-s = sin(2*pi*k_sig*m/n_fft);   % the echo after the delays (same for all channels)
-
-C_list  = [35 70 140 280 560] * 1e-15;   % memory cell sizes to try [F]
+C_list  = [35 70 140 280 560] * 1e-15;   % cell sizes to try [F]
 n_chips = 40;                            % random chips per size
-ADC_noise_dBc = -(6.02*ENOB_aim + 1.76); % total converter noise at the ENOB aim
-
-fprintf('converter noise at ENOB %.1f: %.1f dBc\n\n', ENOB_aim, ADC_noise_dBc);
-fprintf(' C_M [fF]   sigma [%%]   tones, hand   tones, sim   largest tone   ENOB loss\n');
-
-%% -----------------------------
-% 3) For every size: 40 chips, each with its own cells
-% -----------------------------
-for i = 1:numel(C_list)
-    sig = A_C / sqrt(C_list(i)*1e15);        % relative spread of one cell
-    tot = zeros(1, n_chips);                 % all tones per chip [dBc]
-    big = zeros(1, n_chips);                 % largest tone per chip [dBc]
-    for chip = 1:n_chips
-        g = 1 + sig*(randn(N_ch, M_cells) + randn(N_ch, M_cells))/2;   % cell gain: average of its P and N capacitor
-        Q = zeros(1, n_fft);                 % summed output charge (relative)
-        for j = 1:N_ch
-            cell = mod(m - kdel(j), M_cells) + 1;   % the cell channel j uses
-            % mod(a, M) = remainder after dividing by M: 0, 1, ..., M-1, 0, ...
-            Q = Q + g(j, cell) .* s;         % .* multiplies element by element
-        end
-        P  = abs(fft(Q)).^2;                 % power per frequency bin
-        P  = P(1:n_fft/2);                   % keep 0 .. fs/2
-        Ps = P(k_sig + 1);                   % the signal (bin 0 is position 1)
-        P(k_sig + 1) = 0;  P(1) = 0;         % remove signal and DC: only tones left
-        tot(chip) = 10*log10(sum(P)/Ps);
-        big(chip) = 10*log10(max(P)/Ps);
-    end
-    hand = 10*log10(sig^2 / (2*N_ch));
-    t    = 10*log10(mean(10.^(tot/10)));     % average the POWER, then back to dB
-    loss = log2(sqrt(1 + 10^((t - ADC_noise_dBc)/10)));   % ENOB lost by adding the tones
-    fprintf('%8.0f %11.2f %10.1f dBc %10.1f dBc %10.1f dBc %10.3f bit\n', ...
-            C_list(i)*1e15, sig*100, hand, t, max(big), loss);
-end
+n_fft   = M_cells * 512;                 % record length, so fs / 22 falls exactly on a bin
+k_sig   = 2063;                          % the sine makes 2063 periods: about 7.3 MHz
+m       = 0 : n_fft-1;                   % sample number
+signal  = sin(2*pi*k_sig*m/n_fft);       % the echo after the delays (equal in every channel)
 
 %% -----------------------------
-% 4) Plot: the spectrum of one chip at 280 fF
+% 2) Which cell each channel uses at each sample
 % -----------------------------
-sig = A_C / sqrt(280);
-g   = 1 + sig*(randn(N_ch, M_cells) + randn(N_ch, M_cells))/2;
-Q   = zeros(1, n_fft);
+% Channel j is delayed by kdel(j) samples (steering at theta). At sample m it
+% writes into cell number mod(m - kdel(j), 22) + 1, so it walks through its
+% 22 cells in turn. The channels start at different cells because of the delay.
+delay_s = (0:N_ch-1) * pitch * sind(theta) / c_sound;   % delay per channel [s]
+kdel    = round(delay_s * fs);                          % the same in samples
+cell_of = zeros(N_ch, n_fft);
 for j = 1:N_ch
-    Q = Q + g(j, mod(m - kdel(j), M_cells) + 1) .* s;
+    cell_of(j, :) = mod(m - kdel(j), M_cells) + 1;      % mod: remainder after dividing by 22
 end
-P  = abs(fft(Q)).^2;  P = P(1:n_fft/2);
-Ps = P(k_sig + 1);
-f  = (0:n_fft/2-1) * fs / n_fft;             % frequency of every bin [Hz]
 
-figure; hold on; grid on;
-plot(f/1e6, 10*log10(P/Ps + 1e-30), 'b');    % 1e-30 avoids log of 0 in empty bins
-plot([0 f(end)/1e6], [1 1]*(ADC_noise_dBc - 10*log10(n_fft/2)), 'r--');
-ylim([-130 5]);
+%% -----------------------------
+% 3) and 4) Many chips, several cell sizes
+% -----------------------------
+fprintf(' C_M [fF]  one capacitor  tones, hand   tones, simulated   largest tone\n');
+for i = 1:numel(C_list)
+    sigma   = A_C / sqrt(C_list(i)*1e15);         % spread of one capacitor
+    tones   = zeros(1, n_chips);                  % all tones together, per chip [relative power]
+    largest = zeros(1, n_chips);
+    for chip = 1:n_chips
+        % 3a) every cell gets its own gain: the average of its P and N capacitor
+        e_P  = sigma * randn(N_ch, M_cells);
+        e_N  = sigma * randn(N_ch, M_cells);
+        gain = 1 + (e_P + e_N) / 2;
+        % 3b) the beamformer output: each channel's signal times the gain of the
+        %     cell it uses at that sample, added over the 16 channels
+        out = zeros(1, n_fft);
+        for j = 1:N_ch
+            out = out + gain(j, cell_of(j, :)) .* signal;   % .* multiplies sample by sample
+        end
+        % 3c) spectrum: remove the signal and DC, what is left are the tones
+        P = abs(fft(out)).^2;   P = P(1 : n_fft/2);
+        P_sig = P(k_sig + 1);                     % the signal (bin 0 is position 1)
+        P(k_sig + 1) = 0;   P(1) = 0;
+        tones(chip)   = sum(P) / P_sig;
+        largest(chip) = max(P) / P_sig;
+    end
+    hand = sigma^2 / (2*N_ch);                    % the hand formula
+    fprintf('%7.0f    %8.2f %%    %8.1f dBc    %8.1f dBc    %8.1f dBc\n', C_list(i)*1e15, ...
+            sigma*100, 10*log10(hand), 10*log10(mean(tones)), 10*log10(max(largest)));
+end
+
+%% -----------------------------
+% 5) Spectrum of one chip at 280 fF
+% -----------------------------
+sigma = A_C / sqrt(280);
+gain  = 1 + sigma * (randn(N_ch, M_cells) + randn(N_ch, M_cells)) / 2;
+out   = zeros(1, n_fft);
+for j = 1:N_ch
+    out = out + gain(j, cell_of(j, :)) .* signal;
+end
+P = abs(fft(out)).^2;   P = P(1 : n_fft/2);
+f = (0 : n_fft/2-1) * fs / n_fft;                 % frequency of every bin [Hz]
+figure; grid on;
+plot(f/1e6, 10*log10(P / P(k_sig+1) + 1e-30));   % 1e-30 avoids log of 0
 xlabel('Frequency [MHz]'); ylabel('Power relative to the signal [dBc]');
-title('One chip, C_M = 280 fF: tones from cell mismatch');
-legend('signal and tones', 'ADC noise at ENOB 9.5, per bin');
+title('Memory cell tones, one chip, 280 fF: signal at 7.3 MHz, tones every fs / 22');
