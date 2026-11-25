@@ -12,6 +12,10 @@ The same list with links to every page and script: workbench page Progress (firs
 - [x] Slides 32 and 33: find the course scripts (techsweep, look_up); need a Spectre setup
 - Skip slides 34 to 87 (OTA, feedback, OTA noise, project). Slide 58 only: 1 % settling = 4.6 tau.
 
+## Reminder (25 Nov)
+
+- [ ] Remove the two MOM test capacitors, sources and ground from `zaan_analog / sub_ana_rx_adc_abf` after the Monte Carlo (do not check them in). Next time build tests in the TB library.
+
 ## Now: Cadence comparator (in this order)
 
 1. [ ] gm/ID lookup tables (generic 180 nm tables from Murmann used for now, see `Zaan_MATLAB/gmid/README.md`; PDK tables when at the office): one NMOS, one PMOS, VDS = VDD/2, sweep VGS, L = Lmin, 2 Lmin, 4 Lmin. Save ID, gm, gds, Cgg. Store in `SAR_ADC_Simulator/local-data/` (NDA).
