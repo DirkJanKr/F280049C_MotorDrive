@@ -65,6 +65,17 @@ No PDK values in this file.
 4. **Read-slot gain calibration** (tricks 6, 7) only if the sine-wave ENOB stays the specification. This is the open decision "read-slot gain calibration".
 5. **Sort and combine** (trick 8): a possible thesis contribution. It removes the gain ripple in the analog domain with one foreground measurement and no per-sample multiply. Not found in the ultrasound literature (search of 25 Nov, abstracts only).
 
+## 4b. Sort and combine in practice (A, own idea)
+
+1. **Read-aligned addressing.** Channel j writes sample n into cell (n + d j) mod 22; every channel reads cell r mod 22 at read slot r.
+   Same delay as now, but the 16 cells read together form a fixed column, whatever the steering angle.
+   Then the slot gain pattern is the same for all angles: 22 numbers in total, not 22 per angle.
+2. **Measure each cell once** (foreground): one channel on, a DC input, average about 200 conversions per cell.
+   16 × 22 × 200 = 70 400 conversions = 1.8 ms at 40 MS/s.
+3. **Sort (offline, greedy).** Channel by channel: give the cell with the highest gain to the column with the lowest sum so far, and so on.
+4. **Load a table.** Per channel, column to physical cell: 22 entries of 5 bits, 16 channels = 1760 bits, over SPI. The cell decoder looks up the table instead of using the counter directly.
+5. **Residual.** Whatever is left can still be corrected digitally with 22 numbers (trick 6).
+
 ## 5. To check in MATLAB (step 2b, locally)
 
 - Add an offset ripple (injection) next to the gain ripple, and show both as an image of depth against line.
