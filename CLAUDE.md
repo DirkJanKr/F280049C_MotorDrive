@@ -13,6 +13,7 @@ Project: MSc thesis of Dirk-Jan. Current state and to-do list: `WHERE_WE_ARE.md`
 - Ground truth for formulas: Rabuske 2017 (book). Then Chen 2018, Guo 2024, Malki 2014.
 - Output is 10 bits.
 - Keep usage low: few tool calls, short reports.
+- English: when Dirk-Jan writes in a Dutch way, correct it very briefly at the end of the answer (his phrase → correct phrase, a few words on why). Only the clear cases, at most three per message.
 - When explaining code or a method: tell it as a short cause-and-effect story (oorzaak gevolg), top-level idea first, then follow the flow of the code in plain words, without code. Like the architecture review.
 - When explaining a circuit: follow the charge. Which node capacitance holds charge, which channel lets it flow, how that changes the next gate voltage. Justify every transistor region with numbers: off if V GS < V TH; triode if V DS < V ov = V GS - V TH; saturation if V DS >= V ov. No lists of 'X drives Y'.
 - MATLAB work lives in `Zaan_MATLAB/`: small steps in `steps/`, all in charge (Q = Q+ - Q-), order and status in `DESIGN_FLOW.md`. Workbench changes discussed but not built are listed in `SAR_ADC_Simulator/docs/workbench-backlog.md`.
