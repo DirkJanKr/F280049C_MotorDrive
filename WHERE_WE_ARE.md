@@ -29,6 +29,14 @@ The same list with links to every page and script: workbench page Progress (firs
   Redundancy now pays for: settling time (conversion 8 to 38 % shorter than binary, for r = 10 to 2), absorbing up to about 5 mV raw comparator offset (binary 0.98 mV), cheaper early decisions.
   Shrinking MOM memory cells: bottleneck is fixed charge per cell (switch injection, placeholder 0.16 fC) and the second rounding (smaller CDAC units); power barely drops.
 
+## Parked (27 Nov, pick up later)
+
+- [ ] Step 8 in Octave with the MOM A C; per-step waits (7b2) with the new weights; republish the workbench
+- [ ] Why the simulated calibrated ENOB (sim.sCal) dropped from 9.53 to 9.39 with MOM
+- [ ] Comparator offset Monte Carlo: below about 5 mV (3σ), the offset calibration could go
+- [ ] Cell switch Monte Carlo: injection per memory cell (the bottleneck for smaller MOM cells)
+- [ ] PDK MIM figure (0.0499) is in values.js and zaan_constants.m: NDA check
+
 ## Now: Cadence comparator (in this order)
 
 1. [ ] gm/ID lookup tables (generic 180 nm tables from Murmann used for now, see `Zaan_MATLAB/gmid/README.md`; PDK tables when at the office): one NMOS, one PMOS, VDS = VDD/2, sweep VGS, L = Lmin, 2 Lmin, 4 Lmin. Save ID, gm, gds, Cgg. Store in `SAR_ADC_Simulator/local-data/` (NDA).
