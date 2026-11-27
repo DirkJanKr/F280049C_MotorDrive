@@ -66,6 +66,7 @@ progress, system, balance, budget, power, redundancy, sar, levels, matching, mis
 
 ## Publishing
 
+- Whenever the workbench comes up, end the answer with its link (and say if the published copy is behind the code).
 - Published copy: https://claude.ai/artifact/YAcP1X72rA5CthqjLP7jK8 (republish with the Artifact tool, same URL; list its files first if refused). Frozen copy, never touch: https://claude.ai/artifact/RuUJNq4TD6BAGHhbX5SA2p.
 - The publish folder and its steps live in the session scratchpad and may be gone; rebuild from `zaan_workbench.html`, inlining `css/workbench.css`.
 
