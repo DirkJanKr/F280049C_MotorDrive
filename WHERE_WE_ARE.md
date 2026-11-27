@@ -24,6 +24,10 @@ The same list with links to every page and script: workbench page Progress (firs
 - MIM Monte Carlo: matches worse than MOM (value local).
 - [ ] Rerun step 2b (memory tones) locally with the PDK MIM A C: the budget uses 0.0499; if MIM is worse, the tones are larger than -65.6 dBc. MOM memory cells would lower the tones (tones scale with A C squared), at an area cost.
 - [ ] Decide (owner): MOM for the CDAC; memory cells MIM or MOM
+- 27 Nov: workbench and MATLAB now use A C = 0.0103 for the MOM CDAC (U, stand-in, not the PDK value) and 0.0499 for MIM memory cells.
+  Step 5: binary σ DNL 0.11 LSB, no missing codes, binary needs only 1.0 pF. Step 7b: still 12 decisions down to 3.2 τ.
+  Redundancy now pays for: settling time (12 to 43 % shorter conversion than binary, depends on r), absorbing up to about 5 mV raw comparator offset (binary 0.98 mV), cheaper early decisions.
+  Shrinking MOM memory cells: bottleneck is fixed charge per cell (switch injection, placeholder 0.16 fC) and the second rounding (smaller CDAC units); power barely drops.
 
 ## Now: Cadence comparator (in this order)
 

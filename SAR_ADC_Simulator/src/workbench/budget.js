@@ -76,7 +76,7 @@ export function chargeLines(P, d, { arrayGain = true, res = null, split = true, 
     // Rabuske 2017, eq. 4.38 and 4.42 with the PDK matching: gain differs per read slot; zero when calibrated per slot.
     // N fresh cells on each side; only their common part (e p + e n) / 2 changes the gain, so sigma G = sigma(C M) / sqrt(2 N).
     // The difference between the sides is second order (eq. 4.30, 4.33).
-    { id: 'slot', label: `Read-slot gain variation${P.slotCal ? ' (calibrated)' : ', at full scale'}`, sigma: P.slotCal ? 0 : ((P.aC / 100 / Math.sqrt(d.cm * 1e15) / Math.sqrt(2 * N)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
+    { id: 'slot', label: `Read-slot gain variation${P.slotCal ? ' (calibrated)' : ', at full scale'}`, sigma: P.slotCal ? 0 : ((P.aCMem / 100 / Math.sqrt(d.cm * 1e15) / Math.sqrt(2 * N)) * d.qFs) / 2 / Math.SQRT2, perChannel: false },
     // MATLAB step 2c: extra charge per memory cell from switch injection; a cell is read in M - 1 of M slots,
     // so N cells give sigma sqrt(N (M - 1) / M). Placeholder until a Cadence Monte Carlo of the cell switch.
     { id: 'cell', label: 'Extra charge per memory cell (switch injection, placeholder)', sigma: (P.cellQ || 0) * Math.sqrt((N * (P.memCells - 1)) / P.memCells), perChannel: true },

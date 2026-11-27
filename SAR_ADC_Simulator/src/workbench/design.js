@@ -43,7 +43,7 @@ export function modelParams(values) {
     cmIn: g('cm'), alphaIn: g('alpha'), cdacBalance: bal.cdac, cpar: g('cpar') || 0, slotCal: g('slotCal') !== 'not calibrated',
     fs: g('fs'), f0: g('f0'), fbw: g('fbw'), fullScale: g('fullScale'), bits: g('bits'), outBits: Math.max(g('bits'), g('outBits') ?? g('bits')), calMethod: g('calMethod'), enobAim: g('enobAim'), rawDecisions: g('rawDecisions'),
     channels: g('channels'), pitch: g('pitch'), steer: g('steer'), focus: g('rxFocus') ?? Infinity, delayStep: g('delayStep'), c: g('c'), memCells: g('memCells'),
-    vref: bal.vref, cu: bal.cu, density: g('density'), aC: mismatchCoefficient(pair, g('density')), routing: g('routing'), cuMin: g('cuMin'),
+    vref: bal.vref, cu: bal.cu, density: g('density'), aC: g('capCdac') === 'MOM' ? g('aMom') * 100 : mismatchCoefficient(pair, g('density')), aCMem: g('capMem') === 'MOM' ? g('aMom') * 100 : mismatchCoefficient(pair, g('density')), densityCdac: g('density') * (g('capCdac') === 'MOM' ? g('momDensity') : 1), densityMem: g('density') * (g('capMem') === 'MOM' ? g('momDensity') : 1), routing: g('routing'), cuMin: g('cuMin'),
     radix: g('radix'), topUnits: g('topUnits'), lsbPerUnit: g('lsbPerUnit'), halvings: g('halvings'), halvingOn: g('halvingOn'),
     vos: g('vos'), vosCal: g('vosCal'), compNoise: g('compNoise'), nTau: g('nTau'), minWait: g('minWait') ?? 0, lastSettle: g('lastSettle') ?? 0.1, gainMargin: g('gainMargin') ?? 0, decMargin: g('decMargin') ?? 0, cellQ: g('cellQ') ?? 0, tComp: g('tComp'), tauReg: g('tauReg'), kick: g('kick'), vinCm: g('vinCm'), calRange: g('calRange'), ibias: g('ibias'), gmId: g('gmId'), cload: g('cload'), vfinal: g('vfinal'),
     iqTaps: g('iqTaps'), iqDecim: g('iqDecim'), iqCut: g('iqCut'), iqTest: g('iqTest'), ron: g('ron'), swMode: g('swSize') === 'one pair per unit capacitor' ? 'unit' : 'same', tSample: g('tSample'), tauDac: g('tauDac'), tLogic: g('tLogic'), temperature: g('temperature'), jitter: g('jitter'), chips: g('chips'), seed: g('seed'),
@@ -121,8 +121,8 @@ export function design(values, ui) {
     }
     return conversionTimes(P, d, traces);
   });
-  const memArea = (d.memCaps * d.cm * P.routing) / P.density;
-  const cdacArea = (d.cdac * P.routing) / P.density;
+  const memArea = (d.memCaps * d.cm * P.routing) / P.densityMem;
+  const cdacArea = (d.cdac * P.routing) / P.densityCdac;
   const smallest = Math.min(...steps.map((st) => (st.kind === 'cap' || st.kind === 'small' ? st.units * P.cu : P.cu)));
   const ctx = {
     P, steps, stepsError: s.error, d, tw, tauMax, need, delays, qd, halfSteps, sim, res, budget, enob, timing, vrms, tolNeed, overSpare, overNeed,

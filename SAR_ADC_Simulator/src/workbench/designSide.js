@@ -8,7 +8,7 @@ import { group, knobs, num } from './kit.js';
 const GROUPS = [
   ['target', 'Target', ['enobAim', 'bits', 'fs', 'fullScale']],
   ['balance', 'Charge balance', ['cm', 'alpha', 'lsbPerUnit', 'cpar']],
-  ['caps', 'Capacitors', ['pairSigma', 'density', 'cuMin', 'routing', 'slotCal']],
+  ['caps', 'Capacitors', ['capCdac', 'aMom', 'capMem', 'momDensity', 'pairSigma', 'density', 'cuMin', 'routing', 'slotCal']],
   ['weights', 'Weight design (MATLAB 7b)', ['nTau', 'minWait', 'lastSettle', 'gainMargin', 'decMargin']],
   ['comparator', 'Comparator', ['compNoise', 'vosCal', 'vos', 'tComp', 'tauReg', 'kick', 'vinCm', 'calRange', 'gmId', 'tLogic']],
   ['beam', 'Beamformer', ['channels', 'pitch', 'steer', 'delayStep', 'memCells', 'cellQ']],

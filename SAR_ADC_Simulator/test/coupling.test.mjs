@@ -63,7 +63,7 @@ test('every value changes something in the context, or is read by one named page
 
 test('every value reaches the model parameters P', () => {
   const P = run().P;
-  const alias = { cm: 'cmIn', alpha: 'alphaIn', rxFocus: 'focus', swSize: 'swMode', pairSigma: 'aC' };
+  const alias = { cm: 'cmIn', alpha: 'alphaIn', rxFocus: 'focus', swSize: 'swMode', pairSigma: 'aC', capCdac: 'aC', aMom: 'aC', capMem: 'aCMem', momDensity: 'densityCdac' };
   for (const v of createValues()) assert.ok((alias[v.id] || v.id) in P, `${v.id} is not in P`);
 });
 
@@ -133,8 +133,8 @@ test('the sample rate moves the period, the timing budget, the cells needed, the
 });
 
 test('pair mismatch moves every matching result', () => {
-  const a = run({ slotCal: 'not calibrated' });
-  const b = run({ slotCal: 'not calibrated', pairSigma: 2.386 });
+  const a = run({ slotCal: 'not calibrated', capCdac: 'MIM' }); // the pair figure is the MIM figure
+  const b = run({ slotCal: 'not calibrated', capCdac: 'MIM', pairSigma: 2.386 });
   assert.ok(close(b.P.aC, 2 * a.P.aC));
   assert.ok(close(b.sigmaU, 2 * a.sigmaU));
   assert.ok(close(b.binCu, 4 * a.binCu));
@@ -233,8 +233,9 @@ test('broken: a receive focus moves the cells needed', { todo: 'design.js takes 
 });
 
 test('capacitor density moves the matching (pair figure is given for 35 fF at 2 fF/µm²)', () => {
-  assert.notEqual(run({ density: 4 }).sigmaU, run().sigmaU);
-  assert.ok(close(run({ density: 4 }).P.aC, Math.SQRT2 * run().P.aC));
+  const mim = { capCdac: 'MIM' };
+  assert.notEqual(run({ ...mim, density: 4 }).sigmaU, run(mim).sigmaU);
+  assert.ok(close(run({ ...mim, density: 4 }).P.aC, Math.SQRT2 * run(mim).P.aC));
 });
 
 test('the T int share of the period is a value and moves the T int jitter line', () => {

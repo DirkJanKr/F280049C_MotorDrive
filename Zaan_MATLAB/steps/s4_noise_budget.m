@@ -36,7 +36,7 @@ C_end = C_TH + 2 * C_DAC;          % node at the last decision [F]
 %% -----------------------------
 % 1) STUDIED: rms charge of every source [C]
 % -----------------------------
-sig_cell = A_C / sqrt(C_M*1e15);           % gain spread of one cell (step 2b)
+sig_cell = A_C_mem / sqrt(C_M*1e15);           % gain spread of one cell (step 2b)
 Q_sig    = Q_FS / (2*sqrt(2));             % rms charge of a full-scale sine [C]
 
 st_name = {'quantisation, ideal 10 bit', 'kT/C of the memory cells', 'memory gain tones, full scale'};

@@ -31,9 +31,10 @@ c_sound = 1540;      % speed of sound in tissue [m/s]                           
 theta   = 15;        % steering angle used in the studies [deg]                   U
 
 %% -----------------------------
-% Capacitor matching (PDK, MIM 2 fF/um^2)
+% Capacitor matching: CDAC in MOM, memory cells in MIM (27 Nov)
 % -----------------------------
-A_C = 0.0499;        % sigma(C)/C of one capacitor = A_C / sqrt(C in fF)          S (PDK Fig. 16)
+A_C     = 0.0103;    % CDAC, MOM: sigma(C)/C of one capacitor = A_C / sqrt(C in fF)  U (27 Nov, stand-in, not the PDK value)
+A_C_mem = 0.0499;    % memory cells, MIM: same definition                          S (PDK Fig. 16)
 C_u = 35e-15;        % CDAC unit capacitor: the smallest MIM in the PDK [F]       S (PDK)
 
 %% -----------------------------

@@ -61,6 +61,10 @@ export const SEED = [
   num('alpha', 'balance', 'alpha = C TH / (2 C DAC)', 1, '', 1, '1', [0.1, 4, 0.01], 'U', 'review 18 Nov: alpha = 1, V REF = 0.5 V; Chen 2018 has 0.40 (p. 3056); Rabuske 2016 simulates 0.5 to 3'),
 
   num('pairSigma', 'cdac', 'Pair mismatch σ(ΔC/C) at 35 fF and 2 fF/µm²', 1.193, '%', 0.01, '1', [0.1, 5, 0.001], 'S', 'PDK mim5_2: 0.0499 µm / √(W L), W L = 35 fF / 2 fF/µm²'),
+  choice('capCdac', 'cdac', 'CDAC capacitor', 'MOM', ['MOM', 'MIM'], 'U', '27 Nov: PDK Monte Carlo, MOM matches far better than MIM', 'MIM uses the pair figure above'),
+  num('aMom', 'cdac', 'MOM matching A C of one capacitor', 1.03, '% √fF', 0.01, '1', [0.1, 5, 0.01], 'U', '27 Nov, stand-in value, not the PDK value'),
+  choice('capMem', 'cdac', 'Memory cell capacitor', 'MIM', ['MIM', 'MOM'], 'U', '27 Nov: MIM for its density'),
+  num('momDensity', 'cdac', 'MOM density relative to MIM', 0.25, '×', 1, '1', [0.05, 1, 0.05], 'A', 'MIM about 4 times denser (27 Nov)'),
   num('density', 'cdac', 'Capacitor density', 2, 'fF/µm²', 1e-3, 'F/m²', [0.5, 10, 0.1], 'S', 'PDK mim5_2', 'the pair mismatch follows the area of a capacitor: at another density the same capacitance has another area'),
   num('cuMin', 'cdac', 'PDK minimum capacitor', 35, 'fF', 1e-15, 'F', [5, 100, 1], 'S', 'PDK mim5_2'),
   num('routing', 'cdac', 'Area factor for routing and switches', 1.5, '×', 1, '1', [1, 3, 0.1], 'A', 'review slide 26'),

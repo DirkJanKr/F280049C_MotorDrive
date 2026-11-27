@@ -73,7 +73,7 @@ end
 % -----------------------------
 fprintf(' C_M [fF]  one capacitor  tones, hand   tones, simulated   largest tone\n');
 for i = 1:numel(C_list)
-    sigma   = A_C / sqrt(C_list(i)*1e15);         % spread of one capacitor
+    sigma   = A_C_mem / sqrt(C_list(i)*1e15);         % spread of one capacitor
     tones   = zeros(1, n_chips);                  % all tones together, per chip [relative power]
     largest = zeros(1, n_chips);
     for chip = 1:n_chips
@@ -102,7 +102,7 @@ end
 %% -----------------------------
 % 5) Spectrum of one chip at 280 fF
 % -----------------------------
-sigma = A_C / sqrt(280);
+sigma = A_C_mem / sqrt(280);
 gain  = 1 + sigma * (randn(N_ch, M_cells) + randn(N_ch, M_cells)) / 2;
 out   = zeros(1, n_fft);
 for j = 1:N_ch
@@ -122,7 +122,7 @@ title('Memory cell tones, one chip, 280 fF: signal at 7.3 MHz, tones every fs / 
 % multiplies the signal, whatever its frequency. But WHERE the tones land does:
 % after the IQ demodulator only the echo band (7 to 13 MHz) is left.
 % Frequencies on exact bins (whole number of periods), 280 fF, 40 chips each.
-sigma = A_C / sqrt(280);
+sigma = A_C_mem / sqrt(280);
 f_try = [7 10 13] * 1e6;
 fprintf('\n signal    all tones    tones inside 7 to 13 MHz\n');
 for f_t = f_try

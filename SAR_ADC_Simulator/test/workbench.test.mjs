@@ -65,8 +65,17 @@ test('beamformer gain: switching it off makes the cell kT/C charge √N larger',
   assert.ok(Math.abs(off / on - 4) < 1e-9);
 });
 
-test('tolerance check: binary weights fail at decision 1, the default redundant weights pass', () => {
+const withCap = (cap) => { const v = createValues(); v.find((x) => x.id === 'capCdac').value = cap; return v; };
+
+test('MOM CDAC (27 Nov): binary passes decision 1 on matching, but not every decision', () => {
   const bin = design(createValues(), { weightMode: 'custom', customWeights: '256, 128, 64, 32, 16, 8, 4, 2, 1' });
+  assert.equal(bin.tolNeed[0].ok, true);
+  assert.ok(bin.tolNeed[0].mismatch < 0.35);
+  assert.equal(bin.checks.find((k) => k.id === 'tol').state, 'bad');
+});
+
+test('tolerance check (MIM CDAC): binary weights fail at decision 1, the default redundant weights pass', () => {
+  const bin = design(withCap('MIM'), { weightMode: 'custom', customWeights: '256, 128, 64, 32, 16, 8, 4, 2, 1' });
   assert.equal(bin.tolNeed[0].ok, false);
   assert.equal(bin.checks.find((k) => k.id === 'tol').state, 'bad');
   const def = design(createValues(), { weightMode: 'custom', customWeights: W_DESIGN });
@@ -164,8 +173,16 @@ test('every value has a status S, D, A or U', () => {
   for (const v of createValues()) assert.ok(['S', 'D', 'A', 'U'].includes(v.status), v.id);
 });
 
-test('residual split: more combiner output bits remove most of the rounding line; an exact LUT has no weight error', () => {
+test('MOM CDAC (27 Nov): calibrated weights stay close to whole numbers, so 12 output bits gain little', () => {
   const v = createValues();
+  const a = design(v, ui);
+  v.find((x) => x.id === 'outBits').value = 12;
+  const b = design(v, ui);
+  assert.ok(b.budget.enob - a.budget.enob < 0.05);
+});
+
+test('residual split (MIM CDAC): more combiner output bits remove most of the rounding line; an exact LUT has no weight error', () => {
+  const v = withCap('MIM');
   const a = design(v, ui);
   assert.ok(a.res.lut < 1e-6);
   v.find((x) => x.id === 'outBits').value = 12;

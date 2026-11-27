@@ -4,7 +4,7 @@
 // while the workbench starts from the owner's decisions (alpha 1, C M 280 fF, w design).
 import { createValues } from '../src/workbench/values.js';
 
-export const LEGACY = { alpha: 0.4, cm: 112, slotCal: 'calibrated', cellQ: 0, nTau: 10, decMargin: 0, gainMargin: 0 };
+export const LEGACY = { capCdac: 'MIM', alpha: 0.4, cm: 112, slotCal: 'calibrated', cellQ: 0, nTau: 10, decMargin: 0, gainMargin: 0 };
 
 export function legacyValues() {
   const v = createValues();
