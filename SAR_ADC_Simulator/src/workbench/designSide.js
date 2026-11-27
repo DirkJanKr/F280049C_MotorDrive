@@ -29,6 +29,7 @@ const PAGE = {
   matching: { open: ['caps'] },
   mismatch: { open: ['caps', 'balance', 'sim', 'chip'] },
   offset: { open: ['balance', 'comparator'] },
+  cockpit: { open: ['target'] },
   tones: { open: ['beam', 'caps', 'balance'], extra: ['f0', 'fbw'] },
   why: { open: ['weights', 'comparator'] },
   beamformer: { open: ['beam'], extra: ['rxFocus', 'c', 'f0', 'fbw'] },

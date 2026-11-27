@@ -8,7 +8,7 @@ const VKEY = 'zaan-workbench-versions-v3';
 
 export const store = {
   values: createValues(),
-  ui: { page: 'system', showTop: true, showSide: true, weightMode: 'custom', customWeights: '200, 160, 80, 40, 16, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'auto', vin: 0.217, qUnit: 'fC', arrayGain: true, alloc: {}, sarMode: 'diff', optGoal: 'enob', optRes: true, sweep: 'compNoise', bfDelays: true },
+  ui: { page: 'cockpit', showTop: true, showSide: true, weightMode: 'custom', customWeights: '200, 160, 80, 40, 16, 16, 8, 4, 2, 1, 1', compareA: null, theme: 'auto', vin: 0.217, qUnit: 'fC', arrayGain: true, alloc: {}, sarMode: 'diff', optGoal: 'enob', optRes: true, sweep: 'compNoise', bfDelays: true },
   versions: [],
   ctx: null,
   listeners: [],

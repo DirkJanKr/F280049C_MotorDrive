@@ -29,6 +29,7 @@ import { page as redPage } from './pages/redundancy.js';
 import { page as progressPage } from './pages/progress.js';
 import { page as comparatorPage } from './pages/comparator.js';
 import { page as tonesPage } from './pages/tones.js';
+import { page as cockpitPage } from './pages/cockpit.js';
 import { page as whyPage } from './pages/why.js';
 
 /** Several pages behind one entry of the rail, as tabs. The address of a tab is the id of its page. */
@@ -46,6 +47,7 @@ function tabs(id, title, subs) {
   };
 }
 const PAGES = [
+  cockpitPage,
   progressPage,
   system,
   balancePage,
@@ -58,9 +60,10 @@ const PAGES = [
 ];
 // The rail: pages grouped, the blocks in the order the signal passes them. checks: ids whose state marks the page.
 const NAV = [
-  ['Overview', [['progress', []], ['system', []]]],
-  ['Design', [['balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['g-mismatch', []], ['offset', []]]],
-  ['Blocks', [['comparator', []], ['g-beam', ['cells']], ['g-timing', []], ['reference', []], ['iq', []]]],
+  ['Overview', [['cockpit', []], ['progress', []], ['system', []]]],
+  ['Signal chain', [['g-beam', ['cells']], ['balance', []], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['comparator', []], ['reference', []], ['iq', []]]],
+  ['Error budget', [['g-budget', ['enob']], ['g-mismatch', []], ['offset', []]]],
+  ['Time', [['g-timing', []]]],
   ['Record', [['values', []], ['sources', []]]],
 ];
 const TAPEOUT = Date.UTC(2027, 2, 31);
@@ -182,7 +185,7 @@ subscribe((reason) => {
 });
 
 window.addEventListener('hashchange', () => {
-  store.ui.page = location.hash.replace('#', '') || 'progress';
+  store.ui.page = location.hash.replace('#', '') || 'cockpit';
   renderPage();
   window.scrollTo(0, 0);
 });

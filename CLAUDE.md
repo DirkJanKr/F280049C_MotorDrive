@@ -50,7 +50,7 @@ Project: MSc thesis of Dirk-Jan. Current state and to-do list: `WHERE_WE_ARE.md`
 
 ## Page ids (URL hash)
 
-progress, system, balance, budget, power, why, redundancy, sar, levels, matching, mismatch, offset, comparator, beamformer, tones, chen, logic, timing, reference, iq, values, sources.
+cockpit, progress, system, balance, budget, power, why, redundancy, sar, levels, matching, mismatch, offset, comparator, beamformer, tones, chen, logic, timing, reference, iq, values, sources.
 
 ## How to work
 

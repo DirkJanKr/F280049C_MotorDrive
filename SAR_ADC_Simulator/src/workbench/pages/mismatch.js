@@ -31,7 +31,7 @@ export const page = {
       ${card('mmWhy', 'Why the DNL does not go below about 1 LSB here', '', 'wide')}${card('mmArea', 'Area on the 3.2 mm × 5 mm chip, to scale', '', 'wide')}
       ${explain('What mismatch does here', [
         'Every capacitor comes out a little off its design value. A step built from k unit capacitors has a relative error of σu / √k, so the big steps are relatively accurate but carry the largest absolute error in LSB.',
-        'With redundancy the comparison levels still find the input; only the weights used to add up the decisions are wrong. Calibration measures them once per chip and puts them in the LUT. Without redundancy a wrong weight loses codes, and calibration cannot get them back.',
+        'With redundancy the comparison levels still find the input; only the weights used to add up the decisions are wrong. Calibration can measure them once per chip. Without redundancy a wrong weight loses codes, and calibration cannot get them back. With a MOM CDAC the steps are within about 0.1 LSB of their design values, so the design weights already land on the output grid; calibrated weights rounded to 10 bits bring a second rounding back. Compare the two ENOB numbers above.',
       ])}`;
   },
   mount(store) {

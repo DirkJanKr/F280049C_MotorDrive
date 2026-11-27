@@ -42,6 +42,7 @@ const LEADS = {
   },
   levels: { q: 'How much does rounding to 10 bits cost?', a: (c) => [`${num(c.res.round, 3)} LSB rms`, `added on top of ${num(c.res.sar, 3)} LSB rms of the converter itself`] },
   matching: { q: 'Does a binary CDAC of this size match well enough?', a: (c) => [`3σ DNL ${num(3 * 2 ** (c.P.bits - 1) * (c.P.aC / 100) / Math.sqrt(c.P.cdacBalance * 1e15), 2)} LSB`, `binary needs ${eng((6 * 2 ** (c.P.bits - 1) * (c.P.aC / 100)) ** 2 * 1e-15, 'F')} for 3σ DNL below ½ LSB (2^(B−1) A C / √C DAC, MATLAB step 5)`] },
+  cockpit: { q: 'Where does the design stand, and what should be confirmed next?', a: (c) => [`ENOB ${num(c.budget.enob, 2)}`, `${c.checks.filter((k) => k.state === 'bad').length} checks fail, ${c.d.decisions} decisions`] },
   tones: { q: 'How large are the tones from the memory cells, and which ones matter?', a: (c) => [`σ cap ${num(c.P.aCMem / Math.sqrt(c.d.cm * 1e15), 3)} %`, 'gain tones follow the echo; injection tones do not'] },
   why: { q: 'What does redundancy buy, now that matching does not need it?', a: (c) => [`${c.d.decisions} decisions`, 'speed against binary, offset it absorbs, the need per decision'] },
   mismatch: { q: 'What does mismatch do to a real chip, before and after calibration?', a: firstReadout('mmro') },

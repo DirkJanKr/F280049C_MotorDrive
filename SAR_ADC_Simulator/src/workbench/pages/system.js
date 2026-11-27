@@ -121,14 +121,14 @@ function chain(ctx) {
     arrow('bit'),
     card('logic', 'SAR logic', ['self-timed', `${d.decisions} raw decisions`, `${eng(ctx.tw / d.decisions, 's')} per decision at most`], logicPic(ctx), stateOf(ctx, ['dec'])),
     arrow(`${d.decisions} bits`),
-    card('mismatch', 'Combiner + LUT', [`Σ dᵢ wᵢ → ${Math.round(P.outBits)} bit`, `weights: ${esc(String(P.calMethod).split(' (')[0])}`, `ENOB ${num(b.enob, 2)} (aim ${num(P.enobAim, 1)})`], lutPic(ctx), stateOf(ctx, ['enob'])),
+    card('mismatch', 'Combiner', [`Σ dᵢ wᵢ → ${Math.round(P.outBits)} bit`, `weights: ${esc(String(P.calMethod).split(' (')[0])}`, `ENOB ${num(b.enob, 2)} (aim ${num(P.enobAim, 1)})`], lutPic(ctx), stateOf(ctx, ['enob'])),
     arrow(`${Math.round(P.outBits)} bits`),
     card('iq', 'IQ demodulator', [`mix with ${eng(P.f0, 'Hz')}`, `low-pass, ↓ ${Math.round(P.iqDecim)}`, `${eng(P.fs / Math.round(P.iqDecim), 'S/s')} I and Q`], iqPic(), 'ok'),
   ].join('');
   const feed = [
     `<div class="feed ref" data-go="sar"><b>Reference</b><span>VREF ${eng(P.vref, 'V')}, precharges the CDAC steps once per conversion</span><span class="to">→ CDAC</span></div>`,
     `<div class="feed clk" data-go="timing"><b>Clocks</b><span>CLK ${num(P.fs / 1e6, 0)} MHz and CLK 180° (${eng(ctx.tw / 2, 's')} later) write the cells</span><span class="to">→ beamformer, SAR logic</span></div>`,
-    `<div class="feed cal" data-go="mismatch"><b>Calibration</b><span>weights into the LUT; comparator offset trimmed to ${eng(P.vosCal, 'V')}</span><span class="to">→ LUT, comparator</span></div>`,
+    `<div class="feed cal" data-go="mismatch"><b>Calibration</b><span>MOM CDAC: design weights already exact; weights can be measured off-chip on the raw decisions; comparator offset trimmed to ${eng(P.vosCal, 'V')}</span><span class="to">→ combiner, comparator</span></div>`,
   ].join('');
   return `<div class="chain">${main}</div><div class="feeds">${feed}</div>
     <p class="cap syscap">From the beamformer onward; everything before it is left out. A dot on a card is green when its checks pass, orange when one asks for a look, red when one fails. Click a card to open its page.</p>`;
