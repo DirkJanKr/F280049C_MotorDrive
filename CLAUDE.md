@@ -30,6 +30,7 @@ Project: MSc thesis of Dirk-Jan. Current state and to-do list: `WHERE_WE_ARE.md`
 | Question and answer at the top of each page | `src/workbench/leads.js` |
 | Progress page content (where the design stands, with links); keep in step with `WHERE_WE_ARE.md` | `src/workbench/progress.js`, page `pages/progress.js` |
 | Comparator specification and Cadence results | `pages/comparator.js` |
+| Beamformer tones (gain and charge injection), page `pages/tones.js` | `src/zaan/model/tones.js`; test `test/tones.test.mjs` |
 | Weights from the needs (port of MATLAB 7b), time table | `src/zaan/model/weightBuilder.js`; test `test/weight-builder.test.mjs` |
 | One set of names for alpha, C DAC, C node | `src/workbench/names.js` |
 | Noise budget lines | `src/workbench/budget.js` |
@@ -49,7 +50,7 @@ Project: MSc thesis of Dirk-Jan. Current state and to-do list: `WHERE_WE_ARE.md`
 
 ## Page ids (URL hash)
 
-progress, system, balance, budget, power, redundancy, sar, levels, matching, mismatch, offset, comparator, beamformer, chen, logic, timing, reference, iq, values, sources.
+progress, system, balance, budget, power, why, redundancy, sar, levels, matching, mismatch, offset, comparator, beamformer, tones, chen, logic, timing, reference, iq, values, sources.
 
 ## How to work
 
@@ -72,7 +73,7 @@ progress, system, balance, budget, power, redundancy, sar, levels, matching, mis
 
 ## Decided (owner)
 
-alpha = 1 (V REF 0.5 V); Guo reservoir reference, V REF external; C M 280 fF start value (A); no MOS CDAC; external calibration with LUT (review 18 Nov). Comparator offset: background calibration as Chen 2018 (extra comparison and charge pump), decided 23 Nov. ENOB below 9.5 accepted; the new target is not set.
+alpha = 1 (V REF 0.5 V); Guo reservoir reference, V REF external; C M 280 fF start value (A); no MOS CDAC; external calibration with LUT (review 18 Nov). Comparator offset: background calibration as Chen 2018 (extra comparison and charge pump), decided 23 Nov. ENOB below 9.5 accepted; the new target is not set. CDAC in MOM (A C 0.0103, stand-in), memory cells in MIM (27 Nov).
 
 ## Open decisions (owner's, not decided)
 

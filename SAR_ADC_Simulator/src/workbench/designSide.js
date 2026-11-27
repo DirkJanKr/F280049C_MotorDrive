@@ -29,6 +29,8 @@ const PAGE = {
   matching: { open: ['caps'] },
   mismatch: { open: ['caps', 'balance', 'sim', 'chip'] },
   offset: { open: ['balance', 'comparator'] },
+  tones: { open: ['beam', 'caps', 'balance'], extra: ['f0', 'fbw'] },
+  why: { open: ['weights', 'comparator'] },
   beamformer: { open: ['beam'], extra: ['rxFocus', 'c', 'f0', 'fbw'] },
   chen: { open: ['target', 'beam'] },
   logic: { extra: ['tSample', 'tLogic', 'tauDac', 'ibias', 'gmId', 'cload', 'vfinal'] },

@@ -2,7 +2,7 @@
 // Kept by hand together with WHERE_WE_ARE.md at the repo root (same content, this one with links).
 // status: done, now, next, later. links: [label, href]; '#id' is a workbench page.
 
-export const UPDATED = '23 Nov 2026';
+export const UPDATED = '27 Nov 2026';
 
 const GH = 'https://github.com/DirkJanKr/F280049C_MotorDrive/blob/claude/sar-adc-charge-simulator-tb6qdh/';
 const m = (file) => GH + 'Zaan_MATLAB/steps/' + file;
@@ -30,7 +30,9 @@ export const PHASES = [
     status: 'done',
     why: 'Mismatch, comparator offset and incomplete settling are fixed errors; redundancy must absorb them decision by decision, so the weights are designed from those needs.',
     steps: [
-      ['Mismatch of a binary CDAC: DNL 2^(B−1) A C / √C DAC, binary would need 23.5 pF', 'done', [['Mismatch', '#matching'], ['MATLAB s5', m('s5_cdac_mismatch.m')]]],
+      ['Mismatch of a binary CDAC: DNL 2^(B−1) A C / √C DAC; with MIM binary needs 23.5 pF, with MOM 1.0 pF', 'done', [['CDAC matching', '#matching'], ['MATLAB s5', m('s5_cdac_mismatch.m')]]],
+      ['PDK Monte Carlo of MOM and MIM: MOM matches far better and follows Pelgrom (27 Nov)', 'done', [['CDAC matching', '#matching']]],
+      ['Reasons for redundancy with MOM: speed, absorbing comparator offset', 'done', [['Why redundancy', '#why']]],
       ['Tolerance rule t k = later steps + w last − w k, proven', 'done', [['Conversion', '#sar'], ['MATLAB s6', m('s6_tolerance_rule.m')]]],
       ['Fixed errors per decision, added linearly (root-sum-square lets 19 % of chips fail)', 'done', [['Conversion', '#sar'], ['MATLAB s7a', m('s7a_errors_per_decision.m')], ['s7e', m('s7e_linear_vs_rss.m')]]],
       ['Weights from the needs: w design = 200 160 80 40 16 16 8 4 2 1 1 at 3.7 τ', 'done', [['Weights', '#redundancy'], ['Timing table', '#timing'], ['MATLAB s7b', m('s7b_design_weights.m')]]],
@@ -83,6 +85,7 @@ export const PHASES = [
     why: 'Part of the thesis; not on the critical path this week.',
     steps: [
       ['Memory cells per channel: 22 for ±15°', 'done', [['Beamformer', '#beamformer']]],
+      ['Mismatch tones with charge injection; injection per cell still a placeholder', 'now', [['Mismatch tones', '#tones'], ['Study', GH + 'Zaan_MATLAB/notes/abf_tones_study.md']]],
       ['Receive focus and cells needed (formula change needs approval)', 'later', [['Beamformer', '#beamformer']]],
       ['Reference: Guo reservoir, V REF external (decided 18 Nov)', 'done', [['Reference', '#reference']]],
       ['IQ demodulator after the converter', 'later', [['IQ', '#iq']]],
@@ -92,7 +95,7 @@ export const PHASES = [
 
 export const DECIDED = [
   'alpha = 1, V REF 0.5 V (18 Nov)', 'C M 280 fF, start value (18 Nov)', 'Guo reservoir reference, V REF external (18 Nov)', 'no MOS capacitors in the CDAC; external calibration with a LUT (18 Nov)',
-  'comparator offset: background calibration as Chen 2018 (23 Nov)', 'ENOB below 9.5 accepted; new target not set (23 Nov)', 'w design = 200 160 80 40 16 16 8 4 2 1 1, 3.7 τ (23 Nov)',
+  'comparator offset: background calibration as Chen 2018 (23 Nov)', 'ENOB below 9.5 accepted; new target not set (23 Nov)', 'w design = 200 160 80 40 16 16 8 4 2 1 1, 3.7 τ (23 Nov)', 'CDAC in MOM, memory cells in MIM (27 Nov)',
 ];
 
 export const OPEN = [
@@ -101,6 +104,8 @@ export const OPEN = [
   ['Comparator noise target', '45 µV needs about 5 times the energy of 100 µV; 100 µV costs about 0.1 bit', '#comparator'],
   ['Offset room of w design', 'only 0.39 mV after calibration at 3.7 τ with the 0.2 LSB margin; Chen leaves about 0.2 mV (D). More room: more tolerance in the small steps or more settling time', '#comparator'],
   ['Double-tail or StrongArm', 'Chen uses double-tail; fits the offset calibration pair', '#comparator'],
+  ['Drop the comparator offset calibration?', 'redundancy absorbs about 5 mV raw offset at 12 or 13 decisions; needs a Monte Carlo of the comparator', '#why'],
+  ['Charge injection per memory cell', 'sets the injection tones and the limit for smaller cells; Cadence Monte Carlo of the cell switch', '#tones'],
   ['Read-slot gain calibration', 'the memory gain tones are the largest noise line after quantisation', '#budget'],
   ['New ENOB target', 'set after the comparator noise is known', '#system'],
   ['Receive focus and cells needed', 'formula change needs approval', '#beamformer'],

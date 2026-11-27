@@ -32,7 +32,7 @@ The same list with links to every page and script: workbench page Progress (firs
 ## Parked (27 Nov, pick up later)
 
 - [ ] Step 8 in Octave with the MOM A C; per-step waits (7b2) with the new weights; republish the workbench
-- [ ] Why the simulated calibrated ENOB (sim.sCal) dropped from 9.53 to 9.39 with MOM
+- [x] Why the calibrated ENOB dropped with MOM: the design weights are already exact (ENOB 9.81 on one chip); the calibrated weights rounded to 10 bits bring back the second rounding (9.39). With MOM: no weight calibration, or raw decisions out
 - [ ] Comparator offset Monte Carlo: below about 5 mV (3σ), the offset calibration could go
 - [ ] Cell switch Monte Carlo: injection per memory cell (the bottleneck for smaller MOM cells)
 - [ ] PDK MIM figure (0.0499) is in values.js and zaan_constants.m: NDA check

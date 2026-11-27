@@ -1,141 +1,128 @@
-// Matching page: the 3 sigma rule for the CDAC, shown as an equation, worked out side by side for
-// charge redistribution (a capacitor is on or off) and charge sharing (parallel or antiparallel),
-// and checked with a Monte Carlo. One switch: are the last 3 bits made by charge halving.
+// CDAC matching: does a binary CDAC of this size meet 3 sigma DNL < 1/2 LSB, with MOM and with MIM?
+// The rule is formula B of MATLAB step 5 (simulated there): sigma DNL = 2^(B-1) A C / sqrt(C DAC in fF).
+// The Monte Carlo converts a fine ramp with a binary charge-sharing SAR (first decision against zero,
+// then steps 2^(B-2) ... 1, the last three by charge halving) and measures the width of every code.
 
-import { fill, widthOf, plot, explain, eng, num, COL } from '../kit.js';
-import { matchingArray, midSigma, requiredCu, matchingMonteCarlo } from '../../zaan/model/matching.js';
+import { fill, widthOf, plot, readouts, explain, eng, num, COL, statusChip } from '../kit.js';
+import { siOf, mismatchCoefficient } from '../design.js';
 import { createRng } from '../../model/rng.js';
 
-const CHIPS = 600;
 const memo = {};
-const frac = (a, b) => `<span class="frac"><span class="fn">${a}</span><span class="fd">${b}</span></span>`;
-const sq = (x) => `√<span style="border-top:1px solid currentColor;padding:0 3px">${x}</span>`;
-const sub = (a, b) => `${a}<sub>${b}</sub>`;
-const big = (html) => `<div class="eq">${html}</div>`;
 
-function arrayView(arr, w) {
-  const n = arr.list.length;
-  const L = 96;
-  const bw = (w - L - 6) / n;
-  const colOf = { cap: 'var(--an)', half: 'var(--ref)', final: 'var(--muted)' };
-  const p = [`<svg viewBox="0 0 ${w} 150" class="tsvg" role="img" aria-label="The bits of the array">`];
-  arr.list.forEach((b, i) => {
-    const x = L + i * bw;
-    p.push(`<rect x="${x + 1.5}" y="4" width="${bw - 3}" height="24" rx="3" fill="${colOf[b.kind]}" opacity="0.9"/><text x="${x + bw / 2}" y="20" text-anchor="middle" class="tiny" style="fill:var(--on-brand)">${b.W}</text>`);
-    p.push(`<text x="${x + bw / 2}" y="42" text-anchor="middle" class="tiny">${b.kind === 'cap' ? `${b.units}u` : b.kind === 'half' ? '½' : 'none'}</text>`);
-  });
-  p.push(`<text x="4" y="20" class="tiny">code weight</text><text x="4" y="42" class="tiny">units</text>`);
-  [['below mid', (i) => i !== 0], ['above mid', (i) => i === 0]].forEach(([label, on], r) => {
-    const y = 56 + r * 32;
-    p.push(`<text x="4" y="${y + 16}" class="tiny">${label}</text>`);
-    arr.list.forEach((b, i) => {
-      const a = on(i);
-      const txt = arr.polarity ? (a ? '+' : '−') : a ? 'on' : 'off';
-      const fillc = arr.polarity ? (a ? 'var(--an)' : 'var(--ref)') : a ? 'var(--an)' : 'var(--panel2)';
-      p.push(`<rect x="${L + i * bw + 1.5}" y="${y}" width="${bw - 3}" height="24" rx="3" fill="${fillc}" stroke="var(--line)"/><text x="${L + i * bw + bw / 2}" y="${y + 16}" text-anchor="middle" class="tiny" style="fill:${arr.polarity || a ? 'var(--on-brand)' : 'var(--ink)'}">${txt}</text>`);
-    });
-  });
-  p.push(`<text x="${L}" y="136" class="tiny">${arr.polarity ? 'every capacitor reverses' : 'the largest switches on, the rest off'}</text></svg>`);
-  return p.join('');
+/** Binary steps in LSB with their relative sigma: whole units sigma u / sqrt(units), halving steps sigma u / sqrt 2. */
+function binarySteps(bits, lsbPerUnit, sigmaU) {
+  const out = [];
+  for (let k = 1; k < bits; k++) {
+    const w = 2 ** (bits - 1 - k);
+    const units = w / lsbPerUnit;
+    out.push({ w, units, rel: units >= 1 ? sigmaU / Math.sqrt(units) : sigmaU / Math.SQRT2 });
+  }
+  return out;
 }
+
+/** Monte Carlo of the input width of every code. Returns per chip: DNL of the mid code, worst |DNL|, missing codes. */
+export function binaryDnlMonteCarlo({ bits, lsbPerUnit, sigmaU, chips, seed, step = 0.05 }) {
+  const steps = binarySteps(bits, lsbPerUnit, sigmaU);
+  const codes = 2 ** bits;
+  const half = codes / 2;
+  const rng = createRng(seed);
+  const mid = [], worst = [], miss = [];
+  const cnt = new Float64Array(codes);
+  const W = new Float64Array(steps.length);
+  for (let c = 0; c < chips; c++) {
+    steps.forEach((s, i) => { W[i] = s.w * (1 + s.rel * rng.gaussian()); });
+    cnt.fill(0);
+    for (let x = -half + step / 2; x < half; x += step) {
+      let est = 0, code = 0;
+      for (let i = 0; i < W.length; i++) {
+        const s = x >= est ? 1 : -1;
+        est += s * W[i];
+        code += s * steps[i].w;
+      }
+      const last = x >= est ? 0.5 : -0.5;
+      const idx = Math.round(code + last + half - 0.5);
+      if (idx >= 0 && idx < codes) cnt[idx] += step;
+    }
+    let wst = 0, ms = 0;
+    for (let k = 1; k < codes - 1; k++) { const dnl = cnt[k] - 1; wst = Math.max(wst, Math.abs(dnl)); if (cnt[k] === 0) ms++; }
+    mid.push(cnt[half] - 1); worst.push(wst); miss.push(ms);
+  }
+  return { mid, worst, miss };
+}
+
+const sigmaDnl = (bits, aC, cFf) => (2 ** (bits - 1) * aC) / Math.sqrt(cFf);
+const cdacFor3Sigma = (bits, aC) => (6 * 2 ** (bits - 1) * aC) ** 2 * 1e-15;
 
 function histogram(values, lo, hi, bins) {
   const h = new Array(bins).fill(0);
-  for (const v of values) {
-    const k = Math.floor(((v - lo) / (hi - lo)) * bins);
-    if (k >= 0 && k < bins) h[k]++;
-  }
+  for (const v of values) { const k = Math.floor(((v - lo) / (hi - lo)) * bins); if (k >= 0 && k < bins) h[k]++; }
   const pts = [];
   h.forEach((c, i) => pts.push([lo + ((hi - lo) * i) / bins, c], [lo + ((hi - lo) * (i + 1)) / bins, c]));
   return pts;
 }
 
-/** One column: the array, the equation with its numbers, the Monte Carlo. */
-function column(id, arr, sigmaU, aC, cu, P) {
-  const sig = midSigma(arr, sigmaU);
-  const need = requiredCu(arr, aC);
-  const key = JSON.stringify([arr.M, arr.halving, sigmaU, P.seed]);
-  if (!memo[id] || memo[id].key !== key) memo[id] = { key, mc: matchingMonteCarlo(arr, sigmaU, CHIPS, createRng(P.seed + 77)) };
-  const mc = memo[id].mc;
-  const sd = Math.sqrt(mc.mid.reduce((a, v) => a + v * v, 0) / CHIPS);
-  const pass = Array.from(mc.worst).filter((v) => v < 0.5).length / CHIPS;
-  const span = Math.max(1, 4 * sig);
-  const pts = histogram(mc.mid, -span, span, 36);
-  const w = Math.max(360, widthOf(id));
-  const bad = 3 * sig > 0.5;
-  fill(id, `${arrayView(arr, w)}
-    <table class="tbl" style="margin-top:6px"><tbody>
-      <tr><td style="width:46%">unit capacitors M</td><td class="num"><b>${arr.M}</b></td></tr>
-      <tr><td>codes per unit, k = 2<sup>B</sup> / M</td><td class="num">${2 ** P.bits} / ${arr.M} = <b>${arr.k}</b></td></tr>
-      <tr><td>σ = k · ${sub('σ', 'u')} · ${sq('M − 1')}</td><td class="num">${arr.k} × ${num(sigmaU * 100, 3)} % × ${sq(arr.M - 1)} = <b>${num(arr.k * sigmaU * Math.sqrt(arr.M - 1), 3)} LSB</b></td></tr>
-      <tr><td>3σ, limit 0.5 LSB</td><td class="num"><b style="color:${bad ? 'var(--bad)' : 'var(--ok, var(--an))'}">${num(3 * sig, 2)} LSB</b></td></tr>
-      <tr><td>unit needed for 3σ &lt; 0.5</td><td class="num"><b>${eng(need.cu, 'F')}</b> × ${arr.M} = ${eng(need.total, 'F')}</td></tr>
-      <tr><td>CDAC with the unit set above</td><td class="num">${arr.M} × ${eng(cu, 'F')} = <b>${eng(arr.M * cu, 'F')}</b></td></tr>
-    </tbody></table>
-    ${plot({ height: 190, x: { min: -span, max: span, label: 'error of the mid-scale code step [LSB]' }, y: { min: 0, max: Math.max(...pts.map((q) => q[1])) * 1.15, label: 'chips' },
-      series: [{ points: pts, color: COL.an, width: 1.8 }], vlines: [{ x: -0.5, color: COL.bad, dash: '5 3' }, { x: 0.5, color: COL.bad, dash: '5 3', label: '±0.5' }] }, w)}`,
-  `Monte Carlo on ${CHIPS} chips: σ = ${num(sd, 3)} LSB, the equation gives ${num(sig, 3)} LSB. Chips with every code step inside ±0.5 LSB: ${num(pass * 100, 0)} %.`);
-  return { sig, need };
-}
-
 export const page = {
   id: 'matching',
-  title: 'The 3σ rule',
-  main(store) {
-    const hal = store.ui.mmHalving !== false;
-    return `<section class="card wide"><header><h3>The equation</h3></header><div class="cbody" id="mmEq"></div></section>
-      <section class="card wide"><header><h3>Set the unit capacitor</h3><span class="ctl">
-        <label class="mini-l">unit capacitor ${sub('C', 'u')} <input type="range" id="mmCu" min="10" max="2000" step="5" value="${store.ui.mmCu || 35}"/> <output id="mmCuO"></output></label>
-        <span class="seg sm2"><button data-mm="1" class="${hal ? 'on' : ''}">last 3 bits by charge halving</button><button data-mm="0" class="${hal ? '' : 'on'}">all bits from capacitors</button></span></span></header>
-        <div class="cbody" id="mmChain"></div></section>
-      <div class="grid2"><section class="card"><header><h3>Charge redistribution: a capacitor is on or off</h3></header><div class="cbody" id="mmA"></div><p class="cap" id="mmA-cap"></p></section>
-      <section class="card"><header><h3>Charge sharing: parallel or antiparallel</h3></header><div class="cbody" id="mmB"></div><p class="cap" id="mmB-cap"></p></section></div>
-      <section class="card wide"><header><h3>What the comparison shows</h3></header><div class="cbody" id="mmSum"></div></section>
-      ${explain('Why charge sharing needs half the capacitors', [
-        'In charge redistribution a capacitor either takes part or it does not. To cover 1024 codes with capacitors alone you need 1024 units of one code each.',
-        'In charge sharing a capacitor is never left out. It is connected one way round or the other, so it moves the result up or down by its weight: a range of twice its weight. Half the capacitors cover the same codes, and each one is worth two codes.',
-        'For matching that changes nothing in total. There are half as many capacitors to average over, but each counts for twice as much, so to match as well each must be twice as large. The total capacitance comes out the same. The same holds for charge halving, which removes three more factors of two from the count.',
+  title: 'CDAC matching',
+  main() {
+    return `<section class="card wide"><header><h3>Does a binary CDAC of this size match well enough?</h3></header><div class="cbody" id="cmRead"></div></section>
+      <div class="grid2"><section class="card"><header><h3>3σ DNL against the CDAC size</h3></header><div class="cbody" id="cmCurve"></div><p class="cap" id="cmCurve-cap"></p></section>
+      <section class="card"><header><h3>Monte Carlo: width of the mid-scale code</h3></header><div class="cbody" id="cmMc"></div><p class="cap" id="cmMc-cap"></p></section></div>
+      <section class="card wide"><header><h3>Theory against simulation</h3></header><div class="cbody" id="cmTab"></div></section>
+      ${explain('Why 2^(B−1) and not 2^B', [
+        'The DNL is the width of a code. At mid-scale, the code just above zero runs from the first decision (against zero, no capacitor) to the point where the first step equals all the others. Every step error counts once: δw 1 − δw 2 − … − δw last.',
+        'A step of k units has σ = n u · σ u · √k LSB, so all units together give n u · σ u · √units = 2^(B−1) A C / √C DAC (formula B, MATLAB step 5: 0.111 predicted, 0.108 simulated with MOM).',
+        'Twice that, 2^B A C / √C DAC, is the jump between the outputs on either side of mid-scale read with the real weights. That is an error of the output value, not a code width, so it is not the DNL. The old version of this page used it, which overstated the capacitance needed by a factor of 4.',
+      ])}
+      ${explain('What this does not include', [
+        'Random mismatch only, as the PDK Monte Carlo. Gradients across the array come on top: common-centroid layout and dummies, checked after layout.',
+        'Parasitics and charge halving errors are fixed per chip and act as weight errors (MATLAB step 7g); they are not in this check.',
+        'The Monte Carlo of the PDK applies one random value to an instance with a multiplier m: build large steps from separate instances when simulating the CDAC in Cadence.',
       ])}`;
-  },
-  mount(store) {
-    document.querySelectorAll('[data-mm]').forEach((b) => {
-      b.onclick = () => {
-        store.ui.mmHalving = b.dataset.mm === '1';
-        document.querySelectorAll('[data-mm]').forEach((x) => x.classList.toggle('on', x === b));
-        page.update(store, store.ctx);
-      };
-    });
-    document.getElementById('mmCu').oninput = (e) => {
-      store.ui.mmCu = Number(e.target.value);
-      page.update(store, store.ctx);
-    };
   },
   update(store, ctx) {
     const { P } = ctx;
-    const hal = store.ui.mmHalving !== false;
-    const cu = (store.ui.mmCu || 35) * 1e-15;
-    const aC = P.aC / 100; // one capacitor, fraction * sqrt(fF)
-    const pairSlope = (P.aC / 100) * Math.SQRT2 / Math.sqrt(P.density * 1e3 || 2); // um, from the PDK pair sigma and the density
-    const sigmaU = aC / Math.sqrt(cu / 1e-15);
-    document.getElementById('mmCuO').textContent = eng(cu, 'F');
-    fill('mmEq', `<div class="grid2 inner"><div>
-        ${big(`${sub('σ', 'u')} = ${frac(sub('A', 'C'), sq(sub('C', 'u')))}`)}<p class="cap">one unit capacitor (Pelgrom). ${sub('A', 'C')}: matching of the PDK capacitor.</p>
-        ${big(`${sub('σ', 'step')} = k · ${sub('σ', 'u')} · ${sq('M − 1')} &nbsp;,&nbsp; k = ${frac('2<sup>B</sup>', 'M')}`)}<p class="cap">the worst code step, at mid-scale, where all M − 1 unit capacitors change. k: codes that one unit is worth.</p></div><div>
-        ${big(`${sub('σ', 'step')} ≈ ${frac(`2<sup>B</sup> · ${sub('A', 'C')}`, sq(`M · ${sub('C', 'u')}`))} = ${frac(`2<sup>B</sup> · ${sub('A', 'C')}`, sq(sub('C', 'DAC')))}`)}<p class="cap">put together: only the total capacitance ${sub('C', 'DAC')} = M · ${sub('C', 'u')} counts.</p>
-        ${big(`3 · ${sub('σ', 'step')} &lt; ½ LSB &nbsp;⟹&nbsp; ${sub('C', 'DAC')} &gt; (6 · 2<sup>B</sup> · ${sub('A', 'C')})²`)}<p class="cap">the 3σ rule. With B = ${P.bits} and ${sub('A', 'C')} = ${num(aC * 100, 2)} %·√fF: ${eng((6 * 2 ** P.bits * aC) ** 2 * 1e-15, 'F')}.</p></div></div>`);
-    fill('mmChain', `<p style="margin:2px 0">PDK: pair mismatch σ(ΔC/C) = ${num(pairSlope, 4)} µm / √area &nbsp;→&nbsp; one capacitor: ${sub('A', 'C')} = <b>${num(aC * 100, 2)} %·√fF</b> &nbsp;→&nbsp; at ${sub('C', 'u')} = ${eng(cu, 'F')}: &nbsp; ${sub('σ', 'u')} = ${num(aC * 100, 2)} / √${num(cu * 1e15, 0)} = <b>${num(sigmaU * 100, 3)} %</b> &nbsp; (a pair: ${num(sigmaU * Math.SQRT2 * 100, 3)} %)</p>
-      <p class="cap">The matching of the PDK is fixed; the mismatch of a unit follows from its size. The PDK value itself is in the inspector under Capacitors (pair mismatch at 35 fF).</p>`);
-    const a = column('mmA', matchingArray({ bits: P.bits, halving: hal, polarity: false }), sigmaU, aC, cu, P);
-    const b = column('mmB', matchingArray({ bits: P.bits, halving: hal, polarity: true }), sigmaU, aC, cu, P);
-    const A = matchingArray({ bits: P.bits, halving: hal, polarity: false });
-    const B = matchingArray({ bits: P.bits, halving: hal, polarity: true });
-    fill('mmSum', `<div class="tablewrap"><table class="tbl"><thead><tr><th></th><th>Charge redistribution</th><th>Charge sharing</th><th>What it means</th></tr></thead><tbody>
-      <tr><td>Unit capacitors</td><td class="num">${A.M}</td><td class="num">${B.M}</td><td>half as many: each is used in both directions</td></tr>
-      <tr><td>Codes per unit</td><td class="num">${A.k}</td><td class="num">${B.k}</td><td>each counts twice as much</td></tr>
-      <tr><td>3σ at ${eng(cu, 'F')} units</td><td class="num">${num(3 * a.sig, 2)} LSB</td><td class="num">${num(3 * b.sig, 2)} LSB</td><td>√2 worse at the same unit size</td></tr>
-      <tr><td>Unit for 3σ &lt; 0.5 LSB</td><td class="num">${eng(a.need.cu, 'F')}</td><td class="num">${eng(b.need.cu, 'F')}</td><td>twice as large</td></tr>
-      <tr><td>Total for 3σ &lt; 0.5 LSB</td><td class="num">${eng(a.need.total, 'F')}</td><td class="num">${eng(b.need.total, 'F')}</td><td><b>the same</b>: matching sets a total capacitance</td></tr>
-      <tr><td>Total with ${eng(cu, 'F')} units</td><td class="num">${eng(A.M * cu, 'F')}</td><td class="num">${eng(B.M * cu, 'F')}</td><td><b>half</b>: this is the gain once calibration removes the matching limit</td></tr>
-    </tbody></table></div><p class="cap">${hal ? 'With charge halving for the last 3 bits both arrays have 8 times fewer units than without. Switch it off above to see all bits made from capacitors.' : 'All bits from capacitors. Switch charge halving on above: both arrays lose a factor 8 in units, and the totals for matching stay the same.'} Rabuske 2017 (section 4.4.3, Fig. 4.8) finds the same by Monte Carlo: equal ENOB for charge sharing and charge redistribution when the total DAC capacitance is equal. He compares with a differential charge-redistribution converter, which needs two arrays, so there the unit count is four times smaller, not two.</p>`);
+    const v = store.values;
+    const aMom = siOf(v, 'aMom');
+    const aMim = mismatchCoefficient(siOf(v, 'pairSigma'), siOf(v, 'density')) / 100;
+    const cdac = P.cdacBalance;
+    const cFf = cdac * 1e15;
+    const cuFf = P.cu * 1e15;
+    const rows = [['MOM', aMom, COL.an], ['MIM', aMim, COL.ref]].map(([name, a, col]) => ({ name, a, col, sig: sigmaDnl(P.bits, a, cFf), need: cdacFor3Sigma(P.bits, a) }));
+    const used = P.aC / 100;
+    fill('cmRead', readouts(rows.map((r) => [`${r.name}: 3σ DNL at ${eng(cdac, 'F')}`, `${num(3 * r.sig, 2)} LSB`, `${3 * r.sig < 0.5 ? 'below' : 'above'} ½ LSB; binary needs ${eng(r.need, 'F')}`]).concat([['CDAC capacitor in use', siOf(v, 'capCdac'), `A C = ${num(used, 4)} √fF`]]))
+      + `<p class="cap">σ DNL = 2<sup>B−1</sup> · A<sub>C</sub> / √C<sub>DAC</sub> &nbsp;(D, formula B, checked by simulation in MATLAB step 5). A<sub>C</sub> MOM = ${num(aMom, 4)} √fF ${statusChip('U')} stand-in value; A<sub>C</sub> MIM = ${num(aMim, 4)} √fF ${statusChip('S')} from the PDK pair figure. C<sub>DAC</sub> = ${eng(cdac, 'F')} from the charge balance (α = ${num(P.alphaIn, 2)}), not from matching.</p>`);
+    const w = Math.max(320, widthOf('cmCurve'));
+    const xs = Array.from({ length: 120 }, (_, i) => 0.1e-12 * 1.06 ** i).filter((c) => c <= 40e-12);
+    const yMax = Math.min(3, Math.max(1, 3 * rows[1].sig * 1.2));
+    fill('cmCurve', plot({ height: 220, x: { min: 0, max: 30, label: 'C DAC [pF]' }, y: { min: 0, max: yMax, label: '3σ DNL [LSB]' }, legend: true,
+      series: rows.map((r) => ({ points: xs.map((c) => [c * 1e12, 3 * sigmaDnl(P.bits, r.a, c * 1e15)]), color: r.col, width: 2, label: r.name })),
+      hlines: [{ y: 0.5, color: COL.bad, label: '½ LSB' }], vlines: [{ x: cdac * 1e12, color: COL.ink, label: 'this design' }] }, w),
+    `MOM crosses ½ LSB at ${eng(rows[0].need, 'F')}, MIM at ${eng(rows[1].need, 'F')}. The CDAC of this design is ${eng(cdac, 'F')}.`);
+    const chips = Math.min(400, Math.max(100, P.chips || 200));
+    const key = JSON.stringify([aMom, aMim, cuFf, P.bits, P.lsbPerUnit, chips, P.seed]);
+    if (!memo.k || memo.k !== key) {
+      memo.k = key;
+      memo.r = rows.map((r) => binaryDnlMonteCarlo({ bits: P.bits, lsbPerUnit: P.lsbPerUnit, sigmaU: r.a / Math.sqrt(cuFf), chips, seed: P.seed + 11 }));
+    }
+    const mc = memo.r;
+    const sd = (a) => Math.sqrt(a.reduce((s, x) => s + x * x, 0) / a.length);
+    const span = Math.max(1, 4 * rows[1].sig);
+    const hs = mc.map((m) => histogram(m.mid, -span, span, 40));
+    const hMax = Math.max(...hs.flat().map((q) => q[1])) * 1.1;
+    const w2 = Math.max(320, widthOf('cmMc'));
+    fill('cmMc', plot({ height: 220, x: { min: -span, max: span, label: 'DNL of the mid-scale code [LSB]' }, y: { min: 0, max: hMax, label: 'chips' }, legend: true,
+      series: hs.map((pts, i) => ({ points: pts, color: rows[i].col, width: 1.8, label: rows[i].name })),
+      vlines: [{ x: -0.5, color: COL.bad }, { x: 0.5, color: COL.bad, label: '±½' }] }, w2),
+    `${chips} chips per capacitor, binary weights, unit ${eng(P.cu, 'F')} (${P.lsbPerUnit} LSB per unit), ramp of 20 points per code, no noise.`);
+    const pct = (a, f) => `${num((100 * a.filter(f).length) / a.length, 0)} %`;
+    fill('cmTab', `<div class="tablewrap"><table class="tbl"><thead><tr><th></th><th>MOM</th><th>MIM</th><th>Status</th></tr></thead><tbody>
+      <tr><td>σ DNL, formula B</td>${rows.map((r) => `<td class="num">${num(r.sig, 3)} LSB</td>`).join('')}<td>D</td></tr>
+      <tr><td>σ DNL, Monte Carlo (mid-scale code)</td>${mc.map((m) => `<td class="num">${num(sd(m.mid), 3)} LSB</td>`).join('')}<td>simulated here</td></tr>
+      <tr><td>Median worst |DNL| over all codes</td>${mc.map((m) => `<td class="num">${num([...m.worst].sort((a, b) => a - b)[m.worst.length >> 1], 2)} LSB</td>`).join('')}<td>simulated here</td></tr>
+      <tr><td>Chips with every |DNL| below ½ LSB</td>${mc.map((m) => `<td class="num">${pct(m.worst, (x) => x < 0.5)}</td>`).join('')}<td>simulated here</td></tr>
+      <tr><td>Chips with a missing code</td>${mc.map((m) => `<td class="num">${pct(m.miss, (x) => x > 0)}</td>`).join('')}<td>simulated here</td></tr>
+      <tr><td>Binary CDAC needed for 3σ &lt; ½ LSB</td>${rows.map((r) => `<td class="num">${eng(r.need, 'F')}</td>`).join('')}<td>D</td></tr>
+    </tbody></table></div><p class="cap">The 3σ rule looks at one code; over all 1022 codes the worst one is larger, so fewer chips keep every code inside ½ LSB than the 99.7 % of one code. With MOM, matching alone no longer asks for redundancy or calibration (see SAR ADC, Why redundancy).</p>`);
   },
 };

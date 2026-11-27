@@ -28,6 +28,8 @@ import { page as sourcesPage } from './pages/sources.js';
 import { page as redPage } from './pages/redundancy.js';
 import { page as progressPage } from './pages/progress.js';
 import { page as comparatorPage } from './pages/comparator.js';
+import { page as tonesPage } from './pages/tones.js';
+import { page as whyPage } from './pages/why.js';
 
 /** Several pages behind one entry of the rail, as tabs. The address of a tab is the id of its page. */
 function tabs(id, title, subs) {
@@ -48,9 +50,9 @@ const PAGES = [
   system,
   balancePage,
   tabs('g-budget', 'Noise and power', [[budgetPage, 'Noise budget'], [powerPage, 'Power estimate']]),
-  tabs('g-sar', 'SAR ADC', [[redPage, 'Weights'], [sar, 'Conversion'], [levelsPage, 'Levels and rounding']]),
-  tabs('g-mismatch', 'Mismatch', [[matchingPage, 'The 3σ rule'], [mismatch, 'Monte Carlo and area']]),
-  offsetPage, comparatorPage, beamformer,
+  tabs('g-sar', 'SAR ADC', [[whyPage, 'Why redundancy'], [redPage, 'Weights'], [sar, 'Conversion'], [levelsPage, 'Levels and rounding']]),
+  tabs('g-mismatch', 'Mismatch', [[matchingPage, 'CDAC matching'], [mismatch, 'Monte Carlo and area']]),
+  offsetPage, comparatorPage, tabs('g-beam', 'Beamformer', [[beamformer, 'Delays and cells'], [tonesPage, 'Mismatch tones']]),
   tabs('g-timing', 'Timing', [[chenPage, 'Clock sequence after Chen'], [logic, 'Self-timed logic'], [timing, 'Timing budget']]),
   refPage, iqPage, valuesPage, sourcesPage,
 ];
@@ -58,7 +60,7 @@ const PAGES = [
 const NAV = [
   ['Overview', [['progress', []], ['system', []]]],
   ['Design', [['balance', []], ['g-budget', ['enob']], ['g-sar', ['cover', 'tol', 'small', 'dec']], ['g-mismatch', []], ['offset', []]]],
-  ['Blocks', [['comparator', []], ['beamformer', ['cells']], ['g-timing', []], ['reference', []], ['iq', []]]],
+  ['Blocks', [['comparator', []], ['g-beam', ['cells']], ['g-timing', []], ['reference', []], ['iq', []]]],
   ['Record', [['values', []], ['sources', []]]],
 ];
 const TAPEOUT = Date.UTC(2027, 2, 31);
