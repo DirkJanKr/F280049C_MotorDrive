@@ -26,7 +26,7 @@ The same list with links to every page and script: workbench page Progress (firs
 - [ ] Decide (owner): MOM for the CDAC; memory cells MIM or MOM
 - 27 Nov: workbench and MATLAB now use A C = 0.0103 for the MOM CDAC (U, stand-in, not the PDK value) and 0.0499 for MIM memory cells.
   Step 5: binary σ DNL 0.11 LSB, no missing codes, binary needs only 1.0 pF. Step 7b: still 12 decisions down to 3.2 τ.
-  Redundancy now pays for: settling time (12 to 43 % shorter conversion than binary, depends on r), absorbing up to about 5 mV raw comparator offset (binary 0.98 mV), cheaper early decisions.
+  Redundancy now pays for: settling time (conversion 8 to 38 % shorter than binary, for r = 10 to 2), absorbing up to about 5 mV raw comparator offset (binary 0.98 mV), cheaper early decisions.
   Shrinking MOM memory cells: bottleneck is fixed charge per cell (switch injection, placeholder 0.16 fC) and the second rounding (smaller CDAC units); power barely drops.
 
 ## Now: Cadence comparator (in this order)
